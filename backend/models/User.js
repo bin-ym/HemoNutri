@@ -1,12 +1,11 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
-  username: { type: String, unique: true, sparse: true },
-  email: { type: String, unique: true, sparse: true },
+  username: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   role: { type: String, enum: ['patient', 'provider', 'admin'], default: 'patient' },
-  otp: { type: String }, // Store OTP temporarily
-  isFirstLogin: { type: Boolean, default: true }, // Flag for first-time login
+  isFirstLogin: { type: Boolean, default: true },
 });
 
 module.exports = mongoose.model('User', userSchema);

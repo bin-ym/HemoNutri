@@ -1,8 +1,8 @@
 const express = require('express');
-const { getPatientLogs } = require('../controllers/providerController');
-const auth = require('../middleware/auth');
 const router = express.Router();
+const auth = require('../middleware/auth');
+const { getPatients } = require('../controllers/providerController');
 
-router.get('/logs', auth(['provider']), getPatientLogs);
+router.get('/patients', auth(['provider']), getPatients);
 
 module.exports = router;

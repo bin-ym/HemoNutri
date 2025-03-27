@@ -20,45 +20,55 @@ const Register = () => {
   };
 
   return (
-    <div className="max-w-md mx-auto p-6 bg-white shadow-md rounded-lg">
-      <h2 className="text-2xl font-bold mb-4 text-center">Register</h2>
+    <div className="space-y-4">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="Username (e.g., email)"
-          className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="Password"
-          className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <select
-          value={role}
-          onChange={(e) => setRole(e.target.value)}
-          className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="patient">Patient</option>
-          <option value="provider">Healthcare Provider</option>
-        </select>
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Username (e.g., email)</label>
+          <input
+            type="text"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Enter username or email"
+            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Password</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Enter password"
+            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Role</label>
+          <select
+            value={role}
+            onChange={(e) => setRole(e.target.value)}
+            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
+          >
+            <option value="patient">Patient</option>
+            <option value="provider">Healthcare Provider</option>
+          </select>
+        </div>
+        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
         <button
           type="submit"
-          className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+          className="w-full bg-teal-500 text-white p-2 rounded hover:bg-teal-600 transition duration-300"
         >
           Register
         </button>
-        <p className="text-center">
-          Have an account?{' '}
-          <a href="/login" className="text-blue-500 hover:underline">
-            Login
-          </a>
-        </p>
       </form>
+      <div className="text-center">
+        <button
+          onClick={() => navigate('/login')}
+          className="w-full bg-teal-100 text-teal-600 p-2 rounded hover:bg-teal-200 transition duration-300"
+        >
+          Already have an account? Login
+        </button>
+      </div>
     </div>
   );
 };

@@ -8,7 +8,7 @@ const Navbar = ({ role }) => {
   const [notificationForm, setNotificationForm] = useState({
     title: '',
     message: '',
-    recipientType: 'all', // Default to 'all'
+    recipientType: 'all',
     recipientIds: [],
   });
   const [showForm, setShowForm] = useState(false);
@@ -23,7 +23,7 @@ const Navbar = ({ role }) => {
           });
           setUsers(res.data.filter((user) => user.role !== 'admin'));
         } catch (err) {
-          console.error(err);
+          console.error('Fetch users error:', err.response?.data || err.message);
         }
       };
       fetchUsers();
@@ -53,7 +53,7 @@ const Navbar = ({ role }) => {
       setShowForm(false);
       alert('Notification sent successfully!');
     } catch (err) {
-      console.error(err);
+      console.error('Send notification error:', err.response?.data || err.message);
       alert('Failed to send notification.');
     }
   };
@@ -67,42 +67,116 @@ const Navbar = ({ role }) => {
     });
   };
 
+  const handleNavClick = (path) => {
+    navigate(path);
+  };
+
   return (
-    <nav className="bg-blue-600 text-white p-4 shadow-md">
-      <div className="max-w-4xl mx-auto flex justify-between items-center">
+    <nav className="bg-teal-600 text-white p-4 shadow-md">
+      <div className="max-w-6xl mx-auto flex justify-between items-center">
         <h1 className="text-xl font-bold">HemoNutri</h1>
-        <div className="space-x-4 flex items-center">
+        <div className="space-x-6 flex items-center">
+          {!role && (
+            <>
+              <button
+                onClick={() => handleNavClick('/')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
+                Home
+              </button>
+              <button
+                onClick={() => handleNavClick('/about')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
+                About
+              </button>
+              <button
+                onClick={() => handleNavClick('/contact')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
+                Contact
+              </button>
+              <button
+                onClick={() => handleNavClick('/login')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
+                Login
+              </button>
+            </>
+          )}
           {role === 'patient' && (
             <>
-              <button onClick={() => navigate('/dashboard')} className="hover:underline">
+              <button
+                onClick={() => handleNavClick('/dashboard')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
                 Dashboard
               </button>
-              <button onClick={() => navigate('/education')} className="hover:underline">
+              <button
+                onClick={() => handleNavClick('/dashboard#food-log')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
+                Log Food & Fluid
+              </button>
+              <button
+                onClick={() => handleNavClick('/dashboard#contact')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
+                Contact Provider
+              </button>
+              <button
+                onClick={() => handleNavClick('/dashboard#goals')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
+                Goals & Rewards
+              </button>
+              <button
+                onClick={() => handleNavClick('/education')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
                 Education
               </button>
             </>
           )}
           {role === 'provider' && (
-            <button onClick={() => navigate('/provider')} className="hover:underline">
+            <button
+              onClick={() => handleNavClick('/provider')}
+              className="hover:underline bg-transparent border-none text-white cursor-pointer"
+            >
               Provider Dashboard
             </button>
           )}
           {role === 'admin' && (
             <>
-              <button onClick={() => navigate('/admin')} className="hover:underline">
+              <button
+                onClick={() => handleNavClick('/admin')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
                 Dashboard
               </button>
-              <button onClick={() => navigate('/admin/users')} className="hover:underline">
+              <button
+                onClick={() => handleNavClick('/admin/users')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
                 Users
               </button>
-              <button onClick={() => navigate('/admin/resources')} className="hover:underline">
+              <button
+                onClick={() => handleNavClick('/admin/resources')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
                 Resources
               </button>
-              <button onClick={() => navigate('/admin/report')} className="hover:underline">
+              <button
+                onClick={() => handleNavClick('/admin/report')}
+                className="hover:underline bg-transparent border-none text-white cursor-pointer"
+              >
                 Reports
               </button>
               <div className="relative">
-                <button onClick={() => setShowForm(!showForm)} className="hover:underline">
+                <button
+                  onClick={() => setShowForm(!showForm)}
+                  className="hover:underline bg-transparent border-none text-white cursor-pointer"
+                >
                   📢 Send Notification
                 </button>
                 {showForm && (
@@ -162,7 +236,7 @@ const Navbar = ({ role }) => {
                       <div className="flex space-x-2">
                         <button
                           type="submit"
-                          className="w-full bg-blue-500 text-white p-1 rounded hover:bg-blue-600"
+                          className="w-full bg-teal-500 text-white p-1 rounded hover:bg-teal-600"
                         >
                           Send
                         </button>
@@ -187,16 +261,6 @@ const Navbar = ({ role }) => {
             >
               Logout
             </button>
-          )}
-          {!role && (
-            <>
-              <button onClick={() => navigate('/login')} className="hover:underline">
-                Login
-              </button>
-              <button onClick={() => navigate('/register')} className="hover:underline">
-                Register
-              </button>
-            </>
           )}
         </div>
       </div>
