@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api'; // Assuming Navbar.js is sibling to pages/
-import Navbar from '../components/Navbar';
+import api from '../../services/api'; // Adjusted path if needed
+import Navbar from '../Navbar'; // Adjusted path
 
 const ProviderPage = () => {
   const navigate = useNavigate();
@@ -23,18 +23,25 @@ const ProviderPage = () => {
     const fetchPatients = async () => {
       try {
         const token = localStorage.getItem('token');
+        console.log('Fetching patients with token:', token);
         if (!token || localStorage.getItem('role') !== 'provider') {
+          console.error('Invalid token or role, redirecting to login');
           navigate('/login');
           return;
         }
-        const res = await api.get('/provider/patients', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setPatients(res.data);
+        console.log('Sending request to /provider/patients');
+        const res = await Promise.race([
+          api.get('/provider/patients'),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Request timed out')), 5000)),
+        ]);
+        console.log('Received response:', res.data);
+        setPatients(Array.isArray(res.data) ? res.data : []);
+        setError(''); // Clear error on success
       } catch (err) {
-        console.error('Fetch patients error:', err.response?.data || err.message);
-        setError(err.response?.data?.error || 'Failed to load patients');
+        console.error('Fetch patients error:', err.message);
+        setError(err.message || 'Failed to load patients');
       } finally {
+        console.log('Setting loading to false');
         setLoading(false);
       }
     };
@@ -46,14 +53,9 @@ const ProviderPage = () => {
     try {
       setLoading(true);
       setError('');
-      const token = localStorage.getItem('token');
       const [logsRes, assessRes] = await Promise.all([
-        api.get(`/provider/patient/${patientId}/food-logs`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        api.get(`/provider/patient/${patientId}/assessment`, {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        api.get(`/provider/patient/${patientId}/food-logs`),
+        api.get(`/provider/patient/${patientId}/assessment`),
       ]);
       setSelectedPatient(patients.find((p) => p._id === patientId));
       setFoodLogs(logsRes.data);
@@ -87,12 +89,7 @@ const ProviderPage = () => {
     e.preventDefault();
     if (!selectedPatient) return setError('Select a patient first');
     try {
-      const token = localStorage.getItem('token');
-      await api.post(
-        `/provider/meal-plan/${selectedPatient._id}`,
-        mealPlanForm,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post(`/provider/meal-plan/${selectedPatient._id}`, mealPlanForm);
       alert('Meal plan updated successfully!');
     } catch (err) {
       console.error('Meal plan submit error:', err.response?.data || err.message);
@@ -105,12 +102,7 @@ const ProviderPage = () => {
     e.preventDefault();
     if (!selectedPatient) return setError('Select a patient first');
     try {
-      const token = localStorage.getItem('token');
-      await api.post(
-        `/provider/message/${selectedPatient._id}`,
-        { message },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      await api.post(`/provider/message/${selectedPatient._id}`, { content: message }); // Changed 'message' to 'content' to match backend
       setMessage('');
       alert('Message sent successfully!');
     } catch (err) {
@@ -120,13 +112,13 @@ const ProviderPage = () => {
   };
 
   if (loading) return <p className="text-center mt-10">Loading...</p>;
+  if (error) return <p className="text-red-500 text-center mt-10">{error}</p>;
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
       <Navbar role="provider" />
       <div className="max-w-6xl mx-auto p-6 flex-grow">
         <h1 className="text-4xl font-bold mb-8 text-center text-teal-600">Provider Dashboard</h1>
-        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
 
         {/* Patient List */}
         <section className="mb-12">

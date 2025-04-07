@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Navbar from "../components/Navbar";
-import api from "../services/api";
-import FoodLog from "../components/patient/FoodLog";
-import Education from "../components/patient/Education";
-import MealPlan from "../components/patient/MealPlan";
+import Navbar from "../../components/Navbar";
+import api from "../../services/api";
+import FoodLog from "../Patient/FoodLog";
+import Education from "../Patient/Education";
+import MealPlan from "../Patient/MealPlan";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -235,7 +235,8 @@ const PatientDashboard = () => {
                 {foodLogs.slice(0, 5).map((log) => (
                   <li key={log._id} className="p-3 bg-gray-100 rounded-lg">
                     {log.foodItem || log.food} - {log.quantity || log.amount}
-                    {log.isFluid ? 'ml' : 'g'} on {new Date(log.date).toLocaleDateString()}
+                    {log.isFluid ? "ml" : "g"} on{" "}
+                    {new Date(log.date).toLocaleDateString()}
                   </li>
                 ))}
               </ul>

@@ -1,15 +1,16 @@
-import { useState } from 'react';
-import Navbar from '../components/Navbar';
-import api from '../services/api';
+import { useState } from "react";
+import Navbar from "../../components/Navbar";
+import api from "../../services/api";
 
 const AdminReportPage = () => {
   const [report, setReport] = useState(null);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState("all");
 
   const handleGenerateReport = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const url = filter === 'all' ? '/admin/report' : `/admin/report?filter=${filter}`;
+      const token = localStorage.getItem("token");
+      const url =
+        filter === "all" ? "/admin/report" : `/admin/report?filter=${filter}`;
       const res = await api.get(url, {
         headers: { Authorization: `Bearer ${token}` },
       });

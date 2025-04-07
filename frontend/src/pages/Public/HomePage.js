@@ -1,6 +1,6 @@
-import { useNavigate } from 'react-router-dom';
-import Navbar from '../components/Navbar';
-import heroImage from '../assets/hero-image.jpg';
+import { useNavigate } from "react-router-dom";
+import Navbar from "../../components/Navbar";
+import heroImage from "../../assets/hero-image.jpg";
 
 const HomePage = () => {
   const navigate = useNavigate();
@@ -21,7 +21,7 @@ const HomePage = () => {
             Your partner in managing nutrition and wellness with ease.
           </p>
           <button
-            onClick={() => navigate('/register')}
+            onClick={() => navigate("/register")}
             className="bg-teal-500 text-white px-6 py-3 rounded-full text-lg hover:bg-teal-600 transition duration-300"
           >
             Get Started
@@ -36,9 +36,12 @@ const HomePage = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center p-6 bg-gray-100 rounded-lg shadow-md hover:shadow-lg transition duration-300">
               <div className="text-4xl mb-4">🍎</div>
-              <h3 className="text-xl font-semibold mb-2">Track Your Nutrition</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                Track Your Nutrition
+              </h3>
               <p className="text-gray-600">
-                Log food and fluid intake effortlessly to stay on top of your health.
+                Log food and fluid intake effortlessly to stay on top of your
+                health.
               </p>
             </div>
             <div className="text-center p-6 bg-gray-100 rounded-lg shadow-md hover:shadow-lg transition duration-300">
@@ -50,7 +53,9 @@ const HomePage = () => {
             </div>
             <div className="text-center p-6 bg-gray-100 rounded-lg shadow-md hover:shadow-lg transition duration-300">
               <div className="text-4xl mb-4">👩‍⚕️</div>
-              <h3 className="text-xl font-semibold mb-2">Connect with Providers</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                Connect with Providers
+              </h3>
               <p className="text-gray-600">
                 Collaborate with healthcare professionals for personalized care.
               </p>

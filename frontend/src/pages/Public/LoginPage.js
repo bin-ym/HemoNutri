@@ -1,18 +1,29 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
-import Navbar from '../components/Navbar';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import api from '../../services/api';
+import Navbar from '../../components/Navbar';
 
 const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Display redirect message (e.g., from token expiration)
+  useEffect(() => {
+    if (location.state?.message) {
+      setError(location.state.message);
+    }
+  }, [location]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await api.post('/auth/login', { identifier: email, password });
+      const res = await api.post('/auth/login', {
+        identifier: email,
+        password,
+      });
       console.log('Login response:', res.data);
       localStorage.setItem('token', res.data.token);
       localStorage.setItem('role', res.data.role);
@@ -27,56 +38,62 @@ const LoginPage = () => {
       }
     } catch (err) {
       console.error('Login error:', err.response?.data || err.message);
-      setError('Invalid credentials');
+      setError(err.response?.data?.error || 'Invalid credentials');
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-teal-50 to-gray-100">
       <Navbar role={null} />
-      <div className="flex-grow flex items-center justify-center">
-        <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
-          <h2 className="text-2xl font-bold mb-6 text-center text-teal-600">Login</h2>
-          {error && <p className="text-red-500 mb-4 text-center">{error}</p>}
+      <div className="flex items-center justify-center flex-grow">
+        <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg">
+          <h2 className="mb-6 text-2xl font-bold text-center text-teal-600">
+            Login
+          </h2>
+          {error && <p className="mb-4 text-center text-red-500">{error}</p>}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email or Username</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Email or Username
+              </label>
               <input
                 type="text"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full p-2 border border-teal-200 rounded focus:outline-none focus:ring-2 focus:ring-teal-500 bg-teal-50"
                 placeholder="Enter email or username"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
+              <label className="block text-sm font-medium text-gray-700">
+                Password
+              </label>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full p-2 border border-teal-200 rounded focus:outline-none focus:ring-2 focus:ring-teal-500 bg-teal-50"
                 placeholder="Enter password"
               />
             </div>
             <button
               type="submit"
-              className="w-full bg-teal-500 text-white p-2 rounded hover:bg-teal-600 transition duration-300"
+              className="w-full p-2 text-white transition duration-300 bg-teal-600 rounded shadow-md hover:bg-teal-700"
             >
               Login
             </button>
           </form>
-          <div className="mt-4 text-center space-y-2">
+          <div className="mt-4 space-y-2 text-center">
             <button
               onClick={() => navigate('/register')}
-              className="w-full bg-teal-100 text-teal-600 p-2 rounded hover:bg-teal-200 transition duration-300"
+              className="w-full p-2 text-teal-600 transition duration-300 bg-teal-100 rounded hover:bg-teal-200"
             >
               Register
             </button>
             <p>
               <a
                 href="/forgot-password"
-                className="text-teal-500 hover:underline text-sm"
+                className="text-sm text-teal-500 hover:underline"
               >
                 Forgot Password?
               </a>

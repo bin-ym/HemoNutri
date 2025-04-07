@@ -1,38 +1,44 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../../services/api";
 
 const ChangePassword = () => {
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
+      setError("Passwords do not match");
       return;
     }
     try {
-      const token = localStorage.getItem('token');
-      await api.post('/auth/change-password', { password: newPassword }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const role = localStorage.getItem('role');
-      if (role === 'provider') navigate('/provider');
-      else if (role === 'admin') navigate('/admin');
-      else navigate('/dashboard');
+      const token = localStorage.getItem("token");
+      await api.post(
+        "/auth/change-password",
+        { password: newPassword },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      const role = localStorage.getItem("role");
+      if (role === "provider") navigate("/provider");
+      else if (role === "admin") navigate("/admin");
+      else navigate("/dashboard");
     } catch (err) {
-      console.error('Change password error:', err.response?.data);
-      setError(err.response?.data?.error || 'Failed to change password');
+      console.error("Change password error:", err.response?.data);
+      setError(err.response?.data?.error || "Failed to change password");
     }
   };
 
   return (
     <div className="max-w-md mx-auto p-6 bg-white shadow-md rounded-lg mt-10">
       <h2 className="text-2xl font-bold mb-4 text-center">Change Password</h2>
-      <p className="text-center mb-4">Please set a new password for your account.</p>
+      <p className="text-center mb-4">
+        Please set a new password for your account.
+      </p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <input
           type="password"

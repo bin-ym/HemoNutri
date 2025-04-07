@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const FoodLog = require('../models/FoodLog');
-const EducationalResource = require('../models/EducationalResource');
+const EducationalResource = require('../models/EducationResource');
 const Notification = require('../models/Notification');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');

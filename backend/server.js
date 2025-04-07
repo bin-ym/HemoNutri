@@ -7,30 +7,36 @@ const patientRoutes = require('./routes/patientRoutes');
 const providerRoutes = require('./routes/providerRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
-
-// Load .env explicitly
 const dotenv = require('dotenv');
+
 const envPath = path.resolve(__dirname, '.env');
-console.log('Looking for .env at:', envPath);
 dotenv.config({ path: envPath });
 
-// Debug environment variables
-console.log('MONGO_URI:', process.env.MONGO_URI);
-console.log('PORT:', process.env.PORT);
-console.log('JWT_SECRET:', process.env.JWT_SECRET);
-console.log('EMAIL_USER:', process.env.EMAIL_USER);
-console.log('EMAIL_PASS:', process.env.EMAIL_PASS ? 'Set' : 'Not set');
+const requiredEnvVars = ['MONGO_URI', 'PORT', 'JWT_SECRET'];
+requiredEnvVars.forEach((varName) => {
+  if (!process.env[varName]) {
+    console.error(`Error: Environment variable ${varName} is not defined`);
+    process.exit(1);
+  }
+});
 
 const app = express();
 
-// Middleware
-app.use(cors({ origin: 'http://localhost:3000', credentials: true }));
+app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000', credentials: true }));
 app.use(express.json());
 
-// Database connection
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err.stack);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGO_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
     console.log('MongoDB connected');
   } catch (err) {
     console.error('MongoDB connection error:', err.message);
@@ -38,24 +44,27 @@ const connectDB = async () => {
   }
 };
 
-// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/patient', patientRoutes);
 app.use('/api/provider', providerRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// Start server
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
-  await connectDB();
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  }).on('error', (err) => {
-    console.error('Server startup error:', err.message);
+  try {
+    await connectDB();
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    }).on('error', (err) => {
+      console.error('Server startup error:', err.message);
+      process.exit(1);
+    });
+  } catch (err) {
+    console.error('Startup error:', err.message);
     process.exit(1);
-  });
+  }
 };
 
 startServer();
