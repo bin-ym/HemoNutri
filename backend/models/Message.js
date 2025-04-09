@@ -7,30 +7,33 @@ const MessageSchema = new mongoose.Schema(
     content: { type: String, required: true, trim: true },
     isEmergency: { type: Boolean, default: false },
     read: { type: Boolean, default: false },
-    providerUsername: { type: String, default: '' }, // Populated manually if needed
-    patientUsername: { type: String, default: '' },  // Populated manually if needed
+    providerUsername: { type: String, default: '' },
+    patientUsername: { type: String, default: '' },
   },
   {
-    timestamps: true, // Automatically adds createdAt and updatedAt
+    timestamps: true,
   }
 );
 
-// Indexes for efficient querying
 MessageSchema.index({ sender: 1, createdAt: -1 });
 MessageSchema.index({ recipient: 1, createdAt: -1 });
 
-// Pre-save hook to populate usernames (optional, requires User model reference)
 MessageSchema.pre('save', async function (next) {
-  if (!this.providerUsername || !this.patientUsername) {
+  try {
     const User = mongoose.model('User');
     const [sender, recipient] = await Promise.all([
       User.findById(this.sender).select('username role'),
       User.findById(this.recipient).select('username role'),
     ]);
-    this.providerUsername = sender?.role === 'provider' ? sender.username : '';
-    this.patientUsername = recipient?.role === 'patient' ? recipient.username : '';
+    if (!sender || !recipient) throw new Error('Sender or recipient not found');
+    this.providerUsername = sender.role === 'provider' ? sender.username : recipient.role === 'provider' ? recipient.username : '';
+    this.patientUsername = sender.role === 'patient' ? sender.username : recipient.role === 'patient' ? recipient.username : '';
+    console.log('Pre-save message:', { senderId: this.sender.toString(), recipientId: this.recipient.toString(), providerUsername: this.providerUsername, patientUsername: this.patientUsername, content: this.content });
+    next();
+  } catch (err) {
+    console.error('Pre-save error:', err.message);
+    next(err);
   }
-  next();
 });
 
 module.exports = mongoose.model('Message', MessageSchema);

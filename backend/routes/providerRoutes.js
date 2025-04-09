@@ -7,6 +7,7 @@ const MealPlan = require('../models/MealPlan');
 const Message = require('../models/Message');
 const EducationResource = require('../models/EducationResource');
 
+// Get Patients
 router.get('/patients', auth(['provider']), async (req, res) => {
   try {
     const patients = await User.find({ role: 'patient', provider: req.user.id });
@@ -17,6 +18,7 @@ router.get('/patients', auth(['provider']), async (req, res) => {
   }
 });
 
+// Get Patient Details
 router.get('/patient/:id', auth(['provider']), async (req, res) => {
   try {
     const patient = await User.findOne({ _id: req.params.id, role: 'patient', provider: req.user.id });
@@ -28,6 +30,7 @@ router.get('/patient/:id', auth(['provider']), async (req, res) => {
   }
 });
 
+// Get Patient Food Logs
 router.get('/patient/:id/food-logs', auth(['provider']), async (req, res) => {
   try {
     const patient = await User.findOne({ _id: req.params.id, role: 'patient', provider: req.user.id });
@@ -40,6 +43,7 @@ router.get('/patient/:id/food-logs', auth(['provider']), async (req, res) => {
   }
 });
 
+// Get Patient Assessment
 router.get('/patient/:id/assessment', auth(['provider']), async (req, res) => {
   try {
     const patient = await User.findOne({ _id: req.params.id, role: 'patient', provider: req.user.id });
@@ -52,6 +56,7 @@ router.get('/patient/:id/assessment', auth(['provider']), async (req, res) => {
   }
 });
 
+// Get All Logs for Provider's Patients
 router.get('/logs', auth(['provider']), async (req, res) => {
   try {
     const patients = await User.find({ role: 'patient', provider: req.user.id });
@@ -66,6 +71,24 @@ router.get('/logs', auth(['provider']), async (req, res) => {
   }
 });
 
+// Get Messages (All)
+router.get('/messages', auth(['provider']), async (req, res) => {
+  try {
+    const messages = await Message.find({
+      $or: [{ sender: req.user.id }, { recipient: req.user.id }],
+    })
+      .populate('sender', 'username role')
+      .populate('recipient', 'username role')
+      .sort({ createdAt: -1 });
+    console.log('Fetched provider messages:', messages); // Debug
+    res.json(messages);
+  } catch (err) {
+    console.error('Error fetching messages:', err.stack);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get Messages with Specific Patient
 router.get('/messages/:patientId', auth(['provider']), async (req, res) => {
   try {
     const patient = await User.findOne({ _id: req.params.patientId, role: 'patient', provider: req.user.id });
@@ -76,44 +99,34 @@ router.get('/messages/:patientId', auth(['provider']), async (req, res) => {
         { sender: req.params.patientId, recipient: req.user.id },
       ],
     })
-      .populate('sender', 'username')
-      .populate('recipient', 'username')
+      .populate('sender', 'username role')
+      .populate('recipient', 'username role')
       .sort({ createdAt: -1 });
+    console.log('Fetched patient-specific messages:', messages); // Debug
     res.json(messages);
   } catch (err) {
-    console.error('Error fetching messages:', err.stack);
+    console.error('Error fetching patient messages:', err.stack);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-router.get('/messages', auth(['provider']), async (req, res) => {
-  try {
-    const messages = await Message.find({
-      $or: [{ sender: req.user.id }, { recipient: req.user.id }],
-    })
-      .populate('sender', 'username')
-      .populate('recipient', 'username')
-      .sort({ createdAt: -1 });
-    res.json(messages);
-  } catch (err) {
-    console.error('Error fetching messages:', err.stack);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
+// Send Message to Patient
 router.post('/message/:id', auth(['provider']), async (req, res) => {
   const { content } = req.body;
-  if (!content) return res.status(400).json({ error: 'Message content is required' });
+  if (!content?.trim()) return res.status(400).json({ error: 'Message content is required' });
   try {
     const patient = await User.findOne({ _id: req.params.id, role: 'patient', provider: req.user.id });
     if (!patient) return res.status(404).json({ error: 'Patient not found or not assigned to you' });
+    const provider = await User.findById(req.user.id);
     const message = new Message({
       sender: req.user.id,
       recipient: req.params.id,
       content,
-      providerUsername: req.user.username,
+      providerUsername: provider.username,
+      patientUsername: patient.username,
     });
     await message.save();
+    console.log('Provider message saved:', message); // Debug
     res.json(message);
   } catch (err) {
     console.error('Error sending message:', err.stack);
@@ -121,6 +134,7 @@ router.post('/message/:id', auth(['provider']), async (req, res) => {
   }
 });
 
+// Get Meal Plans
 router.get('/meal-plans', auth(['provider']), async (req, res) => {
   try {
     const mealPlans = await MealPlan.find({ providerId: req.user.id }).populate('patientId', 'username');
@@ -131,6 +145,7 @@ router.get('/meal-plans', auth(['provider']), async (req, res) => {
   }
 });
 
+// Save Meal Plan
 router.post('/meal-plan/:id', auth(['provider']), async (req, res) => {
   const { breakfast, lunch, dinner } = req.body;
   if (!breakfast || !lunch || !dinner) return res.status(400).json({ error: 'All meal fields are required' });
@@ -160,6 +175,7 @@ router.post('/meal-plan/:id', auth(['provider']), async (req, res) => {
   }
 });
 
+// Get Education Resources
 router.get('/education', auth(['provider']), async (req, res) => {
   try {
     const resources = await EducationResource.find({ providerId: req.user.id }).sort({ createdAt: -1 });
@@ -170,6 +186,7 @@ router.get('/education', auth(['provider']), async (req, res) => {
   }
 });
 
+// Add Education Resource
 router.post('/education', auth(['provider']), async (req, res) => {
   const { title, description, url } = req.body;
   if (!title || !description) return res.status(400).json({ error: 'Title and description are required' });

@@ -110,7 +110,7 @@ const Navbar = ({ role }) => {
                 path="/messages"
                 badge={newMessages}
               />
-              <NavButton label="Goals" icon="🎯" path="/goals" />
+              {/* Removed Goals button */}
               <NavButton label="Education" icon="📚" path="/education" />
             </>
           )}

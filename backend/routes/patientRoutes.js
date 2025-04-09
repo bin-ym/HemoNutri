@@ -7,10 +7,14 @@ const User = require('../models/User');
 const Message = require('../models/Message');
 const EducationResource = require('../models/EducationResource');
 
+// Food Logs
 router.get('/food-logs', auth(['patient']), patientController.getFoodLogs);
 router.post('/food-logs', auth(['patient']), patientController.addFoodLog);
+
+// Notifications
 router.get('/notifications', auth(['patient', 'provider']), patientController.getNotifications);
 
+// Meal Plan
 router.get('/meal-plan', auth(['patient']), async (req, res) => {
   try {
     const mealPlan = await MealPlan.findOne({ patientId: req.user.id });
@@ -38,9 +42,10 @@ router.get('/meal-plan', auth(['patient']), async (req, res) => {
   }
 });
 
+// Send Message
 router.post('/message', auth(['patient']), async (req, res) => {
   const { content } = req.body;
-  if (!content) return res.status(400).json({ error: 'Message content is required' });
+  if (!content?.trim()) return res.status(400).json({ error: 'Message content is required' });
   try {
     const patient = await User.findById(req.user.id);
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
@@ -49,24 +54,26 @@ router.post('/message', auth(['patient']), async (req, res) => {
       sender: req.user.id,
       recipient: patient.provider,
       content,
-      patientUsername: patient.username,
     });
     await message.save();
-    res.json(message);
+    console.log('Patient message saved:', message.toObject());
+    res.status(201).json(message);
   } catch (err) {
     console.error('Message send error:', err.stack);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
+// Get Messages
 router.get('/messages', auth(['patient']), async (req, res) => {
   try {
     const messages = await Message.find({
       $or: [{ sender: req.user.id }, { recipient: req.user.id }],
     })
-      .populate('sender', 'username')
-      .populate('recipient', 'username')
+      .populate('sender', 'username role')
+      .populate('recipient', 'username role')
       .sort({ createdAt: -1 });
+    console.log('Fetched patient messages:', messages.map(msg => msg.toObject()));
     res.json(messages);
   } catch (err) {
     console.error('Messages fetch error:', err.stack);
@@ -74,6 +81,23 @@ router.get('/messages', auth(['patient']), async (req, res) => {
   }
 });
 
+// Mark Messages as Read
+router.put('/messages/read', auth(['patient']), async (req, res) => {
+  try {
+    const patientId = req.user.id;
+    const result = await Message.updateMany(
+      { recipient: patientId, read: false },
+      { $set: { read: true } }
+    );
+    console.log('Messages marked as read:', result.modifiedCount);
+    res.json({ message: 'Messages marked as read', modifiedCount: result.modifiedCount });
+  } catch (err) {
+    console.error('Mark messages read error:', err.stack);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Education Resources
 router.get('/resources', auth(['patient', 'provider']), async (req, res) => {
   try {
     const patient = await User.findById(req.user.id);
@@ -90,6 +114,7 @@ router.get('/resources', auth(['patient', 'provider']), async (req, res) => {
   }
 });
 
+// Emergency Message
 router.post('/emergency', auth(['patient']), async (req, res) => {
   const { message } = req.body;
   try {
@@ -99,12 +124,12 @@ router.post('/emergency', auth(['patient']), async (req, res) => {
     const emergencyMessage = new Message({
       sender: req.user.id,
       recipient: patient.provider,
-      content: message || 'Urgent: Patient needs immediate assistance!',
+      content: message?.trim() || 'Urgent: Patient needs immediate assistance!',
       isEmergency: true,
-      patientUsername: patient.username,
     });
     await emergencyMessage.save();
-    res.json({ success: true, message: 'Emergency alert sent to provider' });
+    console.log('Emergency message saved:', emergencyMessage.toObject());
+    res.status(201).json({ success: true, message: 'Emergency alert sent to provider' });
   } catch (err) {
     console.error('Emergency send error:', err.stack);
     res.status(500).json({ error: 'Server error' });

@@ -1,5 +1,8 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
+// Components
+import ProtectedRoute from './components/ProtectedRoute'; // Import ProtectedRoute
+
 // Public Pages
 import HomePage from './pages/Public/HomePage';
 import AboutPage from './pages/Public/AboutPage';
@@ -32,7 +35,7 @@ import AdminUsersPage from './pages/Admin/AdminUsersPage';
 import AdminResourcesPage from './pages/Admin/AdminResourcesPage';
 import AdminReportPage from './pages/Admin/AdminReportPage';
 
-// Optional 404 Component
+// 404 Component
 const NotFound = () => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
     <h1 className="text-4xl font-bold text-teal-700">404 - Page Not Found</h1>
@@ -50,7 +53,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
+        {/* Public Routes (No Protection Needed) */}
         <Route path="/" element={<HomePage />} />
         <Route path="/about" element={<AboutPage />} />
         <Route path="/contact" element={<ContactPage />} />
@@ -60,29 +63,147 @@ function App() {
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/change-password" element={<ChangePassword />} />
 
-        {/* Patient Routes */}
-        <Route path="/dashboard" element={<PatientDashboard />} />
-        <Route path="/education" element={<PatientEducation />} />
-        <Route path="/food-logs" element={<FoodLogsPage />} />
-        <Route path="/meal-plan" element={<MealPlanPage />} />
-        <Route path="/messages" element={<PatientMessagesPage />} />
-        {/* Optional: Add /goals if implemented */}
-        <Route path="/goals" element={<NotFound />} /> {/* Placeholder until implemented */}
+        {/* Patient Routes (Protected, Only 'patient' Role) */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['patient']}>
+              <PatientDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/education"
+          element={
+            <ProtectedRoute allowedRoles={['patient']}>
+              <PatientEducation />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/food-logs"
+          element={
+            <ProtectedRoute allowedRoles={['patient']}>
+              <FoodLogsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/meal-plan"
+          element={
+            <ProtectedRoute allowedRoles={['patient']}>
+              <MealPlanPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute allowedRoles={['patient']}>
+              <PatientMessagesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/goals"
+          element={
+            <ProtectedRoute allowedRoles={['patient']}>
+              <NotFound /> {/* Placeholder until implemented */}
+            </ProtectedRoute>
+          }
+        />
 
-        {/* Provider Routes */}
-        <Route path="/provider" element={<ProviderPage />} />
-        <Route path="/provider/patients" element={<ProviderPatientsPage />} />
-        <Route path="/provider/logs" element={<ProviderLogsPage />} />
-        <Route path="/provider/messages" element={<ProviderMessagesPage />} />
-        <Route path="/provider/meal-plans" element={<ProviderMealPlansPage />} />
-        <Route path="/provider/patient/:id" element={<ProviderPatientDetailPage />} />
-        <Route path="/provider/education" element={<ProviderEducation />} />
+        {/* Provider Routes (Protected, Only 'provider' Role) */}
+        <Route
+          path="/provider"
+          element={
+            <ProtectedRoute allowedRoles={['provider']}>
+              <ProviderPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/provider/patients"
+          element={
+            <ProtectedRoute allowedRoles={['provider']}>
+              <ProviderPatientsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/provider/logs"
+          element={
+            <ProtectedRoute allowedRoles={['provider']}>
+              <ProviderLogsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/provider/messages"
+          element={
+            <ProtectedRoute allowedRoles={['provider']}>
+              <ProviderMessagesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/provider/meal-plans"
+          element={
+            <ProtectedRoute allowedRoles={['provider']}>
+              <ProviderMealPlansPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/provider/patient/:id"
+          element={
+            <ProtectedRoute allowedRoles={['provider']}>
+              <ProviderPatientDetailPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/provider/education"
+          element={
+            <ProtectedRoute allowedRoles={['provider']}>
+              <ProviderEducation />
+            </ProtectedRoute>
+          }
+        />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/admin/users" element={<AdminUsersPage />} />
-        <Route path="/admin/resources" element={<AdminResourcesPage />} />
-        <Route path="/admin/report" element={<AdminReportPage />} />
+        {/* Admin Routes (Protected, Only 'admin' Role) */}
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/users"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminUsersPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/resources"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminResourcesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/report"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminReportPage />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Catch-All Route for 404 */}
         <Route path="*" element={<NotFound />} />
