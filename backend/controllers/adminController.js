@@ -2,6 +2,9 @@ const User = require('../models/User');
 const FoodLog = require('../models/FoodLog');
 const EducationalResource = require('../models/EducationResource');
 const Notification = require('../models/Notification');
+const MealPlan = require('../models/MealPlan');
+const Message = require('../models/Message');
+const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
@@ -14,6 +17,14 @@ const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
 });
+
+// Backup History Model
+const BackupSchema = new mongoose.Schema({
+  filename: String,
+  timestamp: { type: Date, default: Date.now },
+  data: Object,
+});
+const Backup = mongoose.model('Backup', BackupSchema, 'backups');
 
 const adminController = {
   getUsers: async (req, res) => {
@@ -71,9 +82,9 @@ const adminController = {
       else if (filter === 'provider') userQuery.role = 'provider';
 
       const [users, foodLogsCount, resources] = await Promise.all([
-        User.find(userQuery).select('username role'), // Fetch username and role
+        User.find(userQuery).select('username role'),
         FoodLog.countDocuments(),
-        EducationalResource.find().populate('providerId', 'username'), // Fetch all resources
+        EducationalResource.find().populate('providerId', 'username'),
       ]);
 
       const report = {
@@ -129,7 +140,7 @@ const adminController = {
   getUserActivity: async (req, res) => {
     try {
       const logs = await FoodLog.find()
-        .populate('user', 'username')
+        .populate('userId', 'username') // Updated to userId
         .sort({ date: -1 })
         .limit(50);
       console.log('Fetched user activity:', logs.length);
@@ -213,6 +224,103 @@ const adminController = {
       res.status(201).json(populatedResource);
     } catch (err) {
       console.error('Create resource error:', err.stack);
+      res.status(500).json({ error: 'Server error' });
+    }
+  },
+
+  createBackup: async (req, res) => {
+    try {
+      const [users, foodLogs, resources, notifications, mealPlans, messages] = await Promise.all([
+        User.find().select('-password').lean().catch(err => {
+          console.error('Error fetching users:', err.stack);
+          throw new Error('Failed to fetch users');
+        }),
+        FoodLog.find().populate('userId', 'username').lean().catch(err => {
+          console.error('Error fetching food logs:', err.stack);
+          throw new Error('Failed to fetch food logs');
+        }),
+        EducationalResource.find().populate('providerId', 'username').lean().catch(err => {
+          console.error('Error fetching resources:', err.stack);
+          throw new Error('Failed to fetch resources');
+        }),
+        Notification.find().populate('sender', 'username').lean().catch(err => {
+          console.error('Error fetching notifications:', err.stack);
+          throw new Error('Failed to fetch notifications');
+        }),
+        MealPlan.find()
+          .populate('patientId', 'username')
+          .populate('providerId', 'username')
+          .lean()
+          .catch(err => {
+            console.error('Error fetching meal plans (skipping):', err.message);
+            return [];
+          }),
+        Message.find()
+          .populate('sender', 'username')
+          .populate('recipient', 'username')
+          .lean()
+          .catch(err => {
+            console.error('Error fetching messages (skipping):', err.message);
+            return [];
+          }),
+      ]);
+
+      const backupData = {
+        users,
+        foodLogs,
+        resources,
+        notifications,
+        mealPlans: mealPlans || [],
+        messages: messages || [],
+        timestamp: new Date(),
+      };
+
+      const filename = `HemoNutri_Backup_${new Date().toISOString().split('T')[0]}.json`;
+
+      const backupEntry = new Backup({
+        filename,
+        timestamp: new Date(),
+        data: backupData,
+      });
+      await backupEntry.save();
+
+      console.log('Backup created:', { filename, timestamp: backupEntry.timestamp });
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+      res.setHeader('Content-Type', 'application/json');
+      res.status(200).send(JSON.stringify(backupData, null, 2));
+    } catch (err) {
+      console.error('Backup creation error:', err.message, err.stack);
+      res.status(500).json({ error: err.message || 'Server error during backup creation' });
+    }
+  },
+
+  getBackupHistory: async (req, res) => {
+    try {
+      const backups = await Backup.find()
+        .sort({ timestamp: -1 })
+        .limit(10)
+        .select('filename timestamp');
+      console.log('Fetched backup history:', backups.length);
+      res.json(backups);
+    } catch (err) {
+      console.error('Backup history fetch error:', err.stack);
+      res.status(500).json({ error: 'Server error' });
+    }
+  },
+
+  downloadBackup: async (req, res) => {
+    try {
+      const backup = await Backup.findById(req.params.id);
+      if (!backup) {
+        return res.status(404).json({ error: 'Backup not found' });
+      }
+
+      console.log('Downloading backup:', backup.filename);
+      res.setHeader('Content-Disposition', `attachment; filename="${backup.filename}"`);
+      res.setHeader('Content-Type', 'application/json');
+      res.status(200).send(JSON.stringify(backup.data, null, 2));
+    } catch (err) {
+      console.error('Backup download error:', err.stack);
       res.status(500).json({ error: 'Server error' });
     }
   },

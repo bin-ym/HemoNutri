@@ -22,21 +22,44 @@ requiredEnvVars.forEach((varName) => {
 
 const app = express();
 
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000', credentials: true }));
+// Updated CORS configuration to allow multiple origins
+app.use(cors({
+  origin: (origin, callback) => {
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:3000',
+      'http://localhost:19000',
+      'http://192.168.1.5:19000',
+      'http://192.168.1.5:5000',
+      'https://abc123.ngrok.io', // Replace with your actual ngrok URL
+    ];
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`CORS error: Origin ${origin} not allowed`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json());
+
+// Debug logging for incoming requests
+app.use((req, res, next) => {
+  console.log(`Incoming request: ${req.method} ${req.url}`);
+  next();
+});
 
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err.stack);
-  res.status(500).json({ error: 'Internal server error' });
+  const statusCode = err.status || 500;
+  const errorMessage = err.message || 'Internal server error';
+  res.status(statusCode).json({ error: errorMessage });
 });
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    await mongoose.connect(process.env.MONGO_URI);
     console.log('MongoDB connected');
   } catch (err) {
     console.error('MongoDB connection error:', err.message);
@@ -44,11 +67,23 @@ const connectDB = async () => {
   }
 };
 
+// Mount routes with debug logging
+console.log('Mounting routes...');
 app.use('/api/auth', authRoutes);
+console.log('Mounted /api/auth routes');
 app.use('/api/patient', patientRoutes);
+console.log('Mounted /api/patient routes');
 app.use('/api/provider', providerRoutes);
+console.log('Mounted /api/provider routes');
 app.use('/api/admin', adminRoutes);
+console.log('Mounted /api/admin routes');
 app.use('/api/notifications', notificationRoutes);
+console.log('Mounted /api/notifications routes');
+
+// Handle 404 errors
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
 
 const PORT = process.env.PORT || 5000;
 

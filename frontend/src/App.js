@@ -34,6 +34,7 @@ import AdminPage from './pages/Admin/AdminPage';
 import AdminUsersPage from './pages/Admin/AdminUsersPage';
 import AdminResourcesPage from './pages/Admin/AdminResourcesPage';
 import AdminReportPage from './pages/Admin/AdminReportPage';
+import AdminBackupPage from './pages/Admin/AdminBackupPage'; // Import the new AdminBackupPage
 
 // 404 Component
 const NotFound = () => (
@@ -201,6 +202,14 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['admin']}>
               <AdminReportPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/backup"
+          element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminBackupPage />
             </ProtectedRoute>
           }
         />

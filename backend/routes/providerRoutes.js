@@ -205,4 +205,74 @@ router.post('/education', auth(['provider']), async (req, res) => {
   }
 });
 
+// Update Patient
+router.put('/patients/:id', auth(['provider']), async (req, res) => {
+  const { name, email } = req.body;
+  if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
+
+  try {
+    const patient = await User.findOne({ _id: req.params.id, role: 'patient', provider: req.user.id });
+    if (!patient) return res.status(404).json({ error: 'Patient not found or not assigned to you' });
+
+    patient.name = name;
+    patient.email = email;
+    await patient.save();
+
+    res.json(patient);
+  } catch (err) {
+    console.error('Error updating patient:', err.stack);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete Patient
+router.delete('/patients/:id', auth(['provider']), async (req, res) => {
+  try {
+    const patient = await User.findOne({ _id: req.params.id, role: 'patient', provider: req.user.id });
+    if (!patient) return res.status(404).json({ error: 'Patient not found or not assigned to you' });
+
+    await User.deleteOne({ _id: req.params.id });
+    res.json({ message: 'Patient deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting patient:', err.stack);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update Meal Plan
+router.put('/meal-plans/:id', auth(['provider']), async (req, res) => {
+  const { breakfast, lunch, dinner } = req.body;
+  if (!breakfast || !lunch || !dinner) return res.status(400).json({ error: 'All meal fields are required' });
+
+  try {
+    const mealPlan = await MealPlan.findOne({ _id: req.params.id, providerId: req.user.id });
+    if (!mealPlan) return res.status(404).json({ error: 'Meal plan not found or not assigned to you' });
+
+    mealPlan.breakfast = breakfast;
+    mealPlan.lunch = lunch;
+    mealPlan.dinner = dinner;
+    mealPlan.updatedAt = new Date();
+    await mealPlan.save();
+
+    res.json(mealPlan);
+  } catch (err) {
+    console.error('Error updating meal plan:', err.stack);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete Meal Plan
+router.delete('/meal-plans/:id', auth(['provider']), async (req, res) => {
+  try {
+    const mealPlan = await MealPlan.findOne({ _id: req.params.id, providerId: req.user.id });
+    if (!mealPlan) return res.status(404).json({ error: 'Meal plan not found or not assigned to you' });
+
+    await MealPlan.deleteOne({ _id: req.params.id });
+    res.json({ message: 'Meal plan deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting meal plan:', err.stack);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

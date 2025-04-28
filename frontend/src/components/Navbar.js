@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { MessageSquare, Bell, LogOut } from 'lucide-react';
+import { MessageSquare, Bell, LogOut, Database } from 'lucide-react';
 import api from '../services/api';
 
 const Navbar = ({ role }) => {
@@ -15,12 +15,16 @@ const Navbar = ({ role }) => {
     recipientIds: [],
   });
   const [showForm, setShowForm] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
-        if (!token) return;
+        if (!token) {
+          setIsAuthenticated(false);
+          return;
+        }
 
         if (role === 'admin') {
           const res = await api.get('/admin/users');
@@ -38,17 +42,22 @@ const Navbar = ({ role }) => {
         }
       } catch (err) {
         console.error('Fetch data error:', err.response?.data || err.message);
+        // The api.js interceptor will handle 401 errors and redirect to login
       }
     };
-    fetchData();
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, [role]);
+
+    if (isAuthenticated) {
+      fetchData();
+      const interval = setInterval(fetchData, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [role, isAuthenticated]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
     localStorage.removeItem('userId');
+    setIsAuthenticated(false);
     navigate('/');
   };
 
@@ -110,7 +119,6 @@ const Navbar = ({ role }) => {
                 path="/messages"
                 badge={newMessages}
               />
-              {/* Removed Goals button */}
               <NavButton label="Education" icon="📚" path="/education" />
             </>
           )}
@@ -135,6 +143,7 @@ const Navbar = ({ role }) => {
               <NavButton label="Users" icon="👥" path="/admin/users" />
               <NavButton label="Resources" icon="📚" path="/admin/resources" />
               <NavButton label="Reports" icon="📈" path="/admin/report" />
+              <NavButton label="Backup" icon={<Database className="w-4 h-4" />} path="/admin/backup" />
               <div className="relative">
                 <button
                   onClick={() => setShowForm(!showForm)}

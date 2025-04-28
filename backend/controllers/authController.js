@@ -24,12 +24,18 @@ const login = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.JWT_SECRET || 'HemoNutri',
-      { expiresIn: '1h' }
+      { expiresIn: '7d' }
     );
+    console.log(`Login attempt with identifier: ${identifier}`); // Debug log
     console.log(`Login successful - User: ${user.username} Token: ${token}`);
-    res.json({ token, role: user.role, isFirstLogin: user.isFirstLogin });
+    res.json({
+      token,
+      role: user.role,
+      userId: user._id.toString(), // Add userId to the response
+      isFirstLogin: user.isFirstLogin,
+    });
   } catch (err) {
-    console.error(err);
+    console.error('Login error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -44,7 +50,7 @@ const register = async (req, res) => {
     await user.save();
     res.status(201).json({ message: 'User registered successfully' });
   } catch (err) {
-    console.error(err);
+    console.error('Register error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };
@@ -60,7 +66,7 @@ const changePassword = async (req, res) => {
     await user.save();
     res.json({ message: 'Password changed successfully' });
   } catch (err) {
-    console.error(err);
+    console.error('Change password error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 };

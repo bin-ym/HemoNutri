@@ -2,7 +2,7 @@ import { useState } from "react";
 import Navbar from "../../components/Navbar";
 import api from "../../services/api";
 import { Download, RefreshCw, AlertCircle } from "lucide-react";
-import * as XLSX from "xlsx";
+import XLSX from "sheetjs-style";
 
 const AdminReportPage = () => {
   const [report, setReport] = useState(null);
@@ -41,91 +41,148 @@ const AdminReportPage = () => {
     const timestamp = new Date(report.timestamp).toLocaleString();
     const filterName = filter === "all" ? "All Users" : filter === "patient" ? "Patients" : "Providers";
 
-    // Header data
-    const headerData = [
-      ["HemoNutri System Usage Report"],
+    // Prepare data for the worksheet
+    const wsData = [
+      ["HemoNutri System Usage Report"], // Title
       [`Filter: ${filterName}`],
       [`Generated: ${timestamp}`],
-      [],
-    ];
-
-    // Users sheet data
-    const usersData = [
-      ["Users", "", ""],
-      ["Username", "Role", ""],
-      ...report.users.map(user => [user.username, user.role, ""]),
-    ];
-
-    // Food Logs sheet data
-    const foodLogsData = [
-      ["Food Logs", "", ""],
-      ["Total", "", ""],
-      [report.foodLogs, "", ""],
-    ];
-
-    // Resources sheet data
-    const resourcesData = [
-      ["Educational Resources", "", "", ""],
+      [], // Spacer
+      ["Users"], // Section header
+      ["Username", "Role"],
+      ...report.users.map(user => [user.username, user.role]),
+      [], // Spacer
+      ["Food Logs"],
+      ["Total", report.foodLogs],
+      [], // Spacer
+      ["Educational Resources"],
       ["Title", "Description", "URL", "Provider"],
       ...report.resources.map(res => [res.title, res.description || "", res.url || "", res.provider]),
-    ];
-
-    // Combine all data into one sheet
-    const wsData = [
-      ...headerData,
-      ...usersData,
-      [""], // Spacer
-      ...foodLogsData,
-      [""], // Spacer
-      ...resourcesData,
+      [], // Spacer
+      [], // Spacer
+      ["© HemoNutri - All Rights Reserved", `Report Generated on ${new Date().toLocaleDateString()}`], // Footer
     ];
 
     // Create worksheet
     const ws = XLSX.utils.aoa_to_sheet(wsData);
 
+    // Define merges for headers
+    ws["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }, // Merge title across 4 columns
+      { s: { r: 4, c: 0 }, e: { r: 4, c: 1 } }, // Merge "Users" header
+      { s: { r: report.users.length + 6, c: 0 }, e: { r: report.users.length + 6, c: 1 } }, // Merge "Food Logs" header
+      { s: { r: report.users.length + 9, c: 0 }, e: { r: report.users.length + 9, c: 3 } }, // Merge "Educational Resources" header
+      { s: { r: report.users.length + report.resources.length + 12, c: 0 }, e: { r: report.users.length + report.resources.length + 12, c: 3 } }, // Merge footer
+    ];
+
     // Styling
     const range = XLSX.utils.decode_range(ws["!ref"]);
     for (let R = range.s.r; R <= range.e.r; ++R) {
       for (let C = range.s.c; C <= range.e.c; ++C) {
-        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-        if (!ws[cellAddress]) continue;
+        const cellAddress = { c: C, r: R };
+        const cellRef = XLSX.utils.encode_cell(cellAddress);
+        if (!ws[cellRef]) continue;
 
         // Default style
-        ws[cellAddress].s = {
+        ws[cellRef].s = {
           font: { name: "Calibri", sz: 12 },
-          alignment: { vertical: "center", horizontal: "left" },
+          alignment: { vertical: "center", horizontal: "left", wrapText: true },
           border: {
-            top: { style: "thin", color: { rgb: "000000" } },
-            bottom: { style: "thin", color: { rgb: "000000" } },
-            left: { style: "thin", color: { rgb: "000000" } },
-            right: { style: "thin", color: { rgb: "000000" } },
+            top: { style: "thin", color: { rgb: "333333" } },
+            bottom: { style: "thin", color: { rgb: "333333" } },
+            left: { style: "thin", color: { rgb: "333333" } },
+            right: { style: "thin", color: { rgb: "333333" } },
           },
         };
 
-        // Header styling
+        // Title (Row 0)
         if (R === 0) {
-          ws[cellAddress].s = {
-            ...ws[cellAddress].s,
-            font: { name: "Calibri", sz: 16, bold: true, color: { rgb: "FFFFFF" } },
-            fill: { fgColor: { rgb: "008080" } }, // Teal background
+          ws[cellRef].s = {
+            font: { name: "Calibri", sz: 20, bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "2A6F97" }, patternType: "solid" }, // Deep teal-blue
+            alignment: { horizontal: "center" },
+            border: {
+              top: { style: "medium", color: { rgb: "000000" } },
+              bottom: { style: "medium", color: { rgb: "000000" } },
+              left: { style: "medium", color: { rgb: "000000" } },
+              right: { style: "medium", color: { rgb: "000000" } },
+            },
           };
-        } else if (R === 1 || R === 2) {
-          ws[cellAddress].s = {
-            ...ws[cellAddress].s,
-            font: { italic: true, color: { rgb: "666666" } },
+        }
+        // Filter and Generated (Rows 1-2)
+        else if (R === 1 || R === 2) {
+          ws[cellRef].s = {
+            font: { sz: 12, italic: true, bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "468FAF" }, patternType: "solid" }, // Lighter teal-blue
+            border: {
+              top: { style: "thin", color: { rgb: "000000" } },
+              bottom: { style: "thin", color: { rgb: "000000" } },
+            },
           };
-        } else if (ws[cellAddress].v === "Users" || ws[cellAddress].v === "Food Logs" || ws[cellAddress].v === "Educational Resources") {
-          ws[cellAddress].s = {
-            ...ws[cellAddress].s,
-            font: { bold: true, sz: 14, color: { rgb: "FFFFFF" } },
-            fill: { fgColor: { rgb: "008080" } }, // Teal background
+        }
+        // Section headers (Users, Food Logs, Educational Resources)
+        else if (
+          ws[cellRef].v === "Users" ||
+          ws[cellRef].v === "Food Logs" ||
+          ws[cellRef].v === "Educational Resources"
+        ) {
+          ws[cellRef].s = {
+            font: { sz: 16, bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "2A6F97" }, patternType: "solid" }, // Deep teal-blue
+            alignment: { horizontal: "center" },
+            border: {
+              top: { style: "medium", color: { rgb: "000000" } },
+              bottom: { style: "medium", color: { rgb: "000000" } },
+            },
           };
-        } else if (ws[cellAddress].v === "Username" || ws[cellAddress].v === "Role" || ws[cellAddress].v === "Total" || 
-                   ws[cellAddress].v === "Title" || ws[cellAddress].v === "Description" || ws[cellAddress].v === "URL" || ws[cellAddress].v === "Provider") {
-          ws[cellAddress].s = {
-            ...ws[cellAddress].s,
-            font: { bold: true, color: { rgb: "FFFFFF" } },
-            fill: { fgColor: { rgb: "4A636E" } }, // Darker teal for subheaders
+        }
+        // Table headers (Username, Role, Total, Title, Description, URL, Provider)
+        else if (
+          ws[cellRef].v === "Username" ||
+          ws[cellRef].v === "Role" ||
+          ws[cellRef].v === "Total" ||
+          ws[cellRef].v === "Title" ||
+          ws[cellRef].v === "Description" ||
+          ws[cellRef].v === "URL" ||
+          ws[cellRef].v === "Provider"
+        ) {
+          ws[cellRef].s = {
+            font: { sz: 13, bold: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "5B9BD5" }, patternType: "solid" }, // Medium blue
+            alignment: { horizontal: "center" },
+            border: {
+              top: { style: "medium", color: { rgb: "000000" } },
+              bottom: { style: "medium", color: { rgb: "000000" } },
+            },
+          };
+        }
+        // Data rows - Alternating colors with more contrast
+        else if (R >= 6 && R < report.users.length + 6) { // Users data
+          ws[cellRef].s = {
+            font: { sz: 12, color: { rgb: "333333" } },
+            fill: { fgColor: { rgb: R % 2 === 0 ? "DDEBF7" : "F5F6F5" }, patternType: "solid" }, // Light blue and light gray
+          };
+        } else if (R === report.users.length + 7) { // Food Logs data
+          ws[cellRef].s = {
+            font: { sz: 12, bold: true, color: { rgb: "333333" } },
+            fill: { fgColor: { rgb: report.foodLogs > 10 ? "FFD700" : "DDEBF7" }, patternType: "solid" }, // Gold if > 10, else light blue
+            alignment: { horizontal: C === 1 ? "center" : "left" },
+          };
+        } else if (R >= report.users.length + 11 && R < report.users.length + report.resources.length + 11) { // Resources data
+          ws[cellRef].s = {
+            font: { sz: 12, color: { rgb: "333333" } },
+            fill: { fgColor: { rgb: (R - (report.users.length + 11)) % 2 === 0 ? "DDEBF7" : "F5F6F5" }, patternType: "solid" }, // Light blue and light gray
+          };
+        }
+        // Footer
+        else if (R === report.users.length + report.resources.length + 12) {
+          ws[cellRef].s = {
+            font: { sz: 10, italic: true, color: { rgb: "FFFFFF" } },
+            fill: { fgColor: { rgb: "2A6F97" }, patternType: "solid" }, // Deep teal-blue
+            alignment: { horizontal: C === 0 ? "left" : "right" },
+            border: {
+              top: { style: "medium", color: { rgb: "000000" } },
+              bottom: { style: "medium", color: { rgb: "000000" } },
+            },
           };
         }
       }
@@ -133,11 +190,24 @@ const AdminReportPage = () => {
 
     // Set column widths
     ws["!cols"] = [
-      { wch: 20 }, // Username / Title
-      { wch: 50 }, // Role / Description
-      { wch: 30 }, // URL
-      { wch: 15 }, // Provider
+      { wch: 25 }, // Username / Title
+      { wch: 60 }, // Role / Description
+      { wch: 40 }, // URL
+      { wch: 20 }, // Provider
     ];
+
+    // Set row heights
+    ws["!rows"] = [];
+    ws["!rows"][0] = { hpt: 40 }; // Title row height
+    ws["!rows"][1] = { hpt: 20 }; // Filter row
+    ws["!rows"][2] = { hpt: 20 }; // Generated row
+    ws["!rows"][4] = { hpt: 30 }; // Users header
+    ws["!rows"][report.users.length + 6] = { hpt: 30 }; // Food Logs header
+    ws["!rows"][report.users.length + 9] = { hpt: 30 }; // Educational Resources header
+    for (let i = report.users.length + 11; i < report.users.length + 11 + report.resources.length; i++) {
+      ws["!rows"][i] = { hpt: 25 }; // Resource rows
+    }
+    ws["!rows"][report.users.length + report.resources.length + 12] = { hpt: 20 }; // Footer row
 
     // Add worksheet to workbook
     XLSX.utils.book_append_sheet(wb, ws, "Usage Report");
@@ -147,9 +217,9 @@ const AdminReportPage = () => {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <Navbar role="admin" />
-      <div className="max-w-4xl p-6 mx-auto">
+      <div className="max-w-4xl mx-auto p-6">
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-extrabold text-teal-700 animate-fade-in">
             System Usage Report
@@ -158,15 +228,15 @@ const AdminReportPage = () => {
         </div>
 
         <div className="p-6 bg-white border border-teal-200 shadow-lg rounded-xl">
-          <div className="flex flex-col mb-6 sm:flex-row sm:items-end sm:space-x-4">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:space-x-4 mb-6">
             <div className="flex-1">
-              <label className="block mb-1 text-sm font-medium text-teal-700">
+              <label className="block text-sm font-medium text-teal-700 mb-1">
                 Generate Report For:
               </label>
               <select
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                className="w-full p-3 bg-white border border-teal-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full p-3 border border-teal-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
               >
                 <option value="all">All Users</option>
                 <option value="patient">Patients</option>
@@ -181,7 +251,7 @@ const AdminReportPage = () => {
               }`}
             >
               {loading ? (
-                <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                <RefreshCw className="w-5 h-5 animate-spin mr-2" />
               ) : (
                 <RefreshCw className="w-5 h-5 mr-2" />
               )}
@@ -190,7 +260,7 @@ const AdminReportPage = () => {
           </div>
 
           {error && (
-            <div className="p-4 mb-4 bg-red-100 border border-red-300 rounded-lg">
+            <div className="mb-4 p-4 bg-red-100 border border-red-300 rounded-lg">
               <div className="flex items-center space-x-2">
                 <AlertCircle className="w-5 h-5 text-red-600" />
                 <p className="text-red-700">{error}</p>
@@ -199,14 +269,14 @@ const AdminReportPage = () => {
           )}
 
           {report && (
-            <div className="p-4 mt-6 rounded-lg shadow-md bg-teal-50 animate-fade-in">
-              <div className="flex items-center justify-between mb-4">
+            <div className="mt-6 p-4 bg-teal-50 rounded-lg shadow-md animate-fade-in">
+              <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold text-teal-700">
                   Report Details
                 </h2>
                 <button
                   onClick={handleExport}
-                  className="flex items-center px-4 py-2 text-white transition-all duration-300 bg-teal-700 rounded-lg hover:bg-teal-800 hover:scale-105"
+                  className="flex items-center px-4 py-2 text-white bg-teal-700 rounded-lg hover:bg-teal-800 hover:scale-105 transition-all duration-300"
                 >
                   <Download className="w-5 h-5 mr-2" />
                   Export as Excel
@@ -214,7 +284,7 @@ const AdminReportPage = () => {
               </div>
               <div className="mb-4">
                 <h3 className="text-lg font-medium text-teal-700">Users ({report.users.length})</h3>
-                <ul className="pl-5 text-teal-600 list-disc">
+                <ul className="list-disc pl-5 text-teal-600">
                   {report.users.map((user, index) => (
                     <li key={index}>{user.username} ({user.role})</li>
                   ))}
@@ -223,7 +293,7 @@ const AdminReportPage = () => {
               <p className="text-teal-600">Food Logs: {report.foodLogs}</p>
               <div className="mt-4">
                 <h3 className="text-lg font-medium text-teal-700">Educational Resources ({report.resources.length})</h3>
-                <ul className="pl-5 text-teal-600 list-disc">
+                <ul className="list-disc pl-5 text-teal-600">
                   {report.resources.map((res, index) => (
                     <li key={index}>
                       {res.title} - Provided by {res.provider}
@@ -231,7 +301,7 @@ const AdminReportPage = () => {
                   ))}
                 </ul>
               </div>
-              <p className="mt-2 text-sm text-teal-500">
+              <p className="text-teal-500 text-sm mt-2">
                 Generated: {new Date(report.timestamp).toLocaleString()}
               </p>
             </div>
