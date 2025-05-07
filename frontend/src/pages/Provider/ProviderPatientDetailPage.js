@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState, useRef } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Utensils, Scale, MessageSquare, Clipboard, Send, Clock, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
@@ -7,20 +7,50 @@ import Navbar from '../../components/Navbar';
 const ProviderPatientDetailPage = () => {
   const navigate = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
   const [patient, setPatient] = useState(null);
   const [foodLogs, setFoodLogs] = useState([]);
   const [assessment, setAssessment] = useState(null);
   const [messages, setMessages] = useState([]);
   const [mealPlanForm, setMealPlanForm] = useState({
-    breakfast: [{ name: '', quantity: '', isFluid: false }],
-    lunch: [{ name: '', quantity: '', isFluid: false }],
-    dinner: [{ name: '', quantity: '', isFluid: false }],
+    breakfast: { carbohydrates: '', proteins: '', lipids: '' },
+    lunch: { carbohydrates: '', proteins: '', lipids: '' },
+    dinner: { carbohydrates: '', proteins: '', lipids: '' },
+    hemodialysisLimits: { potassium: '', phosphorus: '', sodium: '', fluid: '' },
+    recommendedFoods: {
+      breakfast: [],
+      lunch: [],
+      dinner: [],
+    },
   });
   const [message, setMessage] = useState('');
   const [replyContent, setReplyContent] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const providerId = localStorage.getItem('userId');
+  const messagesRef = useRef(null);
+
+  // Sample food items with approximate nutrient content per 100g (adjust as needed)
+  const foodOptions = {
+    carbohydrates: [
+      { name: 'White Rice', carbohydrates: 28, proteins: 2.7, lipids: 0.3 },
+      { name: 'Bread (White)', carbohydrates: 49, proteins: 9, lipids: 3.6 },
+      { name: 'Pasta (Cooked)', carbohydrates: 25, proteins: 5, lipids: 1.1 },
+      { name: 'Apple', carbohydrates: 14, proteins: 0.3, lipids: 0.2 },
+    ],
+    proteins: [
+      { name: 'Chicken Breast (Skinless)', carbohydrates: 0, proteins: 31, lipids: 3.6 },
+      { name: 'Egg Whites', carbohydrates: 0.7, proteins: 11, lipids: 0.2 },
+      { name: 'Fish (Cod)', carbohydrates: 0, proteins: 18, lipids: 0.7 },
+      { name: 'Tofu', carbohydrates: 1.9, proteins: 8, lipids: 4.8 },
+    ],
+    lipids: [
+      { name: 'Olive Oil', carbohydrates: 0, proteins: 0, lipids: 100 },
+      { name: 'Avocado', carbohydrates: 9, proteins: 2, lipids: 15 },
+      { name: 'Almonds', carbohydrates: 22, proteins: 21, lipids: 50 },
+      { name: 'Butter (Unsalted)', carbohydrates: 0.1, proteins: 0.9, lipids: 81 },
+    ],
+  };
 
   useEffect(() => {
     const fetchPatientData = async () => {
@@ -58,28 +88,115 @@ const ProviderPatientDetailPage = () => {
     fetchPatientData();
   }, [navigate, id]);
 
-  const handleMealPlanChange = (mealType, index, field, value) => {
-    setMealPlanForm((prev) => {
-      const updatedMeal = [...prev[mealType]];
-      updatedMeal[index] = { ...updatedMeal[index], [field]: value };
-      return { ...prev, [mealType]: updatedMeal };
-    });
-  };
+  useEffect(() => {
+    if (location.state?.focusSection === 'messages' && messagesRef.current) {
+      messagesRef.current.scrollIntoView({ behavior: 'smooth' });
+      // Clear the state to prevent re-scrolling on navigation
+      window.history.replaceState({}, document.title, location.pathname);
+    }
+  }, [location.state]);
 
-  const addMealItem = (mealType) => {
+  const handleMealPlanChange = (mealType, nutrient, value) => {
     setMealPlanForm((prev) => ({
       ...prev,
-      [mealType]: [...prev[mealType], { name: '', quantity: '', isFluid: false }],
+      [mealType]: {
+        ...prev[mealType],
+        [nutrient]: value,
+      },
+    }));
+  };
+
+  const handleHemodialysisLimitsChange = (field, value) => {
+    setMealPlanForm((prev) => ({
+      ...prev,
+      hemodialysisLimits: {
+        ...prev.hemodialysisLimits,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleFoodSelection = (mealType, nutrientType, food, quantity) => {
+    const newFood = {
+      name: food.name,
+      quantity: parseFloat(quantity) || 100, // Default to 100g if no quantity
+      isFluid: false,
+      carbohydrates: (food.carbohydrates * (parseFloat(quantity) || 100) / 100).toFixed(1),
+      proteins: (food.proteins * (parseFloat(quantity) || 100) / 100).toFixed(1),
+      lipids: (food.lipids * (parseFloat(quantity) || 100) / 100).toFixed(1),
+    };
+    setMealPlanForm((prev) => ({
+      ...prev,
+      recommendedFoods: {
+        ...prev.recommendedFoods,
+        [mealType]: [...prev.recommendedFoods[mealType], newFood],
+      },
     }));
   };
 
   const handleMealPlanSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post(`/provider/meal-plan/${id}`, mealPlanForm);
+      const { breakfast, lunch, dinner, hemodialysisLimits, recommendedFoods } = mealPlanForm;
+      const validateMeal = (meal) => {
+        const carbs = parseFloat(meal.carbohydrates);
+        const proteins = parseFloat(meal.proteins);
+        const lipids = parseFloat(meal.lipids);
+        return (
+          !isNaN(carbs) && carbs >= 0 &&
+          !isNaN(proteins) && proteins >= 0 &&
+          !isNaN(lipids) && lipids >= 0
+        );
+      };
+      const validateLimits = (limits) => {
+        const potassium = parseFloat(limits.potassium);
+        const phosphorus = parseFloat(limits.phosphorus);
+        const sodium = parseFloat(limits.sodium);
+        const fluid = parseFloat(limits.fluid);
+        return (
+          !isNaN(potassium) && potassium >= 0 &&
+          !isNaN(phosphorus) && phosphorus >= 0 &&
+          !isNaN(sodium) && sodium >= 0 &&
+          !isNaN(fluid) && fluid >= 0
+        );
+      };
+      if (!validateMeal(breakfast) || !validateMeal(lunch) || !validateMeal(dinner) || !validateLimits(hemodialysisLimits)) {
+        setError('Please enter valid non-negative numbers for all nutrient and hemodialysis limit fields');
+        return;
+      }
+  
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+  
+      await api.post(`/provider/meal-plan/${id}`, {
+        breakfast: {
+          carbohydrates: parseFloat(breakfast.carbohydrates),
+          proteins: parseFloat(breakfast.proteins),
+          lipids: parseFloat(breakfast.lipids),
+        },
+        lunch: {
+          carbohydrates: parseFloat(lunch.carbohydrates),
+          proteins: parseFloat(lunch.proteins),
+          lipids: parseFloat(lunch.lipids),
+        },
+        dinner: {
+          carbohydrates: parseFloat(dinner.carbohydrates),
+          proteins: parseFloat(dinner.proteins),
+          lipids: parseFloat(dinner.lipids),
+        },
+        hemodialysisLimits: {
+          potassium: parseFloat(hemodialysisLimits.potassium),
+          phosphorus: parseFloat(hemodialysisLimits.phosphorus),
+          sodium: parseFloat(hemodialysisLimits.sodium),
+          fluid: parseFloat(hemodialysisLimits.fluid),
+        },
+        date: today.toISOString(),
+        recommendedFoods,
+      });
       alert('Meal plan updated successfully!');
       setError('');
     } catch (err) {
+      console.error('Meal plan submit error:', err.response?.data || err.message);
       setError(err.response?.data?.error || 'Failed to update meal plan');
     }
   };
@@ -194,7 +311,9 @@ const ProviderPatientDetailPage = () => {
                   >
                     <div className="flex items-center justify-between">
                       <span className="text-gray-700">
-                        {log.foodItem} - {log.quantity} {log.isFluid ? 'ml' : 'g'}
+                        {log.foodItem} - {log.quantity} {log.isFluid ? 'ml' : 'g'} (
+                        Carbs: {log.carbohydrates}g, Proteins: {log.proteins}g, Lipids: {log.lipids}g,
+                        K: {log.potassium}mg, P: {log.phosphorus}mg, Na: {log.sodium}mg)
                       </span>
                       <span className="flex items-center text-sm text-gray-500">
                         <Clock className="w-4 h-4 mr-1" />
@@ -225,49 +344,141 @@ const ProviderPatientDetailPage = () => {
         <section className="mb-12">
           <div className="p-6 transition-all duration-300 transform bg-white shadow-xl rounded-xl hover:shadow-2xl">
             <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
-              <h2 className="text-2xl font-bold tracking-tight text-teal-700 animate-fade-in">Set Meal Plan</h2>
+              <h2 className="text-2xl font-bold tracking-tight text-teal-700 animate-fade-in">Set Meal Plan (Nutrient Targets)</h2>
               <Utensils className="text-teal-500 w-7 h-7 animate-pulse" />
             </div>
             <form onSubmit={handleMealPlanSubmit} className="space-y-6">
               {['breakfast', 'lunch', 'dinner'].map((mealType) => (
                 <div key={mealType}>
                   <h3 className="mb-3 text-lg font-medium text-teal-700 capitalize">{mealType}</h3>
-                  {mealPlanForm[mealType].map((item, index) => (
-                    <div key={index} className="flex mb-3 space-x-3">
-                      <input
-                        type="text"
-                        value={item.name}
-                        onChange={(e) => handleMealPlanChange(mealType, index, 'name', e.target.value)}
-                        placeholder="Food/Drink Name"
-                        className="flex-1 p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      />
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                    <div>
+                      <label className="block mb-1 text-sm font-medium text-gray-700">Carbohydrates (g)</label>
                       <input
                         type="number"
                         min="0"
-                        value={item.quantity}
-                        onChange={(e) => handleMealPlanChange(mealType, index, 'quantity', e.target.value)}
-                        placeholder="Quantity"
-                        className="w-24 p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        value={mealPlanForm[mealType].carbohydrates}
+                        onChange={(e) => handleMealPlanChange(mealType, 'carbohydrates', e.target.value)}
+                        placeholder="e.g., 50"
+                        className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
                       />
-                      <select
-                        value={item.isFluid}
-                        onChange={(e) => handleMealPlanChange(mealType, index, 'isFluid', e.target.value === 'true')}
-                        className="w-24 p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      >
-                        <option value="false">g</option>
-                        <option value="true">ml</option>
-                      </select>
                     </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => addMealItem(mealType)}
-                    className="text-teal-600 transition-colors duration-200 hover:text-teal-800"
-                  >
-                    + Add Item
-                  </button>
+                    <div>
+                      <label className="block mb-1 text-sm font-medium text-gray-700">Proteins (g)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={mealPlanForm[mealType].proteins}
+                        onChange={(e) => handleMealPlanChange(mealType, 'proteins', e.target.value)}
+                        placeholder="e.g., 20"
+                        className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block mb-1 text-sm font-medium text-gray-700">Lipids (g)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={mealPlanForm[mealType].lipids}
+                        onChange={(e) => handleMealPlanChange(mealType, 'lipids', e.target.value)}
+                        placeholder="e.g., 15"
+                        className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-4 space-y-3">
+                    <label className="block text-sm font-medium text-teal-700">Recommended Foods</label>
+                    {['carbohydrates', 'proteins', 'lipids'].map((nutrientType) => (
+                      <div key={nutrientType} className="p-3 bg-teal-50 rounded-lg">
+                        <h4 className="mb-2 text-sm font-medium text-gray-800 capitalize">{nutrientType}</h4>
+                        <select
+                          onChange={(e) => {
+                            const [foodName, quantity] = e.target.value.split('|');
+                            const food = foodOptions[nutrientType].find(f => f.name === foodName);
+                            if (food) handleFoodSelection(mealType, nutrientType, food, quantity || 100);
+                          }}
+                          className="w-full p-2 mb-2 border border-teal-200 rounded bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        >
+                          <option value="">Select a food...</option>
+                          {foodOptions[nutrientType].map((food) => (
+                            <option key={food.name} value={`${food.name}|100`}>{food.name} (~{food[nutrientType]}g/100g)</option>
+                          ))}
+                        </select>
+                        <ul className="text-sm text-gray-600">
+                          {mealPlanForm.recommendedFoods[mealType].map((food, index) => (
+                            <li key={index} className="flex items-center justify-between">
+                              <span>{food.name} - {food.quantity}g ({food[nutrientType]}g {nutrientType})</span>
+                              <button
+                                onClick={() => {
+                                  setMealPlanForm((prev) => ({
+                                    ...prev,
+                                    recommendedFoods: {
+                                      ...prev.recommendedFoods,
+                                      [mealType]: prev.recommendedFoods[mealType].filter((_, i) => i !== index),
+                                    },
+                                  }));
+                                }}
+                                className="ml-2 text-red-500 hover:text-red-700"
+                              >
+                                Remove
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))}
+              <div>
+                <h3 className="mb-3 text-lg font-medium text-teal-700">Hemodialysis Limits (Daily Targets)</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Potassium (mg)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={mealPlanForm.hemodialysisLimits.potassium}
+                      onChange={(e) => handleHemodialysisLimitsChange('potassium', e.target.value)}
+                      placeholder="e.g., 2000"
+                      className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Phosphorus (mg)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={mealPlanForm.hemodialysisLimits.phosphorus}
+                      onChange={(e) => handleHemodialysisLimitsChange('phosphorus', e.target.value)}
+                      placeholder="e.g., 800"
+                      className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Sodium (mg)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={mealPlanForm.hemodialysisLimits.sodium}
+                      onChange={(e) => handleHemodialysisLimitsChange('sodium', e.target.value)}
+                      placeholder="e.g., 2000"
+                      className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Fluid (ml)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={mealPlanForm.hemodialysisLimits.fluid}
+                      onChange={(e) => handleHemodialysisLimitsChange('fluid', e.target.value)}
+                      placeholder="e.g., 1000"
+                      className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                </div>
+              </div>
               <button
                 type="submit"
                 className="w-full p-3 text-white transition-all duration-300 transform bg-teal-600 rounded-lg shadow-md hover:bg-teal-700 hover:scale-105 active:scale-95"
@@ -278,7 +489,7 @@ const ProviderPatientDetailPage = () => {
           </div>
         </section>
 
-        <section className="mb-12">
+        <section ref={messagesRef} className="mb-12">
           <div className="p-6 transition-all duration-300 transform bg-white shadow-xl rounded-xl hover:shadow-2xl">
             <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
               <h2 className="text-2xl font-bold tracking-tight text-teal-700 animate-fade-in">Messages</h2>

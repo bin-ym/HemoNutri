@@ -20,4 +20,4 @@ const getPatients = async (req, res) => {
   }
 };
 
-module.exports = { getPatients }; // Ensure this line exists
+module.exports = { getPatients };

@@ -98,7 +98,7 @@ const PatientEducation = () => {
         </div>
 
         {/* Resources Section */}
-        <div className="p-6 bg-white shadow-lg rounded-xl">
+        <div className="p-6 bg-white shadow-xl rounded-xl">
           <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
             <h2 className="text-2xl font-semibold text-teal-600">
               Educational Resources
@@ -127,20 +127,20 @@ const PatientEducation = () => {
               {resources.map((res) => (
                 <div
                   key={res._id}
-                  className="p-5 transition-all duration-300 border border-teal-100 rounded-lg shadow-md bg-teal-50 hover:shadow-xl hover:-translate-y-1"
+                  className="p-6 transition-all duration-300 border border-teal-100 rounded-xl shadow-md bg-teal-50 hover:shadow-2xl hover:-translate-y-2"
                 >
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-medium text-teal-700 truncate">
                       {res.title}
                     </h3>
                     <Clock className="w-5 h-5 text-gray-400" />
                   </div>
-                  <p className="mb-4 text-gray-600 line-clamp-3">
+                  <p className="mb-6 text-gray-600 line-clamp-3">
                     {res.content}
                   </p>
                   <button
                     onClick={() => handleReadMore(res)}
-                    className="flex items-center text-teal-600 transition-colors duration-200 hover:text-teal-800"
+                    className="flex items-center px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-teal-700 rounded-lg shadow-md hover:from-teal-600 hover:to-teal-800 transition-all duration-300"
                   >
                     <span className="mr-2 font-medium">Read More</span>
                     <ExternalLink className="w-4 h-4" />

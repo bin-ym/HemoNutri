@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CommonActions } from '@react-navigation/native';
@@ -20,9 +20,16 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 const LoginScreen: React.FC = () => {
   const [identifier, setIdentifier] = useState<string>('');
   const [password, setPassword] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
   const navigation = useNavigation<NavigationProp>();
 
   const handleLogin = async () => {
+    if (!identifier || !password) {
+      Alert.alert('Validation Error', 'Please enter both username/email and password.');
+      return;
+    }
+
+    setLoading(true);
     try {
       const credentials: LoginCredentials = { identifier, password };
       console.log('Sending login request with credentials:', credentials);
@@ -40,7 +47,7 @@ const LoginScreen: React.FC = () => {
       }
 
       await storeAuthData(token, role, userId);
-      
+
       // Reset the navigation stack to 'Tabs' and pass the role
       navigation.dispatch(
         CommonActions.reset({
@@ -58,9 +65,17 @@ const LoginScreen: React.FC = () => {
       } else {
         console.error('Error setting up request:', error.message);
       }
-      const errorMessage = error.response?.data?.message || error.message || 'An error occurred. Please try again.';
-      Alert.alert('Login Failed', errorMessage);
+      const errorMessage =
+        error.message === 'Network Error'
+          ? 'Unable to connect to the server. Please check your network or try again later.'
+          : error.response?.data?.message || error.message || 'An error occurred. Please try again.';
+      Alert.alert('Login Failed', errorMessage, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Retry', onPress: handleLogin },
+      ]);
       await clearAuthData();
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -72,6 +87,8 @@ const LoginScreen: React.FC = () => {
         placeholder="Username or Email"
         value={identifier}
         onChangeText={setIdentifier}
+        autoCapitalize="none"
+        keyboardType="email-address"
       />
       <TextInput
         style={styles.input}
@@ -79,8 +96,17 @@ const LoginScreen: React.FC = () => {
         value={password}
         onChangeText={setPassword}
         secureTextEntry
+        autoCapitalize="none"
       />
-      <Button title="Login" onPress={handleLogin} color={colors.primary} />
+      <Button
+        title={loading ? 'Logging in...' : 'Login'}
+        onPress={handleLogin}
+        color={colors.primary}
+        disabled={loading}
+      />
+      {loading && (
+        <ActivityIndicator size="large" color={colors.primary} style={styles.loadingIndicator} />
+      )}
     </View>
   );
 };
@@ -107,6 +133,9 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     color: colors.textPrimary,
     backgroundColor: '#fff',
+  },
+  loadingIndicator: {
+    marginTop: 20,
   },
 });
 

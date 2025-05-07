@@ -107,8 +107,9 @@ const ProviderLogsPage = () => {
                   >
                     <p className="font-medium text-gray-700">{log.patientUsername}</p>
                     <p className="text-gray-600">
-                      {log.foodItem} - {log.quantity}
-                      {log.isFluid ? 'ml' : 'g'}
+                      {log.foodItem} - {log.quantity} {log.isFluid ? 'ml' : 'g'} (
+                      Carbs: {log.carbohydrates}g, Proteins: {log.proteins}g, Lipids: {log.lipids}g, 
+                      K: {log.potassium}mg, P: {log.phosphorus}mg, Na: {log.sodium}mg)
                     </p>
                     <p className="flex items-center mt-2 text-sm text-gray-500">
                       <Clock className="w-4 h-4 mr-1" />

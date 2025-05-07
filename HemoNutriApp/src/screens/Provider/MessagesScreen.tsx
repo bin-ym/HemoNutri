@@ -6,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import api from '../../api/api';
 import { colors } from '../../theme/colors';
 
-// Define the navigation stack param list
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
@@ -15,9 +14,11 @@ type RootStackParamList = {
   ManageMealPlans: undefined;
   ProviderPatientDetail: { patientId: string };
   ProviderEducation: undefined;
+  Messages: undefined;
+  Conversation: { patientId: string }; // Added for conversation screen
 };
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ManagePatients'>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Messages'>;
 
 type Patient = {
   id: string;
@@ -25,7 +26,7 @@ type Patient = {
   email: string;
 };
 
-const ManagePatientsScreen: React.FC = () => {
+const MessagesScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,18 +54,16 @@ const ManagePatientsScreen: React.FC = () => {
   }, []);
 
   const renderPatient = ({ item }: { item: Patient }) => (
-    <View style={styles.patientItem}>
+    <TouchableOpacity
+      style={styles.patientItem}
+      onPress={() => navigation.navigate('Conversation', { patientId: item.id })}
+    >
       <View style={styles.patientInfo}>
         <Text style={styles.patientName}>{item.username}</Text>
         <Text style={styles.patientEmail}>{item.email}</Text>
       </View>
-      <TouchableOpacity
-        style={styles.viewButton}
-        onPress={() => navigation.navigate('ProviderPatientDetail', { patientId: item.id })}
-      >
-        <Ionicons name="eye-outline" size={20} color="#fff" />
-      </TouchableOpacity>
-    </View>
+      <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+    </TouchableOpacity>
   );
 
   if (loading) {
@@ -78,8 +77,8 @@ const ManagePatientsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Manage Patients</Text>
-        <Text style={styles.subtitle}>View your patients’ details.</Text>
+        <Text style={styles.title}>Messages</Text>
+        <Text style={styles.subtitle}>Select a patient to view messages.</Text>
       </View>
 
       {error && (
@@ -155,6 +154,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     borderWidth: 1,
     borderColor: colors.secondary,
+    justifyContent: 'space-between',
   },
   patientInfo: {
     flex: 1,
@@ -169,11 +169,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
   },
-  viewButton: {
-    backgroundColor: colors.primary,
-    padding: 10,
-    borderRadius: 8,
-  },
 });
 
-export default ManagePatientsScreen;
+export default MessagesScreen;

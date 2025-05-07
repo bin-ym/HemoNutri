@@ -11,6 +11,8 @@ const ProviderMessagesPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const providerId = localStorage.getItem('userId');
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [totalMessages, setTotalMessages] = useState(0);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -24,7 +26,11 @@ const ProviderMessagesPage = () => {
         console.log('Provider ID:', providerId);
         const res = await api.get('/provider/messages');
         console.log('Fetched provider messages:', res.data);
-        setMessages(Array.isArray(res.data) ? res.data : []);
+        const messagesData = Array.isArray(res.data) ? res.data : [];
+        setMessages(messagesData);
+        const receivedMessages = messagesData.filter((msg) => String(msg.recipient?._id || msg.recipient) === String(providerId));
+        setUnreadCount(receivedMessages.filter((msg) => !msg.read).length);
+        setTotalMessages(receivedMessages.length);
         setError('');
       } catch (err) {
         console.error('Fetch error:', err.response?.data || err.message);
@@ -98,7 +104,7 @@ const ProviderMessagesPage = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-teal-50 via-white to-gray-100">
-      <Navbar role="provider" />
+      <Navbar role="provider" unreadCount={unreadCount} totalMessages={totalMessages} />
       <div className="flex-grow max-w-6xl p-6 mx-auto">
         <div className="relative mb-12 text-center">
           <div className="absolute inset-0 h-40 bg-teal-600 rounded-b-full -top-12 opacity-10 blur-3xl"></div>
@@ -133,7 +139,8 @@ const ProviderMessagesPage = () => {
                 {receivedMessages.map((msg) => (
                   <li
                     key={msg._id}
-                    className={`p-4 bg-teal-50 border ${msg.isEmergency ? 'border-red-300' : 'border-teal-200'} rounded-lg shadow-md hover:bg-teal-100 transition-all duration-300`}
+                    className={`p-4 bg-teal-50 border ${msg.isEmergency ? 'border-red-300' : 'border-teal-200'} rounded-lg shadow-md hover:bg-teal-100 transition-all duration-300 cursor-pointer`}
+                    onClick={() => navigate(`/provider/patient/${msg.sender?._id || msg.sender}`, { state: { focusSection: 'messages' } })}
                   >
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
@@ -192,7 +199,8 @@ const ProviderMessagesPage = () => {
                 {sentMessages.map((msg) => (
                   <li
                     key={msg._id}
-                    className={`p-4 bg-teal-50 border ${msg.isEmergency ? 'border-red-300' : 'border-teal-200'} rounded-lg shadow-md hover:bg-teal-100 transition-all duration-300`}
+                    className={`p-4 bg-teal-50 border ${msg.isEmergency ? 'border-red-300' : 'border-teal-200'} rounded-lg shadow-md hover:bg-teal-100 transition-all duration-300 cursor-pointer`}
+                    onClick={() => navigate(`/provider/patient/${msg.recipient?._id || msg.recipient}`, { state: { focusSection: 'messages' } })}
                   >
                     <div className="flex items-center justify-between">
                       <div className="space-y-2">

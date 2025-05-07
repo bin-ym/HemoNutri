@@ -10,6 +10,7 @@ const ProviderEducation = () => {
   const [newResource, setNewResource] = useState({ title: '', description: '', url: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
     const fetchResources = async () => {
@@ -45,6 +46,7 @@ const ProviderEducation = () => {
       const res = await api.post('/provider/education', newResource);
       setResources([...resources, res.data]);
       setNewResource({ title: '', description: '', url: '' });
+      setShowModal(false);
       setError('');
       alert('Resource added successfully!');
     } catch (err) {
@@ -96,8 +98,17 @@ const ProviderEducation = () => {
         <section className="mb-12">
           <div className="p-6 bg-white shadow-lg rounded-xl">
             <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
-              <h2 className="text-2xl font-semibold text-teal-600">Your Resources</h2>
-              <BookOpen className="w-6 h-6 text-teal-500" />
+              <div className="flex items-center">
+                <h2 className="text-2xl font-semibold text-teal-600">Your Resources</h2>
+                <BookOpen className="w-6 h-6 ml-2 text-teal-500" />
+              </div>
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex items-center px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-teal-700 rounded-full shadow-lg hover:from-teal-600 hover:to-teal-800 transition-all duration-300 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-teal-400"
+              >
+                <Plus className="w-5 h-5 mr-2" />
+                Add Resource
+              </button>
             </div>
             {resources.length === 0 ? (
               <p className="text-center text-gray-500">No resources available yet.</p>
@@ -125,59 +136,70 @@ const ProviderEducation = () => {
           </div>
         </section>
 
-        {/* Add Resource */}
-        <section className="mb-12">
-          <div className="p-6 bg-white shadow-lg rounded-xl">
-            <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
-              <h2 className="text-2xl font-semibold text-teal-600">Add New Resource</h2>
-              <Plus className="w-6 h-6 text-teal-500" />
-            </div>
-            {error && resources.length > 0 && (
-              <p className="mb-4 text-center text-red-500">{error}</p>
-            )}
-            <form onSubmit={handleResourceSubmit} className="space-y-4">
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">Title</label>
-                <input
-                  type="text"
-                  value={newResource.title}
-                  onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
-                  placeholder="Resource Title"
-                  className="w-full p-3 border border-teal-200 rounded bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">Description</label>
-                <textarea
-                  value={newResource.description}
-                  onChange={(e) => setNewResource({ ...newResource, description: e.target.value })}
-                  placeholder="Brief description of the resource"
-                  className="w-full p-3 border border-teal-200 rounded bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  rows="3"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block mb-1 text-sm font-medium text-gray-700">URL</label>
-                <input
-                  type="url"
-                  value={newResource.url}
-                  onChange={(e) => setNewResource({ ...newResource, url: e.target.value })}
-                  placeholder="https://example.com/resource"
-                  className="w-full p-3 border border-teal-200 rounded bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                  required
-                />
-              </div>
+        {/* Modal for Adding Resource */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="relative w-full max-w-md p-6 bg-white rounded-lg shadow-2xl animate-fade-in">
               <button
-                type="submit"
-                className="w-full p-3 text-white transition duration-300 bg-teal-600 rounded-lg shadow-md hover:bg-teal-700"
+                onClick={() => setShowModal(false)}
+                className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
               >
-                Add Resource
+                ✕
               </button>
-            </form>
+              <h3 className="mb-4 text-xl font-bold text-teal-700">Add New Resource</h3>
+              <form onSubmit={handleResourceSubmit} className="space-y-4">
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">Title</label>
+                  <input
+                    type="text"
+                    value={newResource.title}
+                    onChange={(e) => setNewResource({ ...newResource, title: e.target.value })}
+                    placeholder="Resource Title"
+                    className="w-full p-3 border border-teal-200 rounded bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">Description</label>
+                  <textarea
+                    value={newResource.description}
+                    onChange={(e) => setNewResource({ ...newResource, description: e.target.value })}
+                    placeholder="Brief description of the resource"
+                    className="w-full p-3 border border-teal-200 rounded bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    rows="3"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">URL</label>
+                  <input
+                    type="url"
+                    value={newResource.url}
+                    onChange={(e) => setNewResource({ ...newResource, url: e.target.value })}
+                    placeholder="https://example.com/resource"
+                    className="w-full p-3 border border-teal-200 rounded bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    required
+                  />
+                </div>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300 transition duration-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-teal-700 rounded-lg shadow-md hover:from-teal-600 hover:to-teal-800 transition duration-300"
+                  >
+                    Save
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </section>
+        )}
       </div>
     </div>
   );

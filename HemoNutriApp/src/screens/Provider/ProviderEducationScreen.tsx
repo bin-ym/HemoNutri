@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -74,16 +74,90 @@ const ProviderEducationScreen: React.FC = () => {
   };
 
   const renderResource = ({ item }: { item: Resource }) => (
-    <View style={styles.resourceItem}>
-      <Text style={styles.resourceTitle}>{item.title}</Text>
+    <View style={styles.resourceCard}>
+      <View style={styles.resourceHeader}>
+        <Text style={styles.resourceTitle}>{item.title}</Text>
+        <Ionicons name="book-outline" size={20} color={colors.primary} />
+      </View>
       <Text style={styles.resourceDescription}>{item.description}</Text>
       <TouchableOpacity
         onPress={() => Linking.openURL(item.url)}
-        style={styles.resourceLink}
+        style={styles.resourceLinkButton}
       >
+        <Ionicons name="link-outline" size={16} color={colors.primary} style={styles.linkIcon} />
         <Text style={styles.resourceLinkText}>View Resource</Text>
       </TouchableOpacity>
     </View>
+  );
+
+  const renderHeader = () => (
+    <>
+      <View style={styles.header}>
+        <Text style={styles.title}>Educational Resources</Text>
+        <Text style={styles.subtitle}>Share valuable knowledge with your patients</Text>
+      </View>
+
+      {error && (
+        <View style={styles.errorMessage}>
+          <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      <View style={styles.formCard}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Add New Resource</Text>
+          <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+        </View>
+        <View style={styles.inputContainer}>
+          <Ionicons name="pencil-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Resource Title"
+            placeholderTextColor={colors.textSecondary}
+            value={newResource.title}
+            onChangeText={(text) => setNewResource({ ...newResource, title: text })}
+          />
+        </View>
+        <View style={styles.inputContainer}>
+          <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+          <TextInput
+            style={[styles.input, styles.descriptionInput]}
+            placeholder="Brief description of the resource"
+            placeholderTextColor={colors.textSecondary}
+            value={newResource.description}
+            onChangeText={(text) => setNewResource({ ...newResource, description: text })}
+            multiline
+          />
+        </View>
+        <View style={styles.inputContainer}>
+          <Ionicons name="link-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="https://example.com/resource"
+            placeholderTextColor={colors.textSecondary}
+            value={newResource.url}
+            onChangeText={(text) => setNewResource({ ...newResource, url: text })}
+            keyboardType="url"
+          />
+        </View>
+        <TouchableOpacity
+          style={styles.submitButton}
+          onPress={handleResourceSubmit}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.submitButtonText}>Add Resource</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Your Resources</Text>
+        <Ionicons name="library-outline" size={24} color={colors.primary} />
+      </View>
+      {resources.length === 0 && (
+        <Text style={styles.emptyText}>No resources available yet. Add one above!</Text>
+      )}
+    </>
   );
 
   if (loading) {
@@ -95,119 +169,91 @@ const ProviderEducationScreen: React.FC = () => {
   }
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Educational Resources</Text>
-        <Text style={styles.subtitle}>Share knowledge with your patients.</Text>
-      </View>
-
-      {/* Error Message */}
-      {error && (
-        <View style={styles.errorMessage}>
-          <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      {/* Resources */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Your Resources</Text>
-          <Ionicons name="book-outline" size={24} color={colors.primary} />
-        </View>
-        {resources.length === 0 ? (
-          <Text style={styles.emptyText}>No resources available yet.</Text>
-        ) : (
-          <FlatList
-            data={resources}
-            renderItem={renderResource}
-            keyExtractor={(item) => item.id}
-            style={styles.list}
-          />
-        )}
-      </View>
-
-      {/* Add Resource */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Add New Resource</Text>
-          <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
-        </View>
-        <TextInput
-          style={styles.input}
-          placeholder="Resource Title"
-          value={newResource.title}
-          onChangeText={(text) => setNewResource({ ...newResource, title: text })}
-        />
-        <TextInput
-          style={[styles.input, styles.descriptionInput]}
-          placeholder="Brief description of the resource"
-          value={newResource.description}
-          onChangeText={(text) => setNewResource({ ...newResource, description: text })}
-          multiline
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="https://example.com/resource"
-          value={newResource.url}
-          onChangeText={(text) => setNewResource({ ...newResource, url: text })}
-          keyboardType="url"
-        />
-        <TouchableOpacity style={styles.submitButton} onPress={handleResourceSubmit}>
-          <Text style={styles.submitButtonText}>Add Resource</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+    <FlatList
+      style={styles.container}
+      data={resources}
+      renderItem={renderResource}
+      keyExtractor={(item) => item.id}
+      ListHeaderComponent={renderHeader}
+      ListFooterComponent={<View style={{ height: 20 }} />}
+      contentContainerStyle={styles.flatListContent}
+    />
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#f5f5f5',
+  },
+  flatListContent: {
     padding: 20,
+    paddingBottom: 20,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: '#f5f5f5',
   },
   loadingText: {
     fontSize: 18,
     color: colors.textSecondary,
-  },
-  errorMessage: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffe6e6',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 20,
-  },
-  errorText: {
-    fontSize: 16,
-    color: colors.danger,
-    marginLeft: 10,
+    fontWeight: '500',
   },
   header: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    marginBottom: 20,
     alignItems: 'center',
-    marginBottom: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.primary,
-    marginBottom: 10,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
+    fontStyle: 'italic',
   },
-  section: {
-    marginBottom: 30,
+  errorMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffe6e6',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  errorText: {
+    fontSize: 16,
+    color: colors.danger,
+    marginLeft: 10,
+    fontWeight: '500',
+  },
+  formCard: {
+    backgroundColor: '#fff',
+    padding: 15,
+    borderRadius: 12,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -216,69 +262,102 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '600',
     color: colors.primary,
   },
-  list: {
-    flexGrow: 0,
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f9f9f9',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    marginBottom: 15,
+    paddingHorizontal: 10,
   },
-  resourceItem: {
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: colors.textPrimary,
+    backgroundColor: 'transparent',
+  },
+  descriptionInput: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+    paddingTop: 12,
+  },
+  submitButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  submitButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  resourceCard: {
     backgroundColor: '#fff',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 12,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  resourceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.secondary,
   },
   resourceTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: colors.primary,
-    marginBottom: 5,
   },
   resourceDescription: {
-    fontSize: 16,
-    color: colors.textPrimary,
+    fontSize: 14,
+    color: colors.textSecondary,
     marginBottom: 10,
+    lineHeight: 20,
   },
-  resourceLink: {
+  resourceLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.primary + '10', // Lightened primary color
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
     alignSelf: 'flex-start',
+  },
+  linkIcon: {
+    marginRight: 8,
   },
   resourceLinkText: {
     fontSize: 14,
     color: colors.primary,
-    textDecorationLine: 'underline',
+    fontWeight: '500',
   },
   emptyText: {
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
-    fontSize: 16,
-    color: colors.textPrimary,
-    backgroundColor: '#fff',
-  },
-  descriptionInput: {
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  submitButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontStyle: 'italic',
+    marginVertical: 20,
   },
 });
 

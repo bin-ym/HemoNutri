@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../api/api';
-import { colors } from '../../theme/colors';
+import { getAuthData } from '../../utils/auth';
+import { useColors, colors }  from '../../theme/colors';
 
-// Define the navigation stack param list
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
@@ -31,15 +31,12 @@ type FoodLog = {
   quantity: string;
   isFluid: boolean;
   date: string;
-};
-
-type Message = {
-  id: string;
-  senderId: string;
-  senderUsername: string;
-  content: string;
-  createdAt: string;
-  isEmergency: boolean;
+  carbohydrates?: number;
+  proteins?: number;
+  lipids?: number;
+  potassium?: number;
+  phosphorus?: number;
+  sodium?: number;
 };
 
 type MealItem = {
@@ -58,11 +55,9 @@ const ProviderPatientDetailScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute();
   const { patientId } = route.params as { patientId: string };
-  const providerId = 'provider_1'; // Mock provider ID; replace with actual provider ID from auth
+  const [providerId, setProviderId] = useState<string>('');
   const [patient, setPatient] = useState<Patient | null>(null);
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
   const [mealPlanForm, setMealPlanForm] = useState<MealPlanForm>({
     breakfast: [{ name: '', quantity: '', isFluid: false }],
     lunch: [{ name: '', quantity: '', isFluid: false }],
@@ -71,63 +66,67 @@ const ProviderPatientDetailScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchPatientData = async () => {
-      try {
-        setLoading(true);
-        // Fetch patient details
-        const patientResponse = await api.get(`/api/provider/patient/${patientId}`);
-        setPatient({
-          id: patientResponse.data._id,
-          username: patientResponse.data.username,
-          email: patientResponse.data.email,
-        });
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const authData = await getAuthData();
+      const userId = authData.userId ?? '';
+      setProviderId(userId);
 
-        // Fetch food logs
-        const foodLogsResponse = await api.get(`/api/provider/patient/${patientId}/food-logs`);
-        setFoodLogs(foodLogsResponse.data.map((log: any) => ({
+      const [patientResponse, foodLogsResponse] = await Promise.all([
+        api.get(`/api/provider/patient/${patientId}`),
+        api.get(`/api/provider/patient/${patientId}/food-logs`),
+      ]);
+
+      setPatient({
+        id: patientResponse.data._id,
+        username: patientResponse.data.username,
+        email: patientResponse.data.email,
+      });
+
+      setFoodLogs(
+        foodLogsResponse.data.map((log: any) => ({
           id: log._id,
-          foodItem: log.foodItem,
-          quantity: log.quantity,
-          isFluid: log.isFluid,
-          date: log.date,
-        })));
+          foodItem: log.foodItem || 'Unknown',
+          quantity: log.quantity || '0',
+          isFluid: log.isFluid || false,
+          date: log.date || new Date().toISOString(),
+          carbohydrates: log.carbohydrates,
+          proteins: log.proteins,
+          lipids: log.lipids,
+          potassium: log.potassium,
+          phosphorus: log.phosphorus,
+          sodium: log.sodium,
+        }))
+      );
 
-        // Fetch messages
-        const messagesResponse = await api.get(`/api/provider/messages/${patientId}`);
-        setMessages(messagesResponse.data.map((msg: any) => ({
-          id: msg._id,
-          senderId: msg.sender._id,
-          senderUsername: msg.sender.username,
-          content: msg.content,
-          createdAt: msg.createdAt,
-          isEmergency: msg.isEmergency || false,
-        })));
+      setError('');
+    } catch (err) {
+      console.error('Fetch error:', (err as Error).message);
+      setError('Failed to load patient data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        // Fetch existing meal plan (if any)
-        const mealPlanResponse = await api.get(`/api/provider/meal-plan/${patientId}`);
-        if (mealPlanResponse.data) {
-          setMealPlanForm({
-            breakfast: mealPlanResponse.data.breakfast,
-            lunch: mealPlanResponse.data.lunch,
-            dinner: mealPlanResponse.data.dinner,
-          });
-        }
-
-        setError('');
-      } catch (err: any) {
-        console.error('Fetch error:', err);
-        setError('Failed to load patient data');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchPatientData();
+  useEffect(() => {
+    fetchData();
   }, [patientId]);
 
-  const handleMealPlanChange = (mealType: keyof MealPlanForm, index: number, field: keyof MealItem, value: string | boolean) => {
+  const handleMealPlanChange = (
+    mealType: keyof MealPlanForm,
+    index: number,
+    field: keyof MealItem,
+    value: string | boolean
+  ) => {
     setMealPlanForm((prev) => {
       const updatedMeal = [...prev[mealType]];
+      if (field === 'quantity' && typeof value === 'string') {
+        if (value && !/^\d*$/.test(value)) {
+          Alert.alert('Error', 'Quantity must be a numeric value.');
+          return prev;
+        }
+      }
       updatedMeal[index] = { ...updatedMeal[index], [field]: value };
       return { ...prev, [mealType]: updatedMeal };
     });
@@ -140,6 +139,18 @@ const ProviderPatientDetailScreen: React.FC = () => {
     }));
   };
 
+  const removeMealItem = (mealType: keyof MealPlanForm, index: number) => {
+    setMealPlanForm((prev) => {
+      const updatedMeal = [...prev[mealType]];
+      if (updatedMeal.length <= 1) {
+        Alert.alert('Error', 'Each meal must have at least one item.');
+        return prev;
+      }
+      updatedMeal.splice(index, 1);
+      return { ...prev, [mealType]: updatedMeal };
+    });
+  };
+
   const handleMealPlanSubmit = async () => {
     try {
       for (const mealType of ['breakfast', 'lunch', 'dinner'] as const) {
@@ -150,49 +161,34 @@ const ProviderPatientDetailScreen: React.FC = () => {
           }
         }
       }
-      await api.post(`/api/provider/meal-plan/${patientId}`, mealPlanForm);
+      await api.put(`/api/provider/meal-plan/${patientId}`, mealPlanForm);
       Alert.alert('Success', 'Meal plan updated successfully!');
       setError('');
-    } catch (err: any) {
-      console.error('Meal plan submit error:', err);
+    } catch (err) {
+      console.error('Meal plan submit error:', (err as Error).message);
       setError('Failed to update meal plan');
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!newMessage.trim()) {
-      Alert.alert('Error', 'Please enter a message.');
-      return;
-    }
-
-    try {
-      const response = await api.post(`/api/provider/message/${patientId}`, { content: newMessage });
-      setMessages([{
-        id: response.data._id,
-        senderId: providerId,
-        senderUsername: 'Provider',
-        content: newMessage,
-        createdAt: response.data.createdAt,
-        isEmergency: false,
-      }, ...messages]);
-      setNewMessage('');
-      Alert.alert('Success', 'Message sent successfully!');
-      setError('');
-    } catch (err: any) {
-      console.error('Send message error:', err);
-      setError('Failed to send message');
     }
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleString();
+    return isNaN(date.getTime())
+      ? 'Date unavailable'
+      : date.toLocaleString('en-US', {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
   };
 
-  const renderFoodLog = ({ item }: { item: FoodLog }) => (
-    <View style={styles.logItem}>
+  const renderFoodLog = (item: FoodLog) => (
+    <View style={styles.card}>
       <Text style={styles.logText}>
-        {item.foodItem} - {item.quantity}{item.isFluid ? 'ml' : 'g'}
+        {item.foodItem} - {item.quantity}
+        {item.isFluid ? 'ml' : 'g'} (Carbs: {item.carbohydrates || 0}g, Proteins: {item.proteins || 0}g, Lipids: {item.lipids || 0}g,
+        K: {item.potassium || 0}mg, P: {item.phosphorus || 0}mg, Na: {item.sodium || 0}mg)
       </Text>
       <Text style={styles.logDate}>
         <Ionicons name="time-outline" size={14} color={colors.textSecondary} /> {formatDate(item.date)}
@@ -200,18 +196,84 @@ const ProviderPatientDetailScreen: React.FC = () => {
     </View>
   );
 
-  const renderMessage = ({ item }: { item: Message }) => (
-    <View style={[styles.messageItem, item.isEmergency ? styles.emergencyMessage : null]}>
-      <View style={styles.messageHeader}>
-        <Text style={styles.messageSender}>
-          {item.senderId === providerId ? 'You' : item.senderUsername}
-          {item.isEmergency && <Text style={styles.emergencyLabel}> 🚨 Emergency</Text>}
-        </Text>
-        <Text style={styles.messageDate}>
-          <Ionicons name="time-outline" size={14} color={colors.textSecondary} /> {formatDate(item.createdAt)}
-        </Text>
+  const renderHeader = () => (
+    <>
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Patient Details</Text>
+          <TouchableOpacity onPress={fetchData}>
+            <Ionicons name="refresh" size={24} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.subtitle}>{patient?.username || 'Unknown'}</Text>
+        <Text style={styles.emailText}>Email: {patient?.email || 'N/A'}</Text>
       </View>
-      <Text style={styles.messageContent}>{item.content}</Text>
+
+      {error && (
+        <View style={styles.errorMessage}>
+          <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Food Logs</Text>
+          <Ionicons name="fast-food-outline" size={24} color={colors.primary} />
+        </View>
+        {foodLogs.length === 0 && <Text style={styles.emptyText}>No logs available</Text>}
+      </View>
+    </>
+  );
+
+  const renderMealPlanSection = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Set Meal Plan</Text>
+        <Ionicons name="list-outline" size={24} color={colors.primary} />
+      </View>
+      {(['breakfast', 'lunch', 'dinner'] as const).map((mealType) => (
+        <View key={mealType} style={styles.mealSection}>
+          <Text style={styles.mealTitle}>{mealType.charAt(0).toUpperCase() + mealType.slice(1)}</Text>
+          {mealPlanForm[mealType].map((item, index) => (
+            <View key={index} style={styles.mealItem}>
+              <TextInput
+                style={styles.input}
+                placeholder="Food/Drink Name"
+                placeholderTextColor={colors.textSecondary}
+                value={item.name}
+                onChangeText={(value) => handleMealPlanChange(mealType, index, 'name', value)}
+              />
+              <TextInput
+                style={[styles.input, styles.quantityInput]}
+                placeholder="Quantity"
+                placeholderTextColor={colors.textSecondary}
+                value={item.quantity}
+                onChangeText={(value) => handleMealPlanChange(mealType, index, 'quantity', value)}
+                keyboardType="numeric"
+              />
+              <TouchableOpacity
+                style={[styles.unitButton, item.isFluid ? styles.unitButtonFluid : styles.unitButtonSolid]}
+                onPress={() => handleMealPlanChange(mealType, index, 'isFluid', !item.isFluid)}
+              >
+                <Text style={styles.unitButtonText}>{item.isFluid ? 'ml' : 'g'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.removeButton}
+                onPress={() => removeMealItem(mealType, index)}
+              >
+                <Ionicons name="trash-outline" size={20} color={colors.danger} />
+              </TouchableOpacity>
+            </View>
+          ))}
+          <TouchableOpacity style={styles.addItemButton} onPress={() => addMealItem(mealType)}>
+            <Text style={styles.addItemText}>+ Add Item</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+      <TouchableOpacity style={styles.submitButton} onPress={handleMealPlanSubmit}>
+        <Text style={styles.submitButtonText}>Save Meal Plan</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -228,173 +290,134 @@ const ProviderPatientDetailScreen: React.FC = () => {
       <View style={styles.errorContainer}>
         <Ionicons name="alert-circle-outline" size={24} color={colors.danger} />
         <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+          <Text style={styles.retryButtonText}>Retry</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
+  const combinedData = [
+    ...foodLogs.map((log) => ({ type: 'foodLog', data: log } as const)),
+    { type: 'mealPlanSection' } as const,
+  ];
+
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Patient Details: {patient?.username || 'Unknown'}</Text>
-        <Text style={styles.subtitle}>Email: {patient?.email || 'N/A'}</Text>
-      </View>
-
-      {/* Error Message */}
-      {error && (
-        <View style={styles.errorMessage}>
-          <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-          <Text style={styles.errorText}>{error}</Text>
-        </View>
-      )}
-
-      {/* Food Logs */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Food Logs</Text>
-          <Ionicons name="fast-food-outline" size={24} color={colors.primary} />
-        </View>
-        {foodLogs.length === 0 ? (
-          <Text style={styles.emptyText}>No logs available</Text>
-        ) : (
-          <FlatList
-            data={foodLogs}
-            renderItem={renderFoodLog}
-            keyExtractor={(item) => item.id}
-            style={styles.list}
-            nestedScrollEnabled
-          />
-        )}
-      </View>
-
-      {/* Set Meal Plan */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Set Meal Plan</Text>
-          <Ionicons name="list-outline" size={24} color={colors.primary} />
-        </View>
-        {['breakfast', 'lunch', 'dinner'].map((mealType) => (
-          <View key={mealType} style={styles.mealSection}>
-            <Text style={styles.mealTitle}>{mealType.charAt(0).toUpperCase() + mealType.slice(1)}</Text>
-            {mealPlanForm[mealType as keyof MealPlanForm].map((item, index) => (
-              <View key={index} style={styles.mealItem}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Food/Drink Name"
-                  value={item.name}
-                  onChangeText={(value) => handleMealPlanChange(mealType as keyof MealPlanForm, index, 'name', value)}
-                />
-                <TextInput
-                  style={[styles.input, styles.quantityInput]}
-                  placeholder="Quantity"
-                  value={item.quantity}
-                  onChangeText={(value) => handleMealPlanChange(mealType as keyof MealPlanForm, index, 'quantity', value)}
-                  keyboardType="numeric"
-                />
-                <TouchableOpacity
-                  style={[styles.unitButton, item.isFluid ? styles.unitButtonFluid : styles.unitButtonSolid]}
-                  onPress={() => handleMealPlanChange(mealType as keyof MealPlanForm, index, 'isFluid', !item.isFluid)}
-                >
-                  <Text style={styles.unitButtonText}>{item.isFluid ? 'ml' : 'g'}</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-            <TouchableOpacity
-              style={styles.addItemButton}
-              onPress={() => addMealItem(mealType as keyof MealPlanForm)}
-            >
-              <Text style={styles.addItemText}>+ Add Item</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
-        <TouchableOpacity style={styles.submitButton} onPress={handleMealPlanSubmit}>
-          <Text style={styles.submitButtonText}>Save Meal Plan</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Messages */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Messages</Text>
-          <Ionicons name="chatbox-outline" size={24} color={colors.primary} />
-        </View>
-        <View style={styles.messageInputContainer}>
-          <TextInput
-            style={styles.messageInput}
-            placeholder="Type your message here..."
-            value={newMessage}
-            onChangeText={setNewMessage}
-            multiline
-          />
-          <TouchableOpacity style={styles.sendButton} onPress={handleSendMessage}>
-            <Ionicons name="send" size={24} color="#fff" />
-          </TouchableOpacity>
-        </View>
-        {messages.length === 0 ? (
-          <Text style={styles.emptyText}>No messages yet</Text>
-        ) : (
-          <FlatList
-            data={messages}
-            renderItem={renderMessage}
-            keyExtractor={(item) => item.id}
-            style={styles.list}
-            nestedScrollEnabled
-          />
-        )}
-      </View>
-    </ScrollView>
+    <FlatList
+      style={styles.container}
+      data={combinedData}
+      renderItem={({ item }) => {
+        if (item.type === 'foodLog') {
+          return renderFoodLog(item.data);
+        } else if (item.type === 'mealPlanSection') {
+          return renderMealPlanSection();
+        }
+        return null;
+      }}
+      keyExtractor={(item, index) =>
+        item.type === 'foodLog' ? `foodLog-${item.data.id}` : `section-${index}`
+      }
+      ListHeaderComponent={renderHeader}
+      ListFooterComponent={<View style={{ height: 20 }} />}
+      contentContainerStyle={styles.flatListContent}
+    />
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#f5f5f5',
+  },
+  flatListContent: {
     padding: 20,
+    paddingBottom: 20,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: '#f5f5f5',
   },
   loadingText: {
     fontSize: 18,
     color: colors.textSecondary,
+    fontWeight: '500',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
+    backgroundColor: '#f5f5f5',
     padding: 20,
   },
   errorMessage: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#ffe6e6',
-    padding: 10,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 12,
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   errorText: {
     fontSize: 16,
     color: colors.danger,
     marginLeft: 10,
+    fontWeight: '500',
   },
   header: {
-    alignItems: 'center',
     marginBottom: 30,
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: colors.primary,
-    marginBottom: 10,
   },
   subtitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.textPrimary,
+  },
+  emailText: {
     fontSize: 16,
     color: colors.textSecondary,
+    marginTop: 5,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
   section: {
     marginBottom: 30,
@@ -406,41 +429,44 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '600',
     color: colors.primary,
   },
-  list: {
-    flexGrow: 0,
-  },
-  logItem: {
+  card: {
     backgroundColor: '#fff',
     padding: 15,
-    borderRadius: 8,
+    borderRadius: 12,
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.secondary,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   logText: {
     fontSize: 16,
     color: colors.textPrimary,
     marginBottom: 5,
+    fontWeight: '500',
   },
   logDate: {
     fontSize: 14,
     color: colors.textSecondary,
+    fontWeight: '400',
   },
   emptyText: {
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
+    fontStyle: 'italic',
   },
   mealSection: {
     marginBottom: 20,
   },
   mealTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: colors.textPrimary,
     marginBottom: 10,
   },
@@ -448,27 +474,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
+    backgroundColor: '#fff',
+    padding: 10,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: colors.secondary,
+    borderColor: '#ddd',
     borderRadius: 8,
     padding: 10,
     marginRight: 10,
     fontSize: 16,
     color: colors.textPrimary,
-    backgroundColor: '#fff',
+    backgroundColor: '#f9f9f9',
   },
   quantityInput: {
     flex: 0,
     width: 80,
+    marginRight: 10,
   },
   unitButton: {
-    padding: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: colors.secondary,
+    borderColor: '#ddd',
+    marginRight: 10,
   },
   unitButtonSolid: {
     backgroundColor: '#e0e0e0',
@@ -477,8 +514,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   unitButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#fff',
+    fontWeight: '500',
+  },
+  removeButton: {
+    padding: 10,
   },
   addItemButton: {
     marginTop: 10,
@@ -486,74 +527,24 @@ const styles = StyleSheet.create({
   addItemText: {
     fontSize: 16,
     color: colors.primary,
+    fontWeight: '500',
   },
   submitButton: {
     backgroundColor: colors.primary,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
+    marginTop: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   submitButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
-  },
-  messageInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  messageInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.secondary,
-    borderRadius: 8,
-    padding: 10,
-    fontSize: 16,
-    color: colors.textPrimary,
-    backgroundColor: '#fff',
-    minHeight: 50,
-    maxHeight: 100,
-  },
-  sendButton: {
-    backgroundColor: colors.primary,
-    padding: 10,
-    borderRadius: 8,
-    marginLeft: 10,
-  },
-  messageItem: {
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: colors.secondary,
-  },
-  emergencyMessage: {
-    borderColor: colors.danger,
-    backgroundColor: '#ffe6e6',
-  },
-  messageHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 5,
-  },
-  messageSender: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: colors.textPrimary,
-  },
-  emergencyLabel: {
-    color: colors.danger,
-    fontWeight: 'bold',
-  },
-  messageDate: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  messageContent: {
-    fontSize: 16,
-    color: colors.textPrimary,
+    fontWeight: '600',
   },
 });
 

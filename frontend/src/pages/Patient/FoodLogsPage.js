@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Utensils, AlertCircle } from 'lucide-react';
+import { Utensils, AlertCircle, Plus } from 'lucide-react';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
 import FoodLog from '../../components/FoodLog';
@@ -10,6 +10,7 @@ const FoodLogsPage = () => {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showAddLog, setShowAddLog] = useState(false);
 
   useEffect(() => {
     const fetchLogs = async () => {
@@ -61,29 +62,49 @@ const FoodLogsPage = () => {
           <Utensils className="relative w-12 h-12 mx-auto mt-4 text-teal-500 animate-bounce-slow" />
         </div>
         {error && (
-          <div className="p-4 mb-6 text-center text-red-500 rounded-lg shadow-md bg-red-50">
+          <div className="p-4 mb-6 text-center text-red-500 rounded-lg shadow-md bg-red-50 animate-fade-in">
             <div className="flex items-center justify-center space-x-2">
               <AlertCircle className="w-5 h-5" />
               <p>{error}</p>
             </div>
           </div>
         )}
-        <FoodLog setLogs={setLogs} />
-        {logs.length > 0 && (
-          <div className="p-6 mt-8 bg-white shadow-lg rounded-xl">
-            <h3 className="mb-4 text-xl font-semibold text-teal-600">Recent Logs</h3>
-            <ul className="space-y-4">
-              {logs.map((log, index) => (
-                <li key={index} className="p-4 rounded-lg shadow-sm bg-teal-50">
-                  <span className="font-medium text-gray-800">
-                    {log.foodItem} - {log.quantity}
-                    {log.isFluid ? 'ml' : 'g'} ({new Date(log.date).toLocaleString()})
-                  </span>
-                </li>
-              ))}
-            </ul>
+        <div className="p-6 bg-white shadow-xl rounded-xl">
+          <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
+            <h2 className="text-2xl font-semibold text-teal-600">Your Food Logs</h2>
+            <button
+              onClick={() => setShowAddLog(true)}
+              className="flex items-center px-4 py-2 text-white bg-gradient-to-r from-teal-500 to-teal-700 rounded-full shadow-lg hover:from-teal-600 hover:to-teal-800 transition-all duration-300 hover:scale-105"
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Add New Log
+            </button>
           </div>
-        )}
+          <FoodLog setLogs={setLogs} showAddLog={showAddLog} setShowAddLog={setShowAddLog} />
+          {logs.length > 0 && (
+            <div className="mt-6">
+              <h3 className="mb-4 text-xl font-semibold text-teal-600">Recent Logs</h3>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {logs.map((log, index) => (
+                  <div key={index} className="p-4 bg-teal-50 border border-teal-100 rounded-xl shadow-md hover:shadow-xl transition-all duration-300">
+                    <span className="block text-gray-800">
+                      {log.foodItem} - {log.quantity} {log.isFluid ? 'ml' : 'g'}
+                    </span>
+                    <span className="block mt-1 text-sm text-gray-600">
+                      Carbs: {log.carbohydrates}g, Proteins: {log.proteins}g, Lipids: {log.lipids}g
+                    </span>
+                    <span className="block mt-1 text-sm text-gray-600">
+                      K: {log.potassium}mg, P: {log.phosphorus}mg, Na: {log.sodium}mg
+                    </span>
+                    <span className="block mt-2 text-xs text-gray-500">
+                      {new Date(log.date).toLocaleString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

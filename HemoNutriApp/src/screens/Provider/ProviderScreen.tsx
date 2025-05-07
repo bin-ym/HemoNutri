@@ -15,7 +15,6 @@ type RootStackParamList = {
   Login: undefined;
   Tabs: { role: string };
   ManagePatients: undefined;
-  ManageMealPlans: undefined;
   ProviderPatientDetail: { patientId: string };
   ProviderEducation: undefined;
 };
@@ -33,7 +32,7 @@ type TabParamList = {
   ProviderMealPlans: undefined;
 };
 
-// Combine navigation props for stack and tab navigation
+// Combine navigation props
 type NavigationProp = NativeStackNavigationProp<RootStackParamList> & BottomTabNavigationProp<TabParamList, 'Provider'>;
 
 type FoodLog = {
@@ -45,6 +44,15 @@ type FoodLog = {
   date: string;
 };
 
+type ScreenSection = {
+  id: string;
+  type: 'header' | 'overview' | 'logs' | 'quickActions';
+  content?: {
+    stats?: { patients: number; mealPlans: number };
+    logs?: FoodLog[];
+  };
+};
+
 const ProviderScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const [stats, setStats] = useState<{ patients: number; mealPlans: number }>({ patients: 0, mealPlans: 0 });
@@ -52,27 +60,28 @@ const ProviderScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const patientsResponse = await api.get('/api/provider/patients');
-        const mealPlansResponse = await api.get('/api/provider/meal-plans');
-        const logsResponse = await api.get('/api/provider/logs');
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const [patientsResponse, mealPlansResponse, logsResponse] = await Promise.all([
+        api.get('/api/provider/patients'),
+        api.get('/api/provider/meal-plans'),
+        api.get('/api/provider/logs'),
+      ]);
 
-        setStats({
-          patients: patientsResponse.data.length,
-          mealPlans: mealPlansResponse.data.length,
-        });
+      setStats({
+        patients: patientsResponse.data.length,
+        mealPlans: mealPlansResponse.data.length,
+      });
 
-        setRecentLogs(logsResponse.data.slice(0, 5).map((log: any) => {
-          console.log('Log entry:', log); // Debug the entire log entry
+      setRecentLogs(
+        logsResponse.data.slice(0, 5).map((log: any) => {
           let userIdData: string | { username: string } | undefined = log.userId;
           if (!log.userId) {
             console.warn(`Log with ID ${log._id} has no userId.`);
-            userIdData = undefined;
+            userIdData = { username: 'Unknown' };
           } else if (typeof log.userId === 'string') {
-            console.warn(`Log with ID ${log._id} has userId as string: ${log.userId}`);
             userIdData = log.userId;
           } else if (!log.userId.username) {
             console.warn(`Log with ID ${log._id} has userId without username:`, log.userId);
@@ -81,43 +90,28 @@ const ProviderScreen: React.FC = () => {
           return {
             id: log._id,
             userId: userIdData,
-            foodItem: log.foodItem,
-            quantity: log.quantity,
-            isFluid: log.isFluid,
-            date: log.date,
+            foodItem: log.foodItem || 'Unknown',
+            quantity: log.quantity || '0',
+            isFluid: log.isFluid || false,
+            date: log.date || new Date().toISOString(),
           };
-        }));
+        })
+      );
+    } catch (err: any) {
+      console.error('API Error:', err.message);
+      setError('Failed to load dashboard. Check your network or server.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        setError('');
-      } catch (err: any) {
-        console.error('Error fetching data:', err);
-        setError('Failed to load dashboard');
-      } finally {
-        setLoading(false);
-      }
-    };
+  useEffect(() => {
     fetchData();
   }, []);
 
-  const handleLogout = async () => {
-    await clearAuthData();
-    navigation.reset({
-      index: 0,
-      routes: [{ name: 'Login' }],
-    });
-  };
-
-  const handleManagePatients = () => {
-    navigation.navigate('Patients');
-  };
-
-  const handleManageMealPlans = () => {
-    navigation.navigate('ProviderMealPlans');
-  };
-
-  const handleAddResource = () => {
-    navigation.navigate('ProviderEducation');
-  };
+  const handleManagePatients = () => navigation.navigate('Patients');
+  const handleAddResource = () => navigation.navigate('ProviderEducation');
+  const handleRetry = () => fetchData();
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -138,6 +132,83 @@ const ProviderScreen: React.FC = () => {
     );
   };
 
+  const renderSection = ({ item }: { item: ScreenSection }) => {
+    switch (item.type) {
+      case 'header':
+        return (
+          <View style={styles.header}>
+            <Text style={styles.title}>Provider Dashboard</Text>
+            <Text style={styles.subtitle}>Monitor your patients and manage their nutrition.</Text>
+          </View>
+        );
+      case 'overview':
+        return (
+          <View style={styles.overviewContainer}>
+            <View style={styles.statCard}>
+              <View style={styles.statHeader}>
+                <Text style={styles.statTitle}>Patients</Text>
+                <Ionicons name="people-outline" size={24} color={colors.primary} />
+              </View>
+              <Text style={styles.statNumber}>{stats.patients}</Text>
+              <Button
+                title="View All Patients"
+                onPress={handleManagePatients}
+                type="clear"
+                titleStyle={styles.statButton}
+              />
+            </View>
+          </View>
+        );
+      case 'logs':
+        return (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Recent Food Logs</Text>
+              <Ionicons name="fast-food-outline" size={24} color={colors.primary} />
+            </View>
+            {recentLogs.length === 0 ? (
+              <Text style={styles.emptyText}>No recent logs.</Text>
+            ) : (
+              <FlatList
+                data={recentLogs}
+                renderItem={renderRecentLog}
+                keyExtractor={(item) => item.id}
+                style={styles.list}
+                nestedScrollEnabled
+              />
+            )}
+          </View>
+        );
+      case 'quickActions':
+        return (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              <Ionicons name="flash-outline" size={24} color={colors.primary} />
+            </View>
+            <View style={styles.quickActions}>
+              <Button
+                title="Manage Patients"
+                onPress={handleManagePatients}
+                buttonStyle={styles.actionButton}
+                containerStyle={styles.actionButtonContainer}
+                titleStyle={styles.actionButtonTitle}
+              />
+              <Button
+                title="Add Resource"
+                onPress={handleAddResource}
+                buttonStyle={styles.actionButton}
+                containerStyle={styles.actionButtonContainer}
+                titleStyle={styles.actionButtonTitle}
+              />
+            </View>
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -151,106 +222,33 @@ const ProviderScreen: React.FC = () => {
       <View style={styles.errorContainer}>
         <Ionicons name="alert-circle-outline" size={24} color={colors.danger} />
         <Text style={styles.errorText}>{error}</Text>
+        <Button
+          title="Retry"
+          onPress={handleRetry}
+          buttonStyle={styles.retryButton}
+          containerStyle={styles.retryButtonContainer}
+          titleStyle={styles.retryButtonTitle}
+        />
       </View>
     );
   }
 
+  const sections: ScreenSection[] = [
+    { id: '1', type: 'header' },
+    { id: '2', type: 'overview', content: { stats } },
+    { id: '3', type: 'logs', content: { logs: recentLogs } },
+    { id: '4', type: 'quickActions' },
+  ];
+
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Provider Dashboard</Text>
-        <Text style={styles.subtitle}>Monitor your patients and manage their nutrition.</Text>
-      </View>
-
-      {/* Overview Cards */}
-      <View style={styles.overviewContainer}>
-        <View style={styles.statCard}>
-          <View style={styles.statHeader}>
-            <Text style={styles.statTitle}>Patients</Text>
-            <Ionicons name="people-outline" size={24} color={colors.primary} />
-          </View>
-          <Text style={styles.statNumber}>{stats.patients}</Text>
-          <Button
-            title="View All Patients"
-            onPress={handleManagePatients}
-            type="clear"
-            titleStyle={styles.statButton}
-          />
-        </View>
-        <View style={styles.statCard}>
-          <View style={styles.statHeader}>
-            <Text style={styles.statTitle}>Meal Plans</Text>
-            <Ionicons name="list-outline" size={24} color={colors.primary} />
-          </View>
-          <Text style={styles.statNumber}>{stats.mealPlans}</Text>
-          <Button
-            title="See All Plans"
-            onPress={handleManageMealPlans}
-            type="clear"
-            titleStyle={styles.statButton}
-          />
-        </View>
-      </View>
-
-      {/* Recent Activity */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Food Logs</Text>
-          <Ionicons name="fast-food-outline" size={24} color={colors.primary} />
-        </View>
-        {recentLogs.length === 0 ? (
-          <Text style={styles.emptyText}>No recent logs.</Text>
-        ) : (
-          <FlatList
-            data={recentLogs}
-            renderItem={renderRecentLog}
-            keyExtractor={(item) => item.id}
-            style={styles.list}
-          />
-        )}
-      </View>
-
-      {/* Quick Actions */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <Ionicons name="flash-outline" size={24} color={colors.primary} />
-        </View>
-        <View style={styles.quickActions}>
-          <Button
-            title="Manage Patients"
-            onPress={handleManagePatients}
-            buttonStyle={styles.actionButton}
-            containerStyle={styles.actionButtonContainer}
-            titleStyle={styles.actionButtonTitle}
-          />
-          <Button
-            title="Manage Meal Plans"
-            onPress={handleManageMealPlans}
-            buttonStyle={styles.actionButton}
-            containerStyle={styles.actionButtonContainer}
-            titleStyle={styles.actionButtonTitle}
-          />
-          <Button
-            title="Add Resource"
-            onPress={handleAddResource}
-            buttonStyle={styles.actionButton}
-            containerStyle={styles.actionButtonContainer}
-            titleStyle={styles.actionButtonTitle}
-          />
-        </View>
-      </View>
-
-      {/* Logout Button */}
-      <Button
-        title="Logout"
-        onPress={handleLogout}
-        buttonStyle={[styles.button, styles.logoutButton]}
-        containerStyle={styles.buttonContainer}
-        titleStyle={styles.buttonTitle}
-      />
-    </View>
+    <FlatList
+      data={sections}
+      renderItem={renderSection}
+      keyExtractor={(item) => item.id}
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      ListFooterComponent={<View style={{ height: 20 }} />}
+    />
   );
 };
 
@@ -259,6 +257,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
     padding: 20,
+  },
+  contentContainer: {
+    paddingBottom: 20,
   },
   loadingContainer: {
     flex: 1,
@@ -281,6 +282,22 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: colors.danger,
     marginTop: 10,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  retryButtonContainer: {
+    width: '60%',
+    marginTop: 20,
+  },
+  retryButton: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingVertical: 12,
+  },
+  retryButtonTitle: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   header: {
     alignItems: 'center',
@@ -404,9 +421,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 12,
-  },
-  logoutButton: {
-    backgroundColor: colors.danger,
   },
   buttonTitle: {
     color: '#fff',

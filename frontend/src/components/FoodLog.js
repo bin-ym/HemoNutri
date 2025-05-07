@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Utensils, AlertCircle, PlusCircle } from 'lucide-react';
-import api from '../services/api'; // Adjust path if needed
+import api from '../services/api';
 
 const FoodLog = ({ setLogs }) => {
   const [food, setFood] = useState('');
@@ -8,19 +8,59 @@ const FoodLog = ({ setLogs }) => {
   const [fluid, setFluid] = useState('');
   const [error, setError] = useState('');
   const [isFluidMode, setIsFluidMode] = useState(false);
+  const [recommendedFoods, setRecommendedFoods] = useState([]);
+
+  useEffect(() => {
+    const fetchRecommendedFoods = async () => {
+      try {
+        const res = await api.get('/patient/meal-plan');
+        const allRecommended = [
+          ...(res.data.recommendedFoods.breakfast || []),
+          ...(res.data.recommendedFoods.lunch || []),
+          ...(res.data.recommendedFoods.dinner || []),
+        ];
+        setRecommendedFoods(allRecommended);
+      } catch (err) {
+        console.error('Failed to fetch recommended foods:', err);
+      }
+    };
+    fetchRecommendedFoods();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const numericQuantity = parseFloat(isFluidMode ? fluid : amount);
+      if (!food.trim() || !numericQuantity || numericQuantity <= 0) {
+        throw new Error('Please enter a valid food item and quantity');
+      }
+
+      // Find the selected recommended food, if any
+      const selectedFood = recommendedFoods.find((item) => item.name === food);
       const logData = {
         foodItem: food.trim(),
-        quantity: parseFloat(isFluidMode ? fluid : amount),
+        quantity: numericQuantity,
         isFluid: isFluidMode,
         date: new Date().toISOString(),
+        ...(selectedFood
+          ? {
+              carbohydrates: selectedFood.carbohydrates,
+              proteins: selectedFood.proteins,
+              lipids: selectedFood.lipids,
+              potassium: selectedFood.potassium || 0,
+              phosphorus: selectedFood.phosphorus || 0,
+              sodium: selectedFood.sodium || 0,
+            }
+          : {
+              carbohydrates: 0,
+              proteins: 0,
+              lipids: 0,
+              potassium: 0,
+              phosphorus: 0,
+              sodium: 0,
+            }),
       };
-      if (!logData.quantity || logData.quantity <= 0) {
-        throw new Error('Please enter a valid quantity');
-      }
+
       const res = await api.post('/patient/food-logs', logData);
       setLogs((prev) => [...prev, res.data]);
       setFood('');
@@ -54,14 +94,30 @@ const FoodLog = ({ setLogs }) => {
           <label className="block mb-2 text-sm font-semibold text-gray-700 transition-colors group-hover:text-teal-600">
             Food Item
           </label>
-          <input
-            type="text"
+          <select
             value={food}
             onChange={(e) => setFood(e.target.value)}
-            placeholder="e.g., Injera or Water"
             className="w-full p-3 pl-10 transition-all duration-200 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
             required
-          />
+          >
+            <option value="">Select a food item...</option>
+            {recommendedFoods.map((foodItem, index) => (
+              <option key={index} value={foodItem.name}>
+                {foodItem.name} (Carbs: {foodItem.carbohydrates}g, Proteins: {foodItem.proteins}g, Lipids: {foodItem.lipids}g per {foodItem.quantity}g)
+              </option>
+            ))}
+            <option value="custom">Custom Food Item</option>
+          </select>
+          {food === 'custom' && (
+            <input
+              type="text"
+              value={food === 'custom' ? '' : food}
+              onChange={(e) => setFood(e.target.value)}
+              placeholder="Enter custom food item"
+              className="mt-2 w-full p-3 pl-10 transition-all duration-200 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              required
+            />
+          )}
           <Utensils className="absolute w-5 h-5 text-teal-400 transition-colors left-3 top-10 group-hover:text-teal-600" />
         </div>
 

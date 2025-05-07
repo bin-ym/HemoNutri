@@ -13,11 +13,12 @@ import SettingsScreen from '../screens/Shared/SettingsScreen';
 import FoodLogsScreen from '../screens/Patient/FoodLogsScreen';
 import MealPlansScreen from '../screens/Patient/MealPlansScreen';
 import ManagePatientsScreen from '../screens/Provider/ManagePatientsScreen';
-import ManageMealPlansScreen from '../screens/Provider/ManageMealPlansScreen';
 import ProviderPatientDetailScreen from '../screens/Provider/ProviderPatientDetailScreen';
 import ProviderEducationScreen from '../screens/Provider/ProviderEducationScreen';
+import MessagesScreen from '../screens/Provider/MessagesScreen';
+import ConversationScreen from '../screens/Provider/ConversationScreen';
 import { getAuthData } from '../utils/auth';
-import { colors } from '../theme/colors';
+import { useColors, colors } from '../theme/colors';
 import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 
 type RootStackParamList = {
@@ -26,6 +27,8 @@ type RootStackParamList = {
   Tabs: { role: string };
   ProviderPatientDetail: { patientId: string };
   ProviderEducation: undefined;
+  Messages: undefined;
+  Conversation: { patientId: string }; // Added for conversation screen
 };
 
 type TabParamList = {
@@ -38,8 +41,8 @@ type TabParamList = {
   FoodLogs: undefined;
   MealPlans: undefined;
   Patients: undefined;
-  ProviderMealPlans: undefined;
-  ProviderEducationTab: undefined; // Added new tab
+  ProviderEducationTab: undefined;
+  Messages: undefined;
 };
 
 type IconName =
@@ -51,7 +54,8 @@ type IconName =
   | 'people'
   | 'fast-food'
   | 'list'
-  | 'book'; // Added for educational resources
+  | 'book'
+  | 'chatbox-outline';
 
 type ScreenOptionsProps = {
   route: RouteProp<TabParamList, keyof TabParamList>;
@@ -109,10 +113,10 @@ const RoleBasedTabNavigator: React.FC<{ role: string }> = ({ role }) => {
           iconName = 'fast-food';
         } else if (route.name === 'Patients') {
           iconName = 'list';
-        } else if (route.name === 'ProviderMealPlans') {
-          iconName = 'list';
         } else if (route.name === 'ProviderEducationTab') {
-          iconName = 'book'; // Icon for educational resources
+          iconName = 'book';
+        } else if (route.name === 'Messages') {
+          iconName = 'chatbox-outline';
         } else {
           iconName = 'home';
         }
@@ -193,19 +197,19 @@ const RoleBasedTabNavigator: React.FC<{ role: string }> = ({ role }) => {
             }}
           />
           <Tab.Screen
-            name="ProviderMealPlans"
-            component={ManageMealPlansScreen}
+            name="ProviderEducationTab"
+            component={ProviderEducationScreen}
             options={{
-              title: 'Meal Plans',
+              title: 'Education',
               headerStyle: { backgroundColor: colors.primary },
               headerTintColor: '#fff',
             }}
           />
           <Tab.Screen
-            name="ProviderEducationTab"
-            component={ProviderEducationScreen}
+            name="Messages"
+            component={MessagesScreen}
             options={{
-              title: 'Education',
+              title: 'Messages',
               headerStyle: { backgroundColor: colors.primary },
               headerTintColor: '#fff',
             }}
@@ -289,6 +293,24 @@ const AppNavigator: React.FC = () => {
             headerStyle: { backgroundColor: colors.primary },
             headerTintColor: '#fff',
           }}
+        />
+        <Stack.Screen
+          name="Messages"
+          component={MessagesScreen}
+          options={{
+            title: 'Messages',
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: '#fff',
+          }}
+        />
+        <Stack.Screen
+          name="Conversation"
+          component={ConversationScreen}
+          options={({ route }) => ({
+            title: `Conversation with ${route.params?.patientId ? 'Patient' : ''}`,
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: '#fff',
+          })}
         />
       </Stack.Navigator>
     </NavigationContainer>

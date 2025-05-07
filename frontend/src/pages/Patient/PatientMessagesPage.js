@@ -127,7 +127,7 @@ const PatientMessagesPage = () => {
         </div>
 
         {error && messages.length > 0 && (
-          <div className="p-4 mb-8 text-center text-red-600 rounded-lg shadow-md bg-red-50 animate-slide-down">
+          <div className="p-4 mb-8 text-center text-red-600 rounded-lg shadow-md bg-red-50 animate-fade-in">
             <div className="flex items-center justify-center space-x-2">
               <AlertCircle className="w-6 h-6" />
               <p className="text-lg font-medium">{error}</p>
@@ -136,7 +136,7 @@ const PatientMessagesPage = () => {
         )}
 
         <section className="mb-12">
-          <div className="p-6 transition-all duration-300 transform bg-white shadow-xl rounded-xl hover:shadow-2xl">
+          <div className="p-6 bg-white shadow-xl rounded-xl">
             <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
               <h2 className="text-2xl font-bold tracking-tight text-teal-700 animate-fade-in">New Message</h2>
               <MessageSquare className="text-teal-500 w-7 h-7 animate-pulse" />
@@ -146,31 +146,32 @@ const PatientMessagesPage = () => {
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
                 placeholder="Write your message here..."
-                className="w-full p-4 transition-all duration-200 border border-teal-200 rounded-lg resize-none bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+                className="w-full p-4 text-gray-700 bg-teal-50 border border-teal-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-300 resize-none"
                 rows="4"
                 required
               />
               <button
                 type="submit"
-                className="flex items-center justify-center w-full p-3 space-x-2 text-white transition-all duration-300 transform bg-teal-600 rounded-lg shadow-md hover:bg-teal-700 hover:scale-105 active:scale-95"
+                className="flex items-center justify-center w-full px-6 py-3 space-x-2 text-white bg-gradient-to-r from-teal-500 to-teal-700 rounded-xl shadow-md hover:from-teal-600 hover:to-teal-800 transition-all duration-300 hover:scale-105"
               >
                 <Send className="w-5 h-5" />
-                <span className="font-semibold">Send</span>
+                <span className="font-semibold">Send Message</span>
               </button>
             </form>
           </div>
         </section>
 
         <section className="mb-12">
-          <div className="p-6 transition-all duration-300 transform bg-white shadow-xl rounded-xl hover:shadow-2xl">
+          <div className="p-6 bg-white shadow-xl rounded-xl">
             <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
               <h2 className="text-2xl font-bold tracking-tight text-teal-700 animate-fade-in">Conversation</h2>
               <Inbox className="text-teal-500 w-7 h-7 animate-pulse" />
             </div>
             {messages.length === 0 ? (
-              <p className="flex items-center justify-center text-lg text-center text-gray-600">
-                <MessageSquare className="w-6 h-6 mr-2" /> No messages yet
-              </p>
+              <div className="py-12 text-center">
+                <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                <p className="text-lg text-gray-500">No messages yet</p>
+              </div>
             ) : (
               <ul className="space-y-6">
                 {messages.map((msg) => {
@@ -185,7 +186,7 @@ const PatientMessagesPage = () => {
                   return (
                     <li
                       key={msg._id}
-                      className={`p-4 bg-teal-50 border ${msg.isEmergency ? 'border-red-300' : 'border-teal-200'} rounded-lg shadow-md hover:bg-teal-100 transition-all duration-300`}
+                      className={`p-4 rounded-xl shadow-md transition-all duration-300 ${msg.isEmergency ? 'border-red-300 bg-red-50' : 'border-teal-200 bg-teal-50 hover:bg-teal-100'}`}
                     >
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
@@ -214,11 +215,11 @@ const PatientMessagesPage = () => {
                               value={replyContent[msg._id] || ''}
                               onChange={(e) => setReplyContent({ ...replyContent, [msg._id]: e.target.value })}
                               placeholder="Reply to this message..."
-                              className="flex-1 p-3 transition-all duration-200 bg-white border border-teal-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                              className="flex-1 p-3 text-gray-700 bg-white border border-teal-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-300"
                             />
                             <button
                               type="submit"
-                              className="p-3 text-white transition-all duration-300 bg-teal-600 rounded-lg shadow-md hover:bg-teal-700 hover:scale-105"
+                              className="p-3 text-white bg-teal-600 rounded-xl shadow-md hover:bg-teal-700 transition-all duration-300 hover:scale-105"
                             >
                               <Send className="w-5 h-5" />
                             </button>

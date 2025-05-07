@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import { MessageSquare, Bell, LogOut, Database } from 'lucide-react';
 import api from '../services/api';
 
-const Navbar = ({ role }) => {
+const Navbar = ({ role, unreadCount, totalMessages }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const [users, setUsers] = useState([]);
-  const [newMessages, setNewMessages] = useState(0);
+  const [newMessages, setNewMessages] = useState(totalMessages || 0);
   const [notificationForm, setNotificationForm] = useState({
     title: '',
     message: '',
@@ -35,10 +35,10 @@ const Navbar = ({ role }) => {
           const endpoint = role === 'patient' ? '/patient/messages' : '/provider/messages';
           const res = await api.get(endpoint);
           const userId = localStorage.getItem('userId');
-          const unread = res.data.filter(
-            (msg) => msg.recipient._id === userId && !msg.read
-          ).length;
-          setNewMessages(unread);
+          const receivedMessages = res.data.filter(
+            (msg) => msg.recipient?._id === userId
+          );
+          setNewMessages(receivedMessages.length);
         }
       } catch (err) {
         console.error('Fetch data error:', err.response?.data || err.message);
@@ -46,12 +46,14 @@ const Navbar = ({ role }) => {
       }
     };
 
-    if (isAuthenticated) {
+    if (isAuthenticated && !totalMessages) {
       fetchData();
       const interval = setInterval(fetchData, 30000);
       return () => clearInterval(interval);
+    } else if (totalMessages) {
+      setNewMessages(totalMessages);
     }
-  }, [role, isAuthenticated]);
+  }, [role, isAuthenticated, totalMessages]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -126,14 +128,12 @@ const Navbar = ({ role }) => {
             <>
               <NavButton label="Dashboard" icon="📊" path="/provider" />
               <NavButton label="Patients" icon="👥" path="/provider/patients" />
-              <NavButton label="Logs" icon="📝" path="/provider/logs" />
               <NavButtonWithBadge
                 label="Messages"
                 icon={<MessageSquare className="w-4 h-4" />}
                 path="/provider/messages"
                 badge={newMessages}
               />
-              <NavButton label="Meal Plans" icon="📋" path="/provider/meal-plans" />
               <NavButton label="Education" icon="📚" path="/provider/education" />
             </>
           )}

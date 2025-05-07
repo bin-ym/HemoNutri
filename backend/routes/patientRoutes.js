@@ -17,28 +17,104 @@ router.get('/notifications', auth(['patient', 'provider']), patientController.ge
 // Meal Plan
 router.get('/meal-plan', auth(['patient']), async (req, res) => {
   try {
-    const mealPlan = await MealPlan.findOne({ patientId: req.user.id });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const mealPlan = await MealPlan.findOne({ patientId: req.user.id, date: today });
     if (!mealPlan) {
-      return res.json({ breakfast: [], lunch: [], dinner: [] });
+      return res.json({
+        breakfast: { carbohydrates: 0, proteins: 0, lipids: 0 },
+        lunch: { carbohydrates: 0, proteins: 0, lipids: 0 },
+        dinner: { carbohydrates: 0, proteins: 0, lipids: 0 },
+        hemodialysisLimits: { potassium: 0, phosphorus: 0, sodium: 0, fluid: 0 },
+        consumed: { breakfast: false, lunch: false, dinner: false },
+        recommendedFoods: { breakfast: [], lunch: [], dinner: [] },
+      });
     }
     const sanitizedPlan = {
-      breakfast: mealPlan.breakfast.map(item => ({
-        ...item.toObject(),
-        quantity: Number(item.quantity),
-      })),
-      lunch: mealPlan.lunch.map(item => ({
-        ...item.toObject(),
-        quantity: Number(item.quantity),
-      })),
-      dinner: mealPlan.dinner.map(item => ({
-        ...item.toObject(),
-        quantity: Number(item.quantity),
-      })),
+      breakfast: {
+        carbohydrates: Number(mealPlan.breakfast.carbohydrates) || 0,
+        proteins: Number(mealPlan.breakfast.proteins) || 0,
+        lipids: Number(mealPlan.breakfast.lipids) || 0,
+      },
+      lunch: {
+        carbohydrates: Number(mealPlan.lunch.carbohydrates) || 0,
+        proteins: Number(mealPlan.lunch.proteins) || 0,
+        lipids: Number(mealPlan.lunch.lipids) || 0,
+      },
+      dinner: {
+        carbohydrates: Number(mealPlan.dinner.carbohydrates) || 0,
+        proteins: Number(mealPlan.dinner.proteins) || 0,
+        lipids: Number(mealPlan.dinner.lipids) || 0,
+      },
+      hemodialysisLimits: {
+        potassium: Number(mealPlan.hemodialysisLimits.potassium) || 0,
+        phosphorus: Number(mealPlan.hemodialysisLimits.phosphorus) || 0,
+        sodium: Number(mealPlan.hemodialysisLimits.sodium) || 0,
+        fluid: Number(mealPlan.hemodialysisLimits.fluid) || 0,
+      },
+      consumed: mealPlan.consumed || { breakfast: false, lunch: false, dinner: false },
+      recommendedFoods: mealPlan.recommendedFoods || { breakfast: [], lunch: [], dinner: [] },
     };
     res.json(sanitizedPlan);
   } catch (err) {
     console.error('Meal plan fetch error:', err.stack);
-    res.status(500).json({ error: 'Server error' });
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+});
+
+// Mark a meal as consumed
+router.put('/meal-plan/consume', auth(['patient']), async (req, res) => {
+  const { mealType, consumed } = req.body; // mealType: 'breakfast', 'lunch', or 'dinner'
+  try {
+    if (!['breakfast', 'lunch', 'dinner'].includes(mealType)) {
+      return res.status(400).json({ error: 'Invalid meal type' });
+    }
+    if (typeof consumed !== 'boolean') {
+      return res.status(400).json({ error: 'Consumed must be a boolean' });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const mealPlan = await MealPlan.findOne({ patientId: req.user.id, date: today });
+    if (!mealPlan) {
+      return res.status(404).json({ error: 'No meal plan found for today' });
+    }
+
+    mealPlan.consumed[mealType] = consumed;
+    mealPlan.updatedAt = new Date();
+    await mealPlan.save();
+
+    const sanitizedPlan = {
+      breakfast: {
+        carbohydrates: Number(mealPlan.breakfast.carbohydrates) || 0,
+        proteins: Number(mealPlan.breakfast.proteins) || 0,
+        lipids: Number(mealPlan.breakfast.lipids) || 0,
+      },
+      lunch: {
+        carbohydrates: Number(mealPlan.lunch.carbohydrates) || 0,
+        proteins: Number(mealPlan.lunch.proteins) || 0,
+        lipids: Number(mealPlan.lunch.lipids) || 0,
+      },
+      dinner: {
+        carbohydrates: Number(mealPlan.dinner.carbohydrates) || 0,
+        proteins: Number(mealPlan.dinner.proteins) || 0,
+        lipids: Number(mealPlan.dinner.lipids) || 0,
+      },
+      hemodialysisLimits: {
+        potassium: Number(mealPlan.hemodialysisLimits.potassium) || 0,
+        phosphorus: Number(mealPlan.hemodialysisLimits.phosphorus) || 0,
+        sodium: Number(mealPlan.hemodialysisLimits.sodium) || 0,
+        fluid: Number(mealPlan.hemodialysisLimits.fluid) || 0,
+      },
+      consumed: mealPlan.consumed,
+      recommendedFoods: mealPlan.recommendedFoods || { breakfast: [], lunch: [], dinner: [] },
+    };
+    res.json(sanitizedPlan);
+  } catch (err) {
+    console.error('Meal plan consumption update error:', err.stack);
+    res.status(500).json({ error: 'Server error', details: err.message });
   }
 });
 
@@ -50,10 +126,13 @@ router.post('/message', auth(['patient']), async (req, res) => {
     const patient = await User.findById(req.user.id);
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
     if (!patient.provider) return res.status(400).json({ error: 'No provider assigned' });
+    const provider = await User.findById(patient.provider);
     const message = new Message({
       sender: req.user.id,
       recipient: patient.provider,
       content,
+      patientUsername: patient.username,
+      providerUsername: provider.username,
     });
     await message.save();
     console.log('Patient message saved:', message.toObject());
@@ -121,11 +200,14 @@ router.post('/emergency', auth(['patient']), async (req, res) => {
     const patient = await User.findById(req.user.id);
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
     if (!patient.provider) return res.status(400).json({ error: 'No provider assigned' });
+    const provider = await User.findById(patient.provider);
     const emergencyMessage = new Message({
       sender: req.user.id,
       recipient: patient.provider,
       content: message?.trim() || 'Urgent: Patient needs immediate assistance!',
       isEmergency: true,
+      patientUsername: patient.username,
+      providerUsername: provider.username,
     });
     await emergencyMessage.save();
     console.log('Emergency message saved:', emergencyMessage.toObject());

@@ -1,236 +1,114 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import api from "../../services/api";
-import Navbar from "../../components/Navbar";
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Utensils, AlertCircle } from 'lucide-react';
+import api from '../../services/api';
+import Navbar from '../../components/Navbar';
 
 const ProviderMealPlansPage = () => {
-  const [mealPlans, setMealPlans] = useState([]);
-  const [patients, setPatients] = useState([]);
-  const [selectedPatient, setSelectedPatient] = useState("");
-  const [mealPlanForm, setMealPlanForm] = useState({
-    breakfast: [{ name: "", quantity: "", isFluid: false }],
-    lunch: [{ name: "", quantity: "", isFluid: false }],
-    dinner: [{ name: "", quantity: "", isFluid: false }],
-  });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const [mealPlans, setMealPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchMealPlans = async () => {
       try {
-        const token = localStorage.getItem("token");
-        if (!token || localStorage.getItem("role") !== "provider") {
-          navigate("/login");
+        const token = localStorage.getItem('token');
+        const role = localStorage.getItem('role');
+        if (!token || role !== 'provider') {
+          navigate('/login');
           return;
         }
-        const [plansRes, patientsRes] = await Promise.all([
-          api.get("/provider/meal-plans"),
-          api.get("/provider/patients"),
-        ]);
-        setMealPlans(Array.isArray(plansRes.data) ? plansRes.data : []);
-        setPatients(Array.isArray(patientsRes.data) ? patientsRes.data : []);
+        const res = await api.get('/provider/meal-plans');
+        setMealPlans(Array.isArray(res.data) ? res.data : []);
+        setError('');
       } catch (err) {
-        console.error("Fetch data error:", err.response?.data || err.message);
-        setError(err.response?.data?.error || "Failed to load meal plans");
+        setError(err.response?.data?.error || 'Failed to load meal plans');
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
+    fetchMealPlans();
   }, [navigate]);
 
-  const handleMealPlanChange = (mealType, index, field, value) => {
-    setMealPlanForm((prev) => {
-      const updatedMeal = [...prev[mealType]];
-      updatedMeal[index] = { ...updatedMeal[index], [field]: value };
-      return { ...prev, [mealType]: updatedMeal };
-    });
-  };
-
-  const addMealItem = (mealType) => {
-    setMealPlanForm((prev) => ({
-      ...prev,
-      [mealType]: [
-        ...prev[mealType],
-        { name: "", quantity: "", isFluid: false },
-      ],
-    }));
-  };
-
-  const handleMealPlanSubmit = async (e) => {
-    e.preventDefault();
-    if (!selectedPatient) return setError("Select a patient first");
-    try {
-      const res = await api.post(
-        `/provider/meal-plan/${selectedPatient}`,
-        mealPlanForm
-      );
-      setMealPlans([...mealPlans, res.data]);
-      setMealPlanForm({
-        breakfast: [{ name: "", quantity: "", isFluid: false }],
-        lunch: [{ name: "", quantity: "", isFluid: false }],
-        dinner: [{ name: "", quantity: "", isFluid: false }],
-      });
-      setError("");
-      alert("Meal plan saved successfully!");
-    } catch (err) {
-      console.error(
-        "Meal plan submit error:",
-        err.response?.data || err.message
-      );
-      setError(err.response?.data?.error || "Failed to save meal plan");
-    }
-  };
-
-  if (loading)
-    return <p className="mt-10 text-center">Loading meal plans...</p>;
-  if (error && !mealPlans.length)
-    return <p className="mt-10 text-center text-red-500">{error}</p>;
+  if (loading) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gradient-to-b from-teal-50 to-gray-100">
+        <Navbar role="provider" />
+        <div className="flex items-center justify-center flex-grow">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 border-4 border-teal-600 rounded-full border-t-transparent animate-spin"></div>
+            <p className="text-lg text-teal-700 animate-pulse">Loading meal plans...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-teal-50 to-gray-100">
       <Navbar role="provider" />
       <div className="flex-grow max-w-6xl p-6 mx-auto">
-        <h1 className="mb-6 text-3xl font-bold text-teal-600">Meal Plans</h1>
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div className="p-6 bg-white rounded-lg shadow-md">
-            <h2 className="mb-4 text-xl font-semibold text-gray-800">
-              Current Meal Plans
-            </h2>
+        <div className="relative mb-12 text-center">
+          <div className="absolute inset-0 h-32 bg-teal-600 rounded-b-full -top-8 opacity-10 blur-2xl"></div>
+          <h1 className="relative text-4xl font-extrabold text-teal-700 md:text-5xl animate-fade-in">
+            Meal Plans
+          </h1>
+          <p className="relative max-w-2xl mx-auto mt-3 text-lg text-gray-600">
+            Manage meal plans for your patients.
+          </p>
+          <Utensils className="relative w-12 h-12 mx-auto mt-4 text-teal-500 animate-bounce-slow" />
+        </div>
+        {error && (
+          <div className="p-4 mb-6 text-center text-red-500 rounded-lg shadow-md bg-red-50">
+            <div className="flex items-center justify-center space-x-2">
+              <AlertCircle className="w-5 h-5" />
+              <p>{error}</p>
+            </div>
+          </div>
+        )}
+        <section>
+          <div className="p-6 transition-all duration-300 transform bg-white shadow-xl rounded-xl hover:shadow-2xl">
+            <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
+              <h2 className="text-2xl font-bold tracking-tight text-teal-700 animate-fade-in">Patient Meal Plans</h2>
+              <Utensils className="text-teal-500 w-7 h-7 animate-pulse" />
+            </div>
             {mealPlans.length === 0 ? (
-              <p className="text-gray-500">No meal plans set yet.</p>
+              <p className="flex items-center justify-center text-lg text-center text-gray-600">
+                <Utensils className="w-6 h-6 mr-2" /> No meal plans available
+              </p>
             ) : (
-              <ul className="space-y-4">
+              <ul className="space-y-6">
                 {mealPlans.map((plan) => (
-                  <li key={plan._id} className="p-3 bg-gray-100 rounded">
-                    <p>
-                      <strong>Patient:</strong> {plan.patientUsername}
-                    </p>
-                    <p>
-                      <strong>Breakfast:</strong>{" "}
-                      {plan.breakfast
-                        .map(
-                          (b) =>
-                            `${b.name} (${b.quantity}${b.isFluid ? "ml" : "g"})`
-                        )
-                        .join(", ")}
-                    </p>
-                    <p>
-                      <strong>Lunch:</strong>{" "}
-                      {plan.lunch
-                        .map(
-                          (l) =>
-                            `${l.name} (${l.quantity}${l.isFluid ? "ml" : "g"})`
-                        )
-                        .join(", ")}
-                    </p>
-                    <p>
-                      <strong>Dinner:</strong>{" "}
-                      {plan.dinner
-                        .map(
-                          (d) =>
-                            `${d.name} (${d.quantity}${d.isFluid ? "ml" : "g"})`
-                        )
-                        .join(", ")}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Updated: {new Date(plan.updatedAt).toLocaleString()}
-                    </p>
+                  <li
+                    key={plan._id} // Use meal plan's unique _id, not patientId
+                    className="p-4 transition-all duration-300 border border-teal-200 rounded-lg shadow-md bg-teal-50 hover:bg-teal-100"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-700">
+                        Patient: {plan.patientId?.username || 'Unknown'}
+                      </span>
+                      <div>
+                        <button
+                          onClick={() => navigate(`/provider/patient/${plan.patientId?._id}`)}
+                          className="px-3 py-1 text-sm text-white bg-teal-600 rounded-md hover:bg-teal-700"
+                        >
+                          View Details
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-sm text-gray-600">
+                      <p>Breakfast: {plan.breakfast.carbohydrates}g Carbs, {plan.breakfast.proteins}g Proteins, {plan.breakfast.lipids}g Lipids</p>
+                      <p>Lunch: {plan.lunch.carbohydrates}g Carbs, {plan.lunch.proteins}g Proteins, {plan.lunch.lipids}g Lipids</p>
+                      <p>Dinner: {plan.dinner.carbohydrates}g Carbs, {plan.dinner.proteins}g Proteins, {plan.dinner.lipids}g Lipids</p>
+                      <p>Hemodialysis Limits: {plan.hemodialysisLimits.potassium}mg Potassium, {plan.hemodialysisLimits.phosphorus}mg Phosphorus, {plan.hemodialysisLimits.sodium}mg Sodium, {plan.hemodialysisLimits.fluid}ml Fluid</p>
+                    </div>
                   </li>
                 ))}
               </ul>
             )}
           </div>
-          <div className="p-6 bg-white rounded-lg shadow-md">
-            <h2 className="mb-4 text-xl font-semibold text-gray-800">
-              Set New Meal Plan
-            </h2>
-            {error && <p className="mb-4 text-red-500">{error}</p>}
-            <form onSubmit={handleMealPlanSubmit} className="space-y-4">
-              <select
-                value={selectedPatient}
-                onChange={(e) => setSelectedPatient(e.target.value)}
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
-              >
-                <option value="">Select Patient</option>
-                {patients.map((patient) => (
-                  <option key={patient._id} value={patient._id}>
-                    {patient.username}
-                  </option>
-                ))}
-              </select>
-              {["breakfast", "lunch", "dinner"].map((mealType) => (
-                <div key={mealType}>
-                  <h3 className="mb-2 text-lg font-medium capitalize">
-                    {mealType}
-                  </h3>
-                  {mealPlanForm[mealType].map((item, index) => (
-                    <div key={index} className="flex mb-2 space-x-2">
-                      <input
-                        type="text"
-                        value={item.name}
-                        onChange={(e) =>
-                          handleMealPlanChange(
-                            mealType,
-                            index,
-                            "name",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Food/Drink Name"
-                        className="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      />
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.quantity}
-                        onChange={(e) =>
-                          handleMealPlanChange(
-                            mealType,
-                            index,
-                            "quantity",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Quantity"
-                        className="w-24 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      />
-                      <select
-                        value={item.isFluid}
-                        onChange={(e) =>
-                          handleMealPlanChange(
-                            mealType,
-                            index,
-                            "isFluid",
-                            e.target.value === "true"
-                          )
-                        }
-                        className="w-24 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
-                      >
-                        <option value="false">g</option>
-                        <option value="true">ml</option>
-                      </select>
-                    </div>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => addMealItem(mealType)}
-                    className="mb-2 text-teal-500 hover:underline"
-                  >
-                    + Add Item
-                  </button>
-                </div>
-              ))}
-              <button
-                type="submit"
-                className="w-full p-2 text-white bg-teal-500 rounded hover:bg-teal-600"
-              >
-                Save Meal Plan
-              </button>
-            </form>
-          </div>
-        </div>
+        </section>
       </div>
     </div>
   );
