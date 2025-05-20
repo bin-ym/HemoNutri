@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../api/api';
-import { colors } from '../../theme/colors';
+import { useColors } from '../../theme/ThemeContext';
 
 type RootStackParamList = {
   Home: undefined;
@@ -15,7 +15,7 @@ type RootStackParamList = {
   ProviderPatientDetail: { patientId: string };
   ProviderEducation: undefined;
   Messages: undefined;
-  Conversation: { patientId: string }; // Added for conversation screen
+  Conversation: { userId: string; username: string; role: string };
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Messages'>;
@@ -31,6 +31,7 @@ const MessagesScreen: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const colors = useColors();
 
   useEffect(() => {
     const fetchPatients = async () => {
@@ -39,13 +40,13 @@ const MessagesScreen: React.FC = () => {
         const response = await api.get('/api/provider/patients');
         setPatients(response.data.map((p: any) => ({
           id: p._id,
-          username: p.username,
-          email: p.email,
+          username: p.username || 'Unknown Patient',
+          email: p.email || 'No email provided',
         })));
         setError('');
       } catch (err: any) {
         console.error('Error fetching patients:', err);
-        setError('Failed to load patients');
+        setError(err.response?.data?.error || 'Failed to load patients');
       } finally {
         setLoading(false);
       }
@@ -55,12 +56,13 @@ const MessagesScreen: React.FC = () => {
 
   const renderPatient = ({ item }: { item: Patient }) => (
     <TouchableOpacity
-      style={styles.patientItem}
-      onPress={() => navigation.navigate('Conversation', { patientId: item.id })}
+      style={[styles.patientItem, { borderColor: colors.secondary, backgroundColor: colors.background }]}
+      onPress={() => navigation.navigate('Conversation', { userId: item.id, username: item.username, role: 'patient' })}
+      accessibilityLabel={`Open conversation with ${item.username}`}
     >
       <View style={styles.patientInfo}>
-        <Text style={styles.patientName}>{item.username}</Text>
-        <Text style={styles.patientEmail}>{item.email}</Text>
+        <Text style={[styles.patientName, { color: colors.primary }]}>{item.username}</Text>
+        <Text style={[styles.patientEmail, { color: colors.textSecondary }]}>{item.email}</Text>
       </View>
       <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
     </TouchableOpacity>
@@ -68,32 +70,40 @@ const MessagesScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading patients...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Ionicons name="refresh-circle" size={40} color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading patients...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Messages</Text>
-        <Text style={styles.subtitle}>Select a patient to view messages.</Text>
+        <Text style={[styles.title, { color: colors.primary }]}>Messages</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Select a patient to view messages.</Text>
       </View>
 
       {error && (
-        <View style={styles.errorMessage}>
+        <View style={[styles.errorMessage, { backgroundColor: colors.errorBackground }]}>
           <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
         </View>
       )}
 
-      <FlatList
-        data={patients}
-        renderItem={renderPatient}
-        keyExtractor={(item) => item.id}
-        style={styles.list}
-      />
+      {patients.length === 0 && !error ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="people-outline" size={40} color={colors.textSecondary} />
+          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No patients assigned to you yet.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={patients}
+          renderItem={renderPatient}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+        />
+      )}
     </View>
   );
 };
@@ -101,30 +111,37 @@ const MessagesScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
     padding: 20,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
   },
   loadingText: {
     fontSize: 18,
-    color: colors.textSecondary,
+    marginTop: 10,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  emptyText: {
+    fontSize: 16,
+    marginTop: 10,
+    textAlign: 'center',
   },
   errorMessage: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffe6e6',
     padding: 10,
     borderRadius: 8,
     marginBottom: 20,
   },
   errorText: {
     fontSize: 16,
-    color: colors.danger,
     marginLeft: 10,
   },
   header: {
@@ -134,12 +151,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: colors.primary,
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: colors.textSecondary,
     textAlign: 'center',
   },
   list: {
@@ -148,12 +163,10 @@ const styles = StyleSheet.create({
   patientItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: colors.secondary,
     justifyContent: 'space-between',
   },
   patientInfo: {
@@ -162,12 +175,10 @@ const styles = StyleSheet.create({
   patientName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.primary,
     marginBottom: 5,
   },
   patientEmail: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
 });
 

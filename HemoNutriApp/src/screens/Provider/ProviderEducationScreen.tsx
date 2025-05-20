@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Alert, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, Alert, Linking } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../api/api';
-import { colors } from '../../theme/colors';
+import { useColors } from '../../theme/ThemeContext';
 
-// Define the navigation stack param list
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
@@ -32,6 +31,7 @@ const ProviderEducationScreen: React.FC = () => {
   const [newResource, setNewResource] = useState({ title: '', description: '', url: '' });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const colors = useColors();
 
   useEffect(() => {
     const fetchResources = async () => {
@@ -74,103 +74,108 @@ const ProviderEducationScreen: React.FC = () => {
   };
 
   const renderResource = ({ item }: { item: Resource }) => (
-    <View style={styles.resourceCard}>
+    <View style={[styles.resourceCard, { backgroundColor: colors.background, shadowColor: '#000' }]}>
       <View style={styles.resourceHeader}>
-        <Text style={styles.resourceTitle}>{item.title}</Text>
+        <Text style={[styles.resourceTitle, { color: colors.primary }]}>{item.title}</Text>
         <Ionicons name="book-outline" size={20} color={colors.primary} />
       </View>
-      <Text style={styles.resourceDescription}>{item.description}</Text>
+      <Text style={[styles.resourceDescription, { color: colors.textSecondary }]}>{item.description}</Text>
       <TouchableOpacity
         onPress={() => Linking.openURL(item.url)}
-        style={styles.resourceLinkButton}
+        style={[styles.resourceLinkButton, { backgroundColor: colors.primary + '10' }]}
+        accessibilityLabel={`View resource: ${item.title}`}
       >
         <Ionicons name="link-outline" size={16} color={colors.primary} style={styles.linkIcon} />
-        <Text style={styles.resourceLinkText}>View Resource</Text>
+        <Text style={[styles.resourceLinkText, { color: colors.primary }]}>View Resource</Text>
       </TouchableOpacity>
     </View>
   );
 
   const renderHeader = () => (
     <>
-      <View style={styles.header}>
-        <Text style={styles.title}>Educational Resources</Text>
-        <Text style={styles.subtitle}>Share valuable knowledge with your patients</Text>
+      <View style={[styles.header, { backgroundColor: colors.background, shadowColor: '#000' }]}>
+        <Text style={[styles.title, { color: colors.primary }]}>Educational Resources</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Share valuable knowledge with your patients</Text>
       </View>
 
       {error && (
-        <View style={styles.errorMessage}>
+        <View style={[styles.errorMessage, { backgroundColor: colors.errorBackground }]}>
           <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
         </View>
       )}
 
-      <View style={styles.formCard}>
+      <View style={[styles.formCard, { backgroundColor: colors.background, shadowColor: '#000' }]}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Add New Resource</Text>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>Add New Resource</Text>
           <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
         </View>
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { borderColor: colors.secondary, backgroundColor: colors.secondary }]}>
           <Ionicons name="pencil-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: colors.textPrimary }]}
             placeholder="Resource Title"
             placeholderTextColor={colors.textSecondary}
             value={newResource.title}
             onChangeText={(text) => setNewResource({ ...newResource, title: text })}
+            accessibilityLabel="Resource title input"
           />
         </View>
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { borderColor: colors.secondary, backgroundColor: colors.secondary }]}>
           <Ionicons name="document-text-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
           <TextInput
-            style={[styles.input, styles.descriptionInput]}
+            style={[styles.input, styles.descriptionInput, { color: colors.textPrimary }]}
             placeholder="Brief description of the resource"
             placeholderTextColor={colors.textSecondary}
             value={newResource.description}
             onChangeText={(text) => setNewResource({ ...newResource, description: text })}
             multiline
+            accessibilityLabel="Resource description input"
           />
         </View>
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { borderColor: colors.secondary, backgroundColor: colors.secondary }]}>
           <Ionicons name="link-outline" size={20} color={colors.textSecondary} style={styles.inputIcon} />
           <TextInput
-            style={styles.input}
+            style={[styles.input, { color: colors.textPrimary }]}
             placeholder="https://example.com/resource"
             placeholderTextColor={colors.textSecondary}
             value={newResource.url}
             onChangeText={(text) => setNewResource({ ...newResource, url: text })}
             keyboardType="url"
+            accessibilityLabel="Resource URL input"
           />
         </View>
         <TouchableOpacity
-          style={styles.submitButton}
+          style={[styles.submitButton, { backgroundColor: colors.primary, shadowColor: '#000' }]}
           onPress={handleResourceSubmit}
           activeOpacity={0.8}
+          accessibilityLabel="Add resource button"
         >
           <Text style={styles.submitButtonText}>Add Resource</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Your Resources</Text>
+        <Text style={[styles.sectionTitle, { color: colors.primary }]}>Your Resources</Text>
         <Ionicons name="library-outline" size={24} color={colors.primary} />
       </View>
       {resources.length === 0 && (
-        <Text style={styles.emptyText}>No resources available yet. Add one above!</Text>
+        <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No resources available yet. Add one above!</Text>
       )}
     </>
   );
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading resources...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading resources...</Text>
       </View>
     );
   }
 
   return (
     <FlatList
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       data={resources}
       renderItem={renderResource}
       keyExtractor={(item) => item.id}
@@ -184,7 +189,6 @@ const ProviderEducationScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   flatListContent: {
     padding: 20,
@@ -194,20 +198,16 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
   },
   loadingText: {
     fontSize: 18,
-    color: colors.textSecondary,
     fontWeight: '500',
   },
   header: {
-    backgroundColor: '#fff',
     padding: 20,
     borderRadius: 12,
     marginBottom: 20,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -216,23 +216,19 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: colors.primary,
     marginBottom: 8,
   },
   subtitle: {
     fontSize: 16,
-    color: colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
   },
   errorMessage: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffe6e6',
     padding: 12,
     borderRadius: 12,
     marginBottom: 20,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -240,16 +236,13 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: colors.danger,
     marginLeft: 10,
     fontWeight: '500',
   },
   formCard: {
-    backgroundColor: '#fff',
     padding: 15,
     borderRadius: 12,
     marginBottom: 20,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -264,15 +257,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: '600',
-    color: colors.primary,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#ddd',
     marginBottom: 15,
     paddingHorizontal: 10,
   },
@@ -283,7 +273,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 12,
     fontSize: 16,
-    color: colors.textPrimary,
     backgroundColor: 'transparent',
   },
   descriptionInput: {
@@ -292,11 +281,9 @@ const styles = StyleSheet.create({
     paddingTop: 12,
   },
   submitButton: {
-    backgroundColor: colors.primary,
     paddingVertical: 14,
     borderRadius: 12,
     alignItems: 'center',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -308,11 +295,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   resourceCard: {
-    backgroundColor: '#fff',
     padding: 15,
     borderRadius: 12,
     marginBottom: 15,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -327,18 +312,15 @@ const styles = StyleSheet.create({
   resourceTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.primary,
   },
   resourceDescription: {
     fontSize: 14,
-    color: colors.textSecondary,
     marginBottom: 10,
     lineHeight: 20,
   },
   resourceLinkButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.primary + '10', // Lightened primary color
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
@@ -349,12 +331,10 @@ const styles = StyleSheet.create({
   },
   resourceLinkText: {
     fontSize: 14,
-    color: colors.primary,
     fontWeight: '500',
   },
   emptyText: {
     fontSize: 16,
-    color: colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
     marginVertical: 20,

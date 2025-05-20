@@ -5,6 +5,7 @@ export const storeAuthData = async (token: string, role: string, userId: string)
     await AsyncStorage.setItem('token', token);
     await AsyncStorage.setItem('role', role);
     await AsyncStorage.setItem('userId', userId);
+    console.log('Auth data stored successfully:', { token, role, userId }); // Debug log
   } catch (error) {
     console.error('Error storing auth data:', error);
     throw error;
@@ -13,9 +14,7 @@ export const storeAuthData = async (token: string, role: string, userId: string)
 
 export const clearAuthData = async () => {
   try {
-    await AsyncStorage.removeItem('token');
-    await AsyncStorage.removeItem('role');
-    await AsyncStorage.removeItem('userId');
+    await AsyncStorage.multiRemove(['token', 'role', 'userId']);
     console.log('Auth data cleared successfully'); // Debug log
   } catch (error) {
     console.error('Error clearing auth data:', error);
@@ -33,4 +32,4 @@ export const getAuthData = async () => {
     console.error('Error retrieving auth data:', error);
     return { token: null, role: null, userId: null };
   }
-};  
+};

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
 import AdminDashboard from "../../components/admin/AdminDashboard";
 import Notifications from "../../components/Notifications";
@@ -7,6 +8,7 @@ import api from "../../services/api";
 import { AlertCircle, RefreshCw } from "lucide-react";
 
 const AdminPage = () => {
+  const { t } = useTranslation();
   const [adminData, setAdminData] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -20,7 +22,7 @@ const AdminPage = () => {
       const role = localStorage.getItem("role");
       if (!token || role !== "admin") {
         console.error("Invalid token or role, redirecting to login");
-        navigate("/login", { state: { message: "Please log in as an admin" } });
+        navigate("/login", { state: { message: t("please_login_admin") } });
         return;
       }
       const res = await api.get("/admin/users", {
@@ -30,10 +32,10 @@ const AdminPage = () => {
       setAdminData(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Fetch admin data error:", err.response?.data || err.message);
-      setError(err.response?.data?.error || "Failed to load admin data");
+      setError(t(err.response?.data?.error || "failed_load_admin_data"));
       if (err.response?.status === 401 || err.response?.status === 403) {
         localStorage.clear();
-        navigate("/login", { state: { message: "Session expired" } });
+        navigate("/login", { state: { message: t("session_expired") } });
       }
     } finally {
       setLoading(false);
@@ -50,9 +52,11 @@ const AdminPage = () => {
       <div className="flex-grow max-w-6xl p-6 mx-auto">
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-extrabold text-teal-700 animate-fade-in">
-            Admin Dashboard
+            {t("admin_dashboard")}
           </h1>
-          <p className="mt-2 text-lg text-teal-600">Manage users, resources, and notifications</p>
+          <p className="mt-2 text-lg text-teal-600">
+            {t("manage_users_resources_notifications")}
+          </p>
         </div>
 
         {loading ? (
@@ -60,7 +64,7 @@ const AdminPage = () => {
             <div className="flex items-center space-x-4">
               <div className="w-12 h-12 border-4 border-teal-700 rounded-full border-t-transparent animate-spin"></div>
               <p className="text-xl font-semibold text-teal-700 animate-pulse">
-                Loading admin data...
+                {t("loading_admin_data")}
               </p>
             </div>
           </div>
@@ -73,15 +77,6 @@ const AdminPage = () => {
           </div>
         ) : (
           <>
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={fetchAdminData}
-                className="flex items-center px-4 py-2 text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-800 hover:scale-105"
-              >
-                <RefreshCw className="w-5 h-5 mr-2" />
-                Refresh
-              </button>
-            </div>
             <div className="p-6 bg-white border border-teal-200 shadow-lg rounded-xl">
               <AdminDashboard adminData={adminData} />
             </div>

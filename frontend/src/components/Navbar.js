@@ -1,9 +1,11 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { MessageSquare, Bell, LogOut, Database } from 'lucide-react';
+import { MessageSquare, Bell, LogOut, Database, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import api from '../services/api';
 
 const Navbar = ({ role, unreadCount, totalMessages }) => {
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [users, setUsers] = useState([]);
@@ -16,6 +18,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
   });
   const [showForm, setShowForm] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(!!localStorage.getItem('token'));
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -42,7 +45,6 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
         }
       } catch (err) {
         console.error('Fetch data error:', err.response?.data || err.message);
-        // The api.js interceptor will handle 401 errors and redirect to login
       }
     };
 
@@ -72,14 +74,14 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
         recipientType: notificationForm.recipientType,
         recipientIds: notificationForm.recipientType === 'specific' ? notificationForm.recipientIds : [],
       };
-      if (!payload.title || !payload.message) throw new Error('Title and message are required');
+      if (!payload.title || !payload.message) throw new Error(t('error_title_message_required'));
       await api.post('/admin/notifications', payload);
       setNotificationForm({ title: '', message: '', recipientType: 'all', recipientIds: [] });
       setShowForm(false);
-      alert('Notification sent successfully!');
+      alert(t('notification_sent_success'));
     } catch (err) {
       console.error('Send notification error:', err.response?.data || err.message);
-      alert(err.response?.data?.error || err.message || 'Failed to send notification');
+      alert(err.response?.data?.error || err.message || t('error_notification_failed'));
     }
   };
 
@@ -92,6 +94,11 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
     });
   };
 
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+    setShowLanguageDropdown(false);
+  };
+
   return (
     <nav className="sticky top-0 z-50 px-6 py-4 transition-all duration-300 transform shadow-lg bg-gradient-to-r from-teal-600 to-teal-800">
       <div className="flex items-center justify-between mx-auto max-w-7xl">
@@ -99,87 +106,180 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
           className="text-3xl font-extrabold tracking-tight text-white transition-colors duration-300 cursor-pointer hover:text-teal-200 animate-fade-in"
           onClick={() => navigate(role === 'patient' ? '/dashboard' : role === 'provider' ? '/provider' : '/')}
         >
-          HemoNutri
+          {t('app_name')}
         </h1>
         <div className="flex items-center space-x-4">
           {!role && (
             <>
-              <NavButton label="Home" icon="🏠" path="/" />
-              <NavButton label="About" icon="ℹ️" path="/about" />
-              <NavButton label="Contact" icon="📞" path="/contact" />
-              <NavButton label="Login" icon="🔑" path="/login" highlight />
+              <NavButton label={t('home')} icon="🏠" path="/" />
+              <NavButton label={t('about')} icon="ℹ️" path="/about" />
+              <NavButton label={t('contact')} icon="📞" path="/contact" />
+              <NavButton label={t('login')} icon="🔑" path="/login" highlight />
+              <div className="relative">
+                <button
+                  onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-900 hover:scale-105"
+                >
+                  <Globe className="w-4 h-4 mr-2" />
+                  {t('language')}
+                </button>
+                {showLanguageDropdown && (
+                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-teal-200 shadow-2xl rounded-xl animate-slide-down">
+                    <button
+                      onClick={() => changeLanguage('en')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                      <span className="mr-2">🇬🇧</span> English
+                    </button>
+                    <button
+                      onClick={() => changeLanguage('am')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                      <span className="mr-2">🇪🇹</span> አማርኛ
+                    </button>
+                    <button
+                      onClick={() => changeLanguage('om')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                      <span className="mr-2">🇪🇹</span> Afaan Oromo
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
           {role === 'patient' && (
             <>
-              <NavButton label="Dashboard" icon="📊" path="/dashboard" />
-              <NavButton label="Food Logs" icon="🍽️" path="/food-logs" />
-              <NavButton label="Meal Plan" icon="📋" path="/meal-plan" />
+              <NavButton label={t('dashboard')} icon="📊" path="/dashboard" />
+              <NavButton label={t('food_logs')} icon="🍽️" path="/food-logs" />
+              <NavButton label={t('meal_plan')} icon="📋" path="/meal-plan" />
               <NavButtonWithBadge
-                label="Messages"
+                label={t('messages')}
                 icon={<MessageSquare className="w-4 h-4" />}
                 path="/messages"
                 badge={newMessages}
               />
-              <NavButton label="Education" icon="📚" path="/education" />
+              <NavButton label={t('education')} icon="📚" path="/education" />
+              <div className="relative">
+                <button
+                  onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-900 hover:scale-105"
+                >
+                  <Globe className="w-4 h-4 mr-2" />
+                  {t('language')}
+                </button>
+                {showLanguageDropdown && (
+                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-teal-200 shadow-2xl rounded-xl animate-slide-down">
+                    <button
+                      onClick={() => changeLanguage('en')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                      <span className="mr-2">🇬🇧</span> English
+                    </button>
+                    <button
+                      onClick={() => changeLanguage('am')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                      <span className="mr-2">🇪🇹</span> አማርኛ
+                    </button>
+                    <button
+                      onClick={() => changeLanguage('om')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                      <span className="mr-2">🇪🇹</span> Afaan Oromo
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
           {role === 'provider' && (
             <>
-              <NavButton label="Dashboard" icon="📊" path="/provider" />
-              <NavButton label="Patients" icon="👥" path="/provider/patients" />
+              <NavButton label={t('dashboard')} icon="📊" path="/provider" />
+              <NavButton label={t('patients')} icon="👥" path="/provider/patients" />
               <NavButtonWithBadge
-                label="Messages"
+                label={t('messages')}
                 icon={<MessageSquare className="w-4 h-4" />}
                 path="/provider/messages"
                 badge={newMessages}
               />
-              <NavButton label="Education" icon="📚" path="/provider/education" />
+              <NavButton label={t('education')} icon="📚" path="/provider/education" />
+              <div className="relative">
+                <button
+                  onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-900 hover:scale-105"
+                >
+                  <Globe className="w-4 h-4 mr-2" />
+                  {t('language')}
+                </button>
+                {showLanguageDropdown && (
+                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-teal-200 shadow-2xl rounded-xl animate-slide-down">
+                    <button
+                      onClick={() => changeLanguage('en')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                      <span className="mr-2">🇬🇧</span> English
+                    </button>
+                    <button
+                      onClick={() => changeLanguage('am')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                      <span className="mr-2">🇪🇹</span> አማርኛ
+                    </button>
+                    <button
+                      onClick={() => changeLanguage('om')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                      <span className="mr-2">🇪🇹</span> Afaan Oromo
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
           {role === 'admin' && (
             <>
-              <NavButton label="Dashboard" icon="📊" path="/admin" />
-              <NavButton label="Users" icon="👥" path="/admin/users" />
-              <NavButton label="Resources" icon="📚" path="/admin/resources" />
-              <NavButton label="Reports" icon="📈" path="/admin/report" />
-              <NavButton label="Backup" icon={<Database className="w-4 h-4" />} path="/admin/backup" />
+              <NavButton label={t('dashboard')} icon="📊" path="/admin" />
+              <NavButton label={t('users')} icon="👥" path="/admin/users" />
+              <NavButton label={t('resources')} icon="📚" path="/admin/resources" />
+              <NavButton label={t('reports')} icon="📈" path="/admin/report" />
+              <NavButton label={t('backup')} icon={<Database className="w-4 h-4" />} path="/admin/backup" />
               <div className="relative">
                 <button
                   onClick={() => setShowForm(!showForm)}
                   className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-teal-700 rounded-lg hover:bg-teal-900 hover:scale-105"
                 >
                   <Bell className="w-4 h-4 mr-2" />
-                  Notify
+                  {t('notify')}
                 </button>
                 {showForm && (
                   <div className="absolute right-0 p-4 mt-2 text-black bg-white border border-teal-200 shadow-2xl w-80 rounded-xl animate-slide-down">
-                    <h3 className="mb-3 text-lg font-semibold text-teal-700">Send Notification</h3>
+                    <h3 className="mb-3 text-lg font-semibold text-teal-700">{t('send_notification')}</h3>
                     <form onSubmit={handleSendNotification} className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Title</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('title')}</label>
                         <input
                           type="text"
                           value={notificationForm.title}
                           onChange={(e) => setNotificationForm({ ...notificationForm, title: e.target.value })}
-                          placeholder="Notification Title"
+                          placeholder={t('notification_title_placeholder')}
                           className="w-full p-2 border border-teal-200 rounded bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
                           required
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Message</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('message')}</label>
                         <textarea
                           value={notificationForm.message}
                           onChange={(e) => setNotificationForm({ ...notificationForm, message: e.target.value })}
-                          placeholder="Your message here..."
+                          placeholder={t('message_placeholder')}
                           className="w-full p-2 border border-teal-200 rounded bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
                           rows="3"
                           required
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700">Send To</label>
+                        <label className="block text-sm font-medium text-gray-700">{t('send_to')}</label>
                         <select
                           value={notificationForm.recipientType}
                           onChange={(e) =>
@@ -191,10 +291,10 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                           }
                           className="w-full p-2 border border-teal-200 rounded bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
                         >
-                          <option value="all">All Users</option>
-                          <option value="patients">All Patients</option>
-                          <option value="providers">All Providers</option>
-                          <option value="specific">Specific Users</option>
+                          <option value="all">{t('all_users')}</option>
+                          <option value="patients">{t('all_patients')}</option>
+                          <option value="providers">{t('all_providers')}</option>
+                          <option value="specific">{t('specific_users')}</option>
                         </select>
                       </div>
                       {notificationForm.recipientType === 'specific' && (
@@ -208,7 +308,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                                 className="w-4 h-4 mr-2 text-teal-600 border-teal-300 rounded focus:ring-teal-500"
                               />
                               <span className="text-sm text-gray-700">
-                                {user.username} ({user.role})
+                                {user.username} ({t(user.role)})
                               </span>
                             </div>
                           ))}
@@ -219,17 +319,48 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                           type="submit"
                           className="flex-1 p-2 text-white transition-all duration-300 bg-teal-600 rounded-lg shadow-md hover:bg-teal-700 hover:scale-105"
                         >
-                          Send
+                          {t('send')}
                         </button>
                         <button
                           type="button"
                           onClick={() => setShowForm(false)}
                           className="flex-1 p-2 text-white transition-all duration-300 bg-gray-500 rounded-lg shadow-md hover:bg-gray-600 hover:scale-105"
                         >
-                          Cancel
+                          {t('cancel')}
                         </button>
                       </div>
                     </form>
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <button
+                  onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-900 hover:scale-105"
+                >
+                  <Globe className="w-4 h-4 mr-2" />
+                  {t('language')}
+                </button>
+                {showLanguageDropdown && (
+                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-teal-200 shadow-2xl rounded-xl animate-slide-down">
+                    <button
+                      onClick={() => changeLanguage('en')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                      <span className="mr-2">🇬🇧</span> English
+                    </button>
+                    <button
+                      onClick={() => changeLanguage('am')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                      <span className="mr-2">🇪🇹</span> አማርኛ
+                    </button>
+                    <button
+                      onClick={() => changeLanguage('om')}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                    >
+                      <span className="mr-2">🇪🇹</span> Afaan Oromo
+                    </button>
                   </div>
                 )}
               </div>
@@ -241,7 +372,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
               className="flex items-center px-4 py-2 text-sm font-semibold text-white transition-all duration-300 bg-red-600 rounded-lg shadow-md hover:bg-red-700 hover:scale-105"
             >
               <LogOut className="w-4 h-4 mr-2" />
-              Logout
+              {t('logout')}
             </button>
           )}
         </div>

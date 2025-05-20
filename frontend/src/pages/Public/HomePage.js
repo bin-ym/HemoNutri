@@ -1,77 +1,80 @@
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
 import heroImage from "../../assets/hero-image.jpg";
 
 const HomePage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="flex flex-col min-h-screen bg-gray-100">
       <Navbar role={null} />
       <section
         className="relative bg-cover bg-center h-[80vh] flex items-center justify-center"
         style={{ backgroundImage: `url(${heroImage})` }}
       >
         <div className="absolute inset-0 bg-black opacity-50"></div>
-        <div className="relative z-10 text-center text-white px-4">
-          <h1 className="text-5xl md:text-6xl font-bold mb-4 animate-fade-in">
-            Welcome to HemoNutri
+        <div className="relative z-10 px-4 text-center text-white">
+          <h1 className="mb-4 text-5xl font-bold md:text-6xl animate-fade-in">
+            {t("welcome_to_hemonutri")}
           </h1>
-          <p className="text-xl md:text-2xl mb-6">
-            Your partner in managing nutrition and wellness with ease.
+          <p className="mb-6 text-xl md:text-2xl">
+            {t("nutrition_partner")}
           </p>
           <button
             onClick={() => navigate("/register")}
-            className="bg-teal-500 text-white px-6 py-3 rounded-full text-lg hover:bg-teal-600 transition duration-300"
+            className="px-6 py-3 text-lg text-white transition duration-300 bg-teal-500 rounded-full hover:bg-teal-600"
           >
-            Get Started
+            {t("get_started")}
           </button>
         </div>
       </section>
       <section className="py-16 bg-white">
-        <div className="max-w-6xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center text-teal-600 mb-12">
-            Why Choose HemoNutri?
+        <div className="max-w-6xl px-4 mx-auto">
+          <h2 className="mb-12 text-3xl font-bold text-center text-teal-600">
+            {t("why_choose_hemonutri")}
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center p-6 bg-gray-100 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-              <div className="text-4xl mb-4">🍎</div>
-              <h3 className="text-xl font-semibold mb-2">
-                Track Your Nutrition
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
+            <div className="p-6 text-center transition duration-300 bg-gray-100 rounded-lg shadow-md hover:shadow-lg">
+              <div className="mb-4 text-4xl">🍎</div>
+              <h3 className="mb-2 text-xl font-semibold">
+                {t("track_nutrition")}
               </h3>
               <p className="text-gray-600">
-                Log food and fluid intake effortlessly to stay on top of your
-                health.
+                {t("track_nutrition_desc")}
               </p>
             </div>
-            <div className="text-center p-6 bg-gray-100 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-              <div className="text-4xl mb-4">📚</div>
-              <h3 className="text-xl font-semibold mb-2">Learn & Grow</h3>
-              <p className="text-gray-600">
-                Access educational resources tailored to your needs.
-              </p>
-            </div>
-            <div className="text-center p-6 bg-gray-100 rounded-lg shadow-md hover:shadow-lg transition duration-300">
-              <div className="text-4xl mb-4">👩‍⚕️</div>
-              <h3 className="text-xl font-semibold mb-2">
-                Connect with Providers
+            <div className="p-6 text-center transition duration-300 bg-gray-100 rounded-lg shadow-md hover:shadow-lg">
+              <div className="mb-4 text-4xl">📚</div>
+              <h3 className="mb-2 text-xl font-semibold">
+                {t("learn_grow")}
               </h3>
               <p className="text-gray-600">
-                Collaborate with healthcare professionals for personalized care.
+                {t("learn_grow_desc")}
+              </p>
+            </div>
+            <div className="p-6 text-center transition duration-300 bg-gray-100 rounded-lg shadow-md hover:shadow-lg">
+              <div className="mb-4 text-4xl">👩‍⚕️</div>
+              <h3 className="mb-2 text-xl font-semibold">
+                {t("connect_providers")}
+              </h3>
+              <p className="text-gray-600">
+                {t("connect_providers_desc")}
               </p>
             </div>
           </div>
         </div>
       </section>
-      <footer className="bg-teal-600 text-white py-6">
-        <div className="max-w-6xl mx-auto px-4 text-center">
-          <p>© 2025 HemoNutri. All rights reserved.</p>
+      <footer className="py-6 text-white bg-teal-600">
+        <div className="max-w-6xl px-4 mx-auto text-center">
+          <p>{t("footer_copyright")}</p>
           <div className="mt-2">
-            <a href="/about" className="text-white hover:underline mx-2">
-              About
+            <a href="/about" className="mx-2 text-white hover:underline">
+              {t("about")}
             </a>
-            <a href="/contact" className="text-white hover:underline mx-2">
-              Contact
+            <a href="/contact" className="mx-2 text-white hover:underline">
+              {t("contact")}
             </a>
           </div>
         </div>

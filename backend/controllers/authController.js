@@ -120,4 +120,16 @@ const resetPassword = async (req, res) => {
   }
 };
 
-module.exports = { login, register, changePassword, forgotPassword, resetPassword };
+// New function to get user profile
+const getProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('username role');
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ username: user.username, role: user.role });
+  } catch (err) {
+    console.error('Profile fetch error:', err.stack);
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+};
+
+module.exports = { login, register, changePassword, forgotPassword, resetPassword, getProfile };

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Alert, ImageBackground, Dimensions, ScrollView, TouchableOpacity } from 'react-native';
 import { Button } from '@rneui/themed';
-import { colors } from '../../theme/colors';
+import { useColors } from '../../theme/ThemeContext'; // Updated import
 
 const heroImage = require('../../../assets/hero-image.jpg');
 
@@ -12,8 +12,10 @@ interface Props {
 const { height } = Dimensions.get('window');
 
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
+  const colors = useColors(); // Use the hook to get dynamic colors
+
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
       <ImageBackground
         source={heroImage}
         style={[styles.heroSection, { height: height * 0.8 }]}
@@ -22,6 +24,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           console.error('ImageBackground error:', error.nativeEvent.error);
           Alert.alert('Image Load Error', 'Failed to load the hero image. Please check the image path.');
         }}
+        accessibilityLabel="Hero image background"
       >
         <View style={styles.overlay} />
         <View style={styles.heroContent}>
@@ -32,47 +35,60 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <Button
             title="Get Started"
             onPress={() => navigation.navigate('Login')}
-            buttonStyle={styles.heroButton}
+            buttonStyle={[styles.heroButton, { backgroundColor: colors.primary }]}
             containerStyle={styles.heroButtonContainer}
             titleStyle={styles.heroButtonTitle}
+            accessibilityLabel="Get started button"
           />
         </View>
       </ImageBackground>
 
       <View style={styles.featuresSection}>
-        <Text style={styles.sectionTitle}>Why Choose HemoNutri?</Text>
+        <Text style={[styles.sectionTitle, { color: colors.primary }]}>Why Choose HemoNutri?</Text>
         <View style={styles.featuresGrid}>
-          <View style={styles.featureCard}>
+          <View style={[styles.featureCard, { backgroundColor: colors.secondary }]}>
             <Text style={styles.featureIcon}>🍎</Text>
-            <Text style={styles.featureTitle}>Track Your Nutrition</Text>
-            <Text style={styles.featureDescription}>
+            <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>
+              Track Your Nutrition
+            </Text>
+            <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
               Log food and fluid intake effortlessly to stay on top of your health.
             </Text>
           </View>
-          <View style={styles.featureCard}>
+          <View style={[styles.featureCard, { backgroundColor: colors.secondary }]}>
             <Text style={styles.featureIcon}>📚</Text>
-            <Text style={styles.featureTitle}>Learn & Grow</Text>
-            <Text style={styles.featureDescription}>
+            <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>
+              Learn & Grow
+            </Text>
+            <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
               Access educational resources tailored to your needs.
             </Text>
           </View>
-          <View style={styles.featureCard}>
+          <View style={[styles.featureCard, { backgroundColor: colors.secondary }]}>
             <Text style={styles.featureIcon}>👩‍⚕️</Text>
-            <Text style={styles.featureTitle}>Connect with Providers</Text>
-            <Text style={styles.featureDescription}>
+            <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>
+              Connect with Providers
+            </Text>
+            <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>
               Collaborate with healthcare professionals for personalized care.
             </Text>
           </View>
         </View>
       </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>© 2025 HemoNutri. All rights reserved.</Text>
+      <View style={[styles.footer, { backgroundColor: colors.primary }]}>
+        <Text style={styles.footerText}>© {new Date().getFullYear()} HemoNutri. All rights reserved.</Text>
         <View style={styles.footerLinks}>
-          <TouchableOpacity onPress={() => Alert.alert('About', 'Learn more about HemoNutri.')}>
+          <TouchableOpacity
+            onPress={() => Alert.alert('About', 'Learn more about HemoNutri.')}
+            accessibilityLabel="About link"
+          >
             <Text style={styles.footerLink}>About</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => Alert.alert('Contact', 'Get in touch with us.')}>
+          <TouchableOpacity
+            onPress={() => Alert.alert('Contact', 'Get in touch with us.')}
+            accessibilityLabel="Contact link"
+          >
             <Text style={styles.footerLink}>Contact</Text>
           </TouchableOpacity>
         </View>
@@ -84,7 +100,6 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   heroSection: {
     justifyContent: 'center',
@@ -116,7 +131,6 @@ const styles = StyleSheet.create({
     width: '60%',
   },
   heroButton: {
-    backgroundColor: colors.primary,
     borderRadius: 9999,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -128,12 +142,11 @@ const styles = StyleSheet.create({
   },
   featuresSection: {
     paddingVertical: 64,
-    backgroundColor: '#fff',
+    backgroundColor: '#fff', // Static color for contrast; can be made dynamic if needed
   },
   sectionTitle: {
     fontSize: 30,
     fontWeight: 'bold',
-    color: colors.primary,
     textAlign: 'center',
     marginBottom: 48,
   },
@@ -144,7 +157,6 @@ const styles = StyleSheet.create({
   },
   featureCard: {
     padding: 24,
-    backgroundColor: colors.surface,
     borderRadius: 8,
     alignItems: 'center',
     shadowColor: '#000',
@@ -161,16 +173,13 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     marginBottom: 8,
-    color: colors.textPrimary,
   },
   featureDescription: {
     fontSize: 16,
-    color: colors.textDescription,
     textAlign: 'center',
   },
   footer: {
     paddingVertical: 24,
-    backgroundColor: colors.primary,
     alignItems: 'center',
   },
   footerText: {

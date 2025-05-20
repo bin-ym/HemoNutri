@@ -4,9 +4,8 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../api/api';
-import { colors } from '../../theme/colors';
+import { useColors } from '../../theme/ThemeContext';
 
-// Define the navigation stack param list
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
@@ -30,6 +29,7 @@ const ManagePatientsScreen: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const colors = useColors();
 
   useEffect(() => {
     const fetchPatients = async () => {
@@ -53,14 +53,15 @@ const ManagePatientsScreen: React.FC = () => {
   }, []);
 
   const renderPatient = ({ item }: { item: Patient }) => (
-    <View style={styles.patientItem}>
+    <View style={[styles.patientItem, { borderColor: colors.secondary, backgroundColor: colors.background }]}>
       <View style={styles.patientInfo}>
-        <Text style={styles.patientName}>{item.username}</Text>
-        <Text style={styles.patientEmail}>{item.email}</Text>
+        <Text style={[styles.patientName, { color: colors.primary }]}>{item.username}</Text>
+        <Text style={[styles.patientEmail, { color: colors.textSecondary }]}>{item.email}</Text>
       </View>
       <TouchableOpacity
-        style={styles.viewButton}
+        style={[styles.viewButton, { backgroundColor: colors.primary }]}
         onPress={() => navigation.navigate('ProviderPatientDetail', { patientId: item.id })}
+        accessibilityLabel={`View details for ${item.username}`}
       >
         <Ionicons name="eye-outline" size={20} color="#fff" />
       </TouchableOpacity>
@@ -69,23 +70,23 @@ const ManagePatientsScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading patients...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading patients...</Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={styles.title}>Manage Patients</Text>
-        <Text style={styles.subtitle}>View your patients’ details.</Text>
+        <Text style={[styles.title, { color: colors.primary }]}>Manage Patients</Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>View your patients’ details.</Text>
       </View>
 
       {error && (
-        <View style={styles.errorMessage}>
+        <View style={[styles.errorMessage, { backgroundColor: colors.errorBackground }]}>
           <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
         </View>
       )}
 
@@ -102,30 +103,25 @@ const ManagePatientsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
     padding: 20,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
   },
   loadingText: {
     fontSize: 18,
-    color: colors.textSecondary,
   },
   errorMessage: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffe6e6',
     padding: 10,
     borderRadius: 8,
     marginBottom: 20,
   },
   errorText: {
     fontSize: 16,
-    color: colors.danger,
     marginLeft: 10,
   },
   header: {
@@ -135,12 +131,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: colors.primary,
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: colors.textSecondary,
     textAlign: 'center',
   },
   list: {
@@ -149,12 +143,10 @@ const styles = StyleSheet.create({
   patientItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: colors.secondary,
   },
   patientInfo: {
     flex: 1,
@@ -162,15 +154,12 @@ const styles = StyleSheet.create({
   patientName: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.primary,
     marginBottom: 5,
   },
   patientEmail: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
   viewButton: {
-    backgroundColor: colors.primary,
     padding: 10,
     borderRadius: 8,
   },

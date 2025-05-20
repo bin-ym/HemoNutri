@@ -5,7 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../api/api';
 import { getAuthData } from '../../utils/auth';
-import { useColors, colors }  from '../../theme/colors';
+import { useColors } from '../../theme/ThemeContext';
 
 type RootStackParamList = {
   Home: undefined;
@@ -65,6 +65,7 @@ const ProviderPatientDetailScreen: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const colors = useColors();
 
   const fetchData = async () => {
     try {
@@ -184,13 +185,13 @@ const ProviderPatientDetailScreen: React.FC = () => {
   };
 
   const renderFoodLog = (item: FoodLog) => (
-    <View style={styles.card}>
-      <Text style={styles.logText}>
+    <View style={[styles.card, { backgroundColor: colors.background, shadowColor: '#000' }]}>
+      <Text style={[styles.logText, { color: colors.textPrimary }]}>
         {item.foodItem} - {item.quantity}
         {item.isFluid ? 'ml' : 'g'} (Carbs: {item.carbohydrates || 0}g, Proteins: {item.proteins || 0}g, Lipids: {item.lipids || 0}g,
         K: {item.potassium || 0}mg, P: {item.phosphorus || 0}mg, Na: {item.sodium || 0}mg)
       </Text>
-      <Text style={styles.logDate}>
+      <Text style={[styles.logDate, { color: colors.textSecondary }]}>
         <Ionicons name="time-outline" size={14} color={colors.textSecondary} /> {formatDate(item.date)}
       </Text>
     </View>
@@ -198,30 +199,30 @@ const ProviderPatientDetailScreen: React.FC = () => {
 
   const renderHeader = () => (
     <>
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background, shadowColor: '#000' }]}>
         <View style={styles.headerRow}>
-          <Text style={styles.title}>Patient Details</Text>
-          <TouchableOpacity onPress={fetchData}>
+          <Text style={[styles.title, { color: colors.primary }]}>Patient Details</Text>
+          <TouchableOpacity onPress={fetchData} accessibilityLabel="Refresh patient data">
             <Ionicons name="refresh" size={24} color={colors.primary} />
           </TouchableOpacity>
         </View>
-        <Text style={styles.subtitle}>{patient?.username || 'Unknown'}</Text>
-        <Text style={styles.emailText}>Email: {patient?.email || 'N/A'}</Text>
+        <Text style={[styles.subtitle, { color: colors.textPrimary }]}>{patient?.username || 'Unknown'}</Text>
+        <Text style={[styles.emailText, { color: colors.textSecondary }]}>Email: {patient?.email || 'N/A'}</Text>
       </View>
 
       {error && (
-        <View style={styles.errorMessage}>
+        <View style={[styles.errorMessage, { backgroundColor: colors.errorBackground }]}>
           <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-          <Text style={styles.errorText}>{error}</Text>
+          <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
         </View>
       )}
 
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Food Logs</Text>
+          <Text style={[styles.sectionTitle, { color: colors.primary }]}>Food Logs</Text>
           <Ionicons name="fast-food-outline" size={24} color={colors.primary} />
         </View>
-        {foodLogs.length === 0 && <Text style={styles.emptyText}>No logs available</Text>}
+        {foodLogs.length === 0 && <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No logs available</Text>}
       </View>
     </>
   );
@@ -229,49 +230,57 @@ const ProviderPatientDetailScreen: React.FC = () => {
   const renderMealPlanSection = () => (
     <View style={styles.section}>
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Set Meal Plan</Text>
+        <Text style={[styles.sectionTitle, { color: colors.primary }]}>Set Meal Plan</Text>
         <Ionicons name="list-outline" size={24} color={colors.primary} />
       </View>
       {(['breakfast', 'lunch', 'dinner'] as const).map((mealType) => (
         <View key={mealType} style={styles.mealSection}>
-          <Text style={styles.mealTitle}>{mealType.charAt(0).toUpperCase() + mealType.slice(1)}</Text>
+          <Text style={[styles.mealTitle, { color: colors.textPrimary }]}>{mealType.charAt(0).toUpperCase() + mealType.slice(1)}</Text>
           {mealPlanForm[mealType].map((item, index) => (
-            <View key={index} style={styles.mealItem}>
+            <View key={index} style={[styles.mealItem, { backgroundColor: colors.background, shadowColor: '#000' }]}>
               <TextInput
-                style={styles.input}
+                style={[styles.input, { borderColor: colors.secondary, color: colors.textPrimary, backgroundColor: colors.secondary }]}
                 placeholder="Food/Drink Name"
                 placeholderTextColor={colors.textSecondary}
                 value={item.name}
                 onChangeText={(value) => handleMealPlanChange(mealType, index, 'name', value)}
+                accessibilityLabel={`${mealType} item name input`}
               />
               <TextInput
-                style={[styles.input, styles.quantityInput]}
+                style={[styles.input, styles.quantityInput, { borderColor: colors.secondary, color: colors.textPrimary, backgroundColor: colors.secondary }]}
                 placeholder="Quantity"
                 placeholderTextColor={colors.textSecondary}
                 value={item.quantity}
                 onChangeText={(value) => handleMealPlanChange(mealType, index, 'quantity', value)}
                 keyboardType="numeric"
+                accessibilityLabel={`${mealType} item quantity input`}
               />
               <TouchableOpacity
-                style={[styles.unitButton, item.isFluid ? styles.unitButtonFluid : styles.unitButtonSolid]}
+                style={[styles.unitButton, item.isFluid ? [styles.unitButtonFluid, { backgroundColor: colors.primary, borderColor: colors.primary }] : [styles.unitButtonSolid, { borderColor: colors.secondary }]]}
                 onPress={() => handleMealPlanChange(mealType, index, 'isFluid', !item.isFluid)}
+                accessibilityLabel={`${mealType} item unit toggle`}
               >
-                <Text style={styles.unitButtonText}>{item.isFluid ? 'ml' : 'g'}</Text>
+                <Text style={[styles.unitButtonText, { color: item.isFluid ? '#fff' : colors.textPrimary }]}>{item.isFluid ? 'ml' : 'g'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => removeMealItem(mealType, index)}
+                accessibilityLabel={`${mealType} item remove button`}
               >
                 <Ionicons name="trash-outline" size={20} color={colors.danger} />
               </TouchableOpacity>
             </View>
           ))}
-          <TouchableOpacity style={styles.addItemButton} onPress={() => addMealItem(mealType)}>
-            <Text style={styles.addItemText}>+ Add Item</Text>
+          <TouchableOpacity style={styles.addItemButton} onPress={() => addMealItem(mealType)} accessibilityLabel={`Add ${mealType} item`}>
+            <Text style={[styles.addItemText, { color: colors.primary }]}>+ Add Item</Text>
           </TouchableOpacity>
         </View>
       ))}
-      <TouchableOpacity style={styles.submitButton} onPress={handleMealPlanSubmit}>
+      <TouchableOpacity
+        style={[styles.submitButton, { backgroundColor: colors.primary, shadowColor: '#000' }]}
+        onPress={handleMealPlanSubmit}
+        accessibilityLabel="Save meal plan button"
+      >
         <Text style={styles.submitButtonText}>Save Meal Plan</Text>
       </TouchableOpacity>
     </View>
@@ -279,18 +288,18 @@ const ProviderPatientDetailScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading patient details...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading patient details...</Text>
       </View>
     );
   }
 
   if (error && !patient) {
     return (
-      <View style={styles.errorContainer}>
+      <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
         <Ionicons name="alert-circle-outline" size={24} color={colors.danger} />
-        <Text style={styles.errorText}>{error}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
+        <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
+        <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.primary }]} onPress={fetchData} accessibilityLabel="Retry loading patient data">
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -304,7 +313,7 @@ const ProviderPatientDetailScreen: React.FC = () => {
 
   return (
     <FlatList
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       data={combinedData}
       renderItem={({ item }) => {
         if (item.type === 'foodLog') {
@@ -327,7 +336,6 @@ const ProviderPatientDetailScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
   flatListContent: {
     padding: 20,
@@ -337,28 +345,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
   },
   loadingText: {
     fontSize: 18,
-    color: colors.textSecondary,
     fontWeight: '500',
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
     padding: 20,
   },
   errorMessage: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#ffe6e6',
     padding: 12,
     borderRadius: 12,
     marginBottom: 20,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -366,16 +369,13 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: colors.danger,
     marginLeft: 10,
     fontWeight: '500',
   },
   header: {
     marginBottom: 30,
-    backgroundColor: '#fff',
     padding: 20,
     borderRadius: 12,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -390,25 +390,20 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '700',
-    color: colors.primary,
   },
   subtitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: colors.textPrimary,
   },
   emailText: {
     fontSize: 16,
-    color: colors.textSecondary,
     marginTop: 5,
   },
   retryButton: {
-    backgroundColor: colors.primary,
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 12,
     marginTop: 20,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
@@ -431,14 +426,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: '600',
-    color: colors.primary,
   },
   card: {
-    backgroundColor: '#fff',
     padding: 15,
     borderRadius: 12,
     marginBottom: 10,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -446,18 +438,15 @@ const styles = StyleSheet.create({
   },
   logText: {
     fontSize: 16,
-    color: colors.textPrimary,
     marginBottom: 5,
     fontWeight: '500',
   },
   logDate: {
     fontSize: 14,
-    color: colors.textSecondary,
     fontWeight: '400',
   },
   emptyText: {
     fontSize: 16,
-    color: colors.textSecondary,
     textAlign: 'center',
     fontStyle: 'italic',
   },
@@ -467,17 +456,14 @@ const styles = StyleSheet.create({
   mealTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: colors.textPrimary,
     marginBottom: 10,
   },
   mealItem: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 10,
-    backgroundColor: '#fff',
     padding: 10,
     borderRadius: 12,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -486,13 +472,10 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: '#ddd',
     borderRadius: 8,
     padding: 10,
     marginRight: 10,
     fontSize: 16,
-    color: colors.textPrimary,
-    backgroundColor: '#f9f9f9',
   },
   quantityInput: {
     flex: 0,
@@ -504,18 +487,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ddd',
     marginRight: 10,
   },
-  unitButtonSolid: {
-    backgroundColor: '#e0e0e0',
-  },
-  unitButtonFluid: {
-    backgroundColor: colors.primary,
-  },
+  unitButtonSolid: {},
+  unitButtonFluid: {},
   unitButtonText: {
     fontSize: 14,
-    color: '#fff',
     fontWeight: '500',
   },
   removeButton: {
@@ -526,16 +503,13 @@ const styles = StyleSheet.create({
   },
   addItemText: {
     fontSize: 16,
-    color: colors.primary,
     fontWeight: '500',
   },
   submitButton: {
-    backgroundColor: colors.primary,
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 10,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 4,

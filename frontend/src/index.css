@@ -2,11 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic&display=swap");
+
+body {
+  font-family: "Noto Sans Ethiopic", sans-serif;
+}
+
 .animate-fade-in {
-    animation: fadeIn 1s ease-in;
+  animation: fadeIn 1s ease-in;
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
   }
-  
-  @keyframes fadeIn {
-    0% { opacity: 0; transform: translateY(20px); }
-    100% { opacity: 1; transform: translateY(0); }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
   }
+}
+
+@keyframes slide-down {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
+}
+
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Ethiopic&display=swap");
+body {
+  font-family: "Noto Sans Ethiopic", sans-serif;
+}

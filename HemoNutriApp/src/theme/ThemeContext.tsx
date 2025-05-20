@@ -1,5 +1,6 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { Appearance } from 'react-native';
+// ThemeContext.tsx
+import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import { Appearance, View, Text } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Theme = 'light' | 'dark';
@@ -7,12 +8,14 @@ type Theme = 'light' | 'dark';
 type ThemeContextType = {
   theme: Theme;
   toggleTheme: () => void;
+  isThemeLoaded: boolean;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const ThemeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>('light');
+  const [isThemeLoaded, setIsThemeLoaded] = useState(false);
 
   useEffect(() => {
     const loadTheme = async () => {
@@ -26,9 +29,21 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       } catch (err) {
         console.error('Error loading theme:', err);
+        setTheme('light');
+      } finally {
+        setIsThemeLoaded(true);
       }
     };
+
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      if (!AsyncStorage.getItem('theme')) {
+        setTheme(colorScheme === 'dark' ? 'dark' : 'light');
+      }
+    });
+
     loadTheme();
+
+    return () => subscription.remove();
   }, []);
 
   const toggleTheme = async () => {
@@ -41,8 +56,16 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   };
 
+  if (!isThemeLoaded) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
+        <Text>Loading theme...</Text>
+      </View>
+    );
+  }
+
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, isThemeLoaded }}>
       {children}
     </ThemeContext.Provider>
   );

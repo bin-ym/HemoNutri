@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
 import api from "../../services/api";
-import { Database, Download, AlertCircle } from "lucide-react";
+import { Database, Download, AlertCircle } from "lucide-react"
 
 const AdminBackupPage = () => {
   const [loading, setLoading] = useState(false);
@@ -134,9 +135,9 @@ const AdminBackupPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <Navbar role="admin" />
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-4xl p-6 mx-auto">
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-extrabold text-teal-700 animate-fade-in">
             Database Backup
@@ -156,7 +157,7 @@ const AdminBackupPage = () => {
               }`}
             >
               {loading ? (
-                <Database className="w-5 h-5 animate-spin mr-2" />
+                <Database className="w-5 h-5 mr-2 animate-spin" />
               ) : (
                 <Download className="w-5 h-5 mr-2" />
               )}
@@ -173,7 +174,7 @@ const AdminBackupPage = () => {
             )}
 
             {lastBackup && (
-              <div className="p-4 bg-teal-50 rounded-lg shadow-md">
+              <div className="p-4 rounded-lg shadow-md bg-teal-50">
                 <p className="text-teal-600">
                   Last Backup: {lastBackup}
                 </p>
@@ -181,15 +182,15 @@ const AdminBackupPage = () => {
             )}
 
             {backupHistory.length > 0 && (
-              <div className="mt-6 w-full">
-                <h2 className="text-xl font-semibold text-teal-700 mb-4">
+              <div className="w-full mt-6">
+                <h2 className="mb-4 text-xl font-semibold text-teal-700">
                   Backup History
                 </h2>
                 <div className="space-y-3">
                   {backupHistory.map((backup) => (
                     <div
                       key={backup._id}
-                      className="flex justify-between items-center p-3 bg-teal-50 rounded-lg shadow-sm"
+                      className="flex items-center justify-between p-3 rounded-lg shadow-sm bg-teal-50"
                     >
                       <div>
                         <p className="text-teal-600">{backup.filename}</p>
@@ -199,7 +200,7 @@ const AdminBackupPage = () => {
                       </div>
                       <button
                         onClick={() => handleDownloadBackup(backup._id, backup.filename)}
-                        className="flex items-center px-4 py-2 text-white bg-teal-600 rounded-lg hover:bg-teal-700 hover:scale-105 transition-all duration-300"
+                        className="flex items-center px-4 py-2 text-white transition-all duration-300 bg-teal-600 rounded-lg hover:bg-teal-700 hover:scale-105"
                       >
                         <Download className="w-4 h-4 mr-2" />
                         Download

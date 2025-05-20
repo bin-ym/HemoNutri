@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
 import api from "../../services/api";
 import { Edit, Trash2, Save, X, AlertCircle, Plus } from "lucide-react";
 
 const AdminResourcesPage = () => {
+  const { t } = useTranslation();
   const [resources, setResources] = useState([]);
   const [editingResource, setEditingResource] = useState(null);
   const [newResource, setNewResource] = useState({ title: "", description: "", url: "" });
@@ -23,7 +25,7 @@ const AdminResourcesPage = () => {
       setResources(res.data);
     } catch (err) {
       console.error("Resources fetch error:", err.response?.data || err.message);
-      setError(err.response?.data?.error || "Failed to load resources");
+      setError(t(err.response?.data?.error || "failed_load_resources"));
     } finally {
       setLoading(false);
     }
@@ -53,12 +55,12 @@ const AdminResourcesPage = () => {
       setEditingResource(null);
     } catch (err) {
       console.error("Save resource error:", err.response?.data || err.message);
-      setError(err.response?.data?.error || "Failed to save resource");
+      setError(t(err.response?.data?.error || "failed_save_resource"));
     }
   };
 
   const handleDeleteResource = async (resourceId) => {
-    if (!window.confirm("Are you sure you want to delete this resource?")) return;
+    if (!window.confirm(t("confirm_delete_resource"))) return;
     setError("");
     try {
       const token = localStorage.getItem("token");
@@ -68,7 +70,7 @@ const AdminResourcesPage = () => {
       setResources(resources.filter((res) => res._id !== resourceId));
     } catch (err) {
       console.error("Delete resource error:", err.response?.data || err.message);
-      setError(err.response?.data?.error || "Failed to delete resource");
+      setError(t(err.response?.data?.error || "failed_delete_resource"));
     }
   };
 
@@ -79,7 +81,7 @@ const AdminResourcesPage = () => {
       const token = localStorage.getItem("token");
       const res = await api.post(
         "/admin/resources",
-        { ...newResource, providerId: localStorage.getItem("userId") }, // Use logged-in admin as provider
+        { ...newResource, providerId: localStorage.getItem("userId") },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setResources([...resources, res.data]);
@@ -87,7 +89,7 @@ const AdminResourcesPage = () => {
       setShowCreateForm(false);
     } catch (err) {
       console.error("Create resource error:", err.response?.data || err.message);
-      setError(err.response?.data?.error || "Failed to create resource");
+      setError(t(err.response?.data?.error || "failed_create_resource"));
     }
   };
 
@@ -97,9 +99,11 @@ const AdminResourcesPage = () => {
       <div className="max-w-4xl p-6 mx-auto">
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-extrabold text-teal-700 animate-fade-in">
-            Manage Educational Resources
+            {t("manage_educational_resources")}
           </h1>
-          <p className="mt-2 text-lg text-teal-600">Edit, remove, or add resources</p>
+          <p className="mt-2 text-lg text-teal-600">
+            {t("edit_remove_add_resources")}
+          </p>
         </div>
 
         <div className="flex justify-end mb-4">
@@ -108,19 +112,19 @@ const AdminResourcesPage = () => {
             className="flex items-center px-4 py-2 text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-800 hover:scale-105"
           >
             <Plus className="w-5 h-5 mr-2" />
-            {showCreateForm ? "Close Form" : "Add Resource"}
+            {showCreateForm ? t("close_form") : t("add_resource")}
           </button>
         </div>
 
         {showCreateForm && (
           <div className="p-6 mb-6 bg-white border border-teal-200 shadow-lg rounded-xl animate-fade-in">
             <h2 className="mb-4 text-2xl font-semibold text-teal-700">
-              Create New Resource
+              {t("create_new_resource")}
             </h2>
             <form onSubmit={handleCreateResource} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-teal-700">
-                  Title
+                  {t("resource_title")}
                 </label>
                 <input
                   type="text"
@@ -128,21 +132,21 @@ const AdminResourcesPage = () => {
                   onChange={(e) =>
                     setNewResource({ ...newResource, title: e.target.value })
                   }
-                  placeholder="Resource Title"
+                  placeholder={t("resource_title")}
                   className="w-full p-3 bg-white border border-teal-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                   required
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-teal-700">
-                  Description
+                  {t("resource_description")}
                 </label>
                 <textarea
                   value={newResource.description}
                   onChange={(e) =>
                     setNewResource({ ...newResource, description: e.target.value })
                   }
-                  placeholder="Resource Description"
+                  placeholder={t("resource_description")}
                   className="w-full p-3 bg-white border border-teal-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                   rows="4"
                   required
@@ -150,7 +154,7 @@ const AdminResourcesPage = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-teal-700">
-                  URL
+                  {t("resource_url")}
                 </label>
                 <input
                   type="text"
@@ -158,7 +162,7 @@ const AdminResourcesPage = () => {
                   onChange={(e) =>
                     setNewResource({ ...newResource, url: e.target.value })
                   }
-                  placeholder="Resource URL"
+                  placeholder={t("resource_url")}
                   className="w-full p-3 bg-white border border-teal-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                 />
               </div>
@@ -168,7 +172,7 @@ const AdminResourcesPage = () => {
                   className="flex items-center justify-center flex-1 p-3 text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-800 hover:scale-105"
                 >
                   <Save className="w-5 h-5 mr-2" />
-                  Create Resource
+                  {t("create_resource")}
                 </button>
                 <button
                   type="button"
@@ -176,7 +180,7 @@ const AdminResourcesPage = () => {
                   className="flex items-center justify-center flex-1 p-3 text-white transition-all duration-300 bg-gray-500 rounded-lg shadow-md hover:bg-gray-600 hover:scale-105"
                 >
                   <X className="w-5 h-5 mr-2" />
-                  Cancel
+                  {t("cancel")}
                 </button>
               </div>
             </form>
@@ -187,7 +191,7 @@ const AdminResourcesPage = () => {
           <div className="flex items-center justify-center">
             <div className="w-12 h-12 border-4 border-teal-700 rounded-full border-t-transparent animate-spin"></div>
             <p className="ml-4 text-xl font-semibold text-teal-700 animate-pulse">
-              Loading resources...
+              {t("loading_resources")}
             </p>
           </div>
         ) : error ? (
@@ -199,7 +203,7 @@ const AdminResourcesPage = () => {
           </div>
         ) : resources.length === 0 ? (
           <p className="text-center text-teal-600">
-            No resources available. Add some above!
+            {t("no_resources_available")}
           </p>
         ) : (
           <ul className="space-y-4">
@@ -209,7 +213,7 @@ const AdminResourcesPage = () => {
                 className="flex items-center justify-between p-4 transition-all duration-300 rounded-lg shadow-md bg-teal-50 hover:bg-teal-100"
               >
                 <span className="text-teal-600">
-                  <strong>{res.title}:</strong> {res.description} (Provided by{" "}
+                  <strong>{res.title}:</strong> {res.description} ({t("provider")}:{" "}
                   {res.providerId?.username || "Unknown"})
                 </span>
                 <div className="flex space-x-2">

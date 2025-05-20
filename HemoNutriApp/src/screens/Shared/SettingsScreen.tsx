@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Switch, TouchableOpacity, Alert, ActivityIndica
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { Picker } from '@react-native-picker/picker';
 import { clearAuthData, getAuthData } from '../../utils/auth';
 import { useColors } from '../../theme/colors';
 import { useTheme } from '../../theme/ThemeContext';
@@ -16,42 +17,52 @@ type RootStackParamList = {
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 
+type UserProfile = {
+  username: string;
+  role: string;
+};
+
+type AuthData = {
+  token: string | null;
+  role: string | null;
+  userId: string | null;
+};
+
 const SettingsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const colors = useColors();
   const { theme, toggleTheme } = useTheme();
-  const [userData, setUserData] = useState<{ username: string; role: string } | null>(null);
+  const [userData, setUserData] = useState<UserProfile | null>(null);
   const [editedUsername, setEditedUsername] = useState('');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(false);
-  const [language, setLanguage] = useState('English'); // Placeholder
+  const [language, setLanguage] = useState('English');
   const [loading, setLoading] = useState(false);
   const [fetchingUser, setFetchingUser] = useState(true);
   const [profileSaving, setProfileSaving] = useState(false);
+
+  // Available languages
+  const languages = ['English', 'Amharic'];
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
         setFetchingUser(true);
-        const authData = await getAuthData();
+        const authData: AuthData = await getAuthData();
 
-        // Check if authData is null or undefined
-        if (authData) {
-          // Try different fields to get the provider's name
-          const displayName = authData.username || authData.name || authData.displayName || 'Provider';
-          setUserData({
-            username: displayName,
-            role: authData.role || 'Unknown',
-          });
-          setEditedUsername(displayName);
+        if (authData && authData.userId) {
+          const response = await api.get(`/api/auth/profile`);
+          const { username, role } = response.data;
+          setUserData({ username, role });
+          setEditedUsername(username);
         } else {
-          // Handle the case where authData is null (e.g., user not logged in)
           setUserData({ username: 'Provider', role: 'Unknown' });
           setEditedUsername('Provider');
         }
-      } catch (err) {
-        console.error('Error fetching user data:', err);
+      } catch (err: any) {
+        console.error('Error fetching user data:', err.message || err);
+        if (err.response && err.response.status === 404) {
+          console.log('API Endpoint not found:', '/api/auth/profile');
+        }
         setUserData({ username: 'Provider', role: 'Unknown' });
         setEditedUsername('Provider');
       } finally {
@@ -69,9 +80,8 @@ const SettingsScreen: React.FC = () => {
 
     try {
       setProfileSaving(true);
-      // Assuming there's an API endpoint to update the username
       await api.put('/api/user/update-profile', { username: editedUsername });
-      setUserData((prev) => prev ? { ...prev, username: editedUsername } : prev);
+      setUserData((prev) => (prev ? { ...prev, username: editedUsername } : prev));
       setIsEditingProfile(false);
       Alert.alert('Success', 'Profile updated successfully!');
     } catch (err) {
@@ -112,6 +122,11 @@ const SettingsScreen: React.FC = () => {
     );
   };
 
+  const handleLanguageChange = (value: string) => {
+    setLanguage(value);
+    Alert.alert('Language Updated', `Language set to ${value}. Restart the app to apply changes.`);
+  };
+
   if (fetchingUser) {
     return (
       <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -123,11 +138,6 @@ const SettingsScreen: React.FC = () => {
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: colors.background }]} contentContainerStyle={styles.contentContainer}>
-      <View style={[styles.header, { backgroundColor: colors.background === '#f5f5f5' ? '#fff' : '#2E3A3B' }]}>
-        <Text style={[styles.title, { color: colors.primary }]}>Settings</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Manage your preferences</Text>
-      </View>
-
       <View style={[styles.profileCard, { backgroundColor: colors.background === '#f5f5f5' ? '#fff' : '#2E3A3B' }]}>
         <View style={styles.profileIconContainer}>
           <Ionicons name="person-circle-outline" size={60} color={colors.primary} />
@@ -187,34 +197,13 @@ const SettingsScreen: React.FC = () => {
 
         <View style={[styles.settingItem, { backgroundColor: colors.background === '#f5f5f5' ? '#fff' : '#2E3A3B' }]}>
           <View style={styles.settingInfo}>
-            <Ionicons name="notifications-outline" size={24} color={colors.textPrimary} style={styles.settingIcon} />
-            <Text style={[styles.settingText, { color: colors.textPrimary }]}>Push Notifications</Text>
-          </View>
-          <Switch
-            value={notificationsEnabled}
-            onValueChange={setNotificationsEnabled}
-            trackColor={{ false: colors.secondary, true: colors.primary }}
-            thumbColor={notificationsEnabled ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-
-        <View style={[styles.settingItem, { backgroundColor: colors.background === '#f5f5f5' ? '#fff' : '#2E3A3B' }]}>
-          <View style={styles.settingInfo}>
-            <Ionicons name="mail-outline" size={24} color={colors.textPrimary} style={styles.settingIcon} />
-            <Text style={[styles.settingText, { color: colors.textPrimary }]}>Email Notifications</Text>
-          </View>
-          <Switch
-            value={emailNotificationsEnabled}
-            onValueChange={setEmailNotificationsEnabled}
-            trackColor={{ false: colors.secondary, true: colors.primary }}
-            thumbColor={emailNotificationsEnabled ? '#fff' : '#f4f3f4'}
-          />
-        </View>
-
-        <View style={[styles.settingItem, { backgroundColor: colors.background === '#f5f5f5' ? '#fff' : '#2E3A3B' }]}>
-          <View style={styles.settingInfo}>
             <Ionicons name="moon-outline" size={24} color={colors.textPrimary} style={styles.settingIcon} />
-            <Text style={[styles.settingText, { color: colors.textPrimary }]}>Dark Mode</Text>
+            <View>
+              <Text style={[styles.settingText, { color: colors.textPrimary }]}>Dark Mode</Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Switch between light and dark themes.
+              </Text>
+            </View>
           </View>
           <Switch
             value={theme === 'dark'}
@@ -227,11 +216,24 @@ const SettingsScreen: React.FC = () => {
         <View style={[styles.settingItem, { backgroundColor: colors.background === '#f5f5f5' ? '#fff' : '#2E3A3B' }]}>
           <View style={styles.settingInfo}>
             <Ionicons name="language-outline" size={24} color={colors.textPrimary} style={styles.settingIcon} />
-            <Text style={[styles.settingText, { color: colors.textPrimary }]}>Language</Text>
+            <View>
+              <Text style={[styles.settingText, { color: colors.textPrimary }]}>Language</Text>
+              <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                Choose your preferred language.
+              </Text>
+            </View>
           </View>
-          <View style={styles.languageContainer}>
-            <Text style={[styles.languageText, { color: colors.textSecondary }]}>{language}</Text>
-            <Ionicons name="chevron-down" size={20} color={colors.textSecondary} />
+          <View style={styles.languagePickerContainer}>
+            <Picker
+              selectedValue={language}
+              onValueChange={(itemValue) => handleLanguageChange(itemValue)}
+              style={[styles.languagePicker, { color: colors.textPrimary }]}
+              dropdownIconColor={colors.textSecondary}
+            >
+              {languages.map((lang) => (
+                <Picker.Item key={lang} label={lang} value={lang} />
+              ))}
+            </Picker>
           </View>
         </View>
       </View>
@@ -271,26 +273,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     marginTop: 10,
-  },
-  header: {
-    padding: 20,
-    borderRadius: 12,
-    marginBottom: 20,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    fontStyle: 'italic',
   },
   profileCard: {
     padding: 20,
@@ -393,6 +375,7 @@ const styles = StyleSheet.create({
   settingInfo: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
   },
   settingIcon: {
     marginRight: 15,
@@ -401,13 +384,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
   },
-  languageContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  settingDescription: {
+    fontSize: 12,
+    marginTop: 2,
   },
-  languageText: {
-    fontSize: 14,
-    marginRight: 5,
+  languagePickerContainer: {
+    width: 120,
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  languagePicker: {
+    height: 40,
+    width: '100%',
   },
   logoutButton: {
     flexDirection: 'row',

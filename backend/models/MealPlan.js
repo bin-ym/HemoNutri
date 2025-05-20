@@ -1,4 +1,4 @@
-const mongoose = require("mongoose");
+const mongoose = require('mongoose');
 
 const nutrientSchema = new mongoose.Schema({
   carbohydrates: { type: Number, default: 0 }, // grams
@@ -22,21 +22,21 @@ const recommendedFoodsSchema = new mongoose.Schema({
 });
 
 const hemodialysisLimitsSchema = new mongoose.Schema({
-  potassium: { type: Number, default: 0 }, // mg (target limit)
-  phosphorus: { type: Number, default: 0 }, // mg (target limit)
-  sodium: { type: Number, default: 0 }, // mg (target limit)
-  fluid: { type: Number, default: 0 }, // ml (target limit)
+  potassium: { type: Number, default: 2000 }, // mg (target limit)
+  phosphorus: { type: Number, default: 800 }, // mg (target limit)
+  sodium: { type: Number, default: 2000 }, // mg (target limit)
+  fluid: { type: Number, default: 1000 }, // ml (target limit)
 });
 
 const mealPlanSchema = new mongoose.Schema({
   patientId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    ref: 'User',
     required: true,
   },
   providerId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
+    ref: 'User',
     required: true,
   },
   date: {
@@ -58,4 +58,4 @@ const mealPlanSchema = new mongoose.Schema({
 
 mealPlanSchema.index({ patientId: 1, date: 1 }, { unique: true });
 
-module.exports = mongoose.model("MealPlan", mealPlanSchema);
+module.exports = mongoose.model('MealPlan', mealPlanSchema);

@@ -6,10 +6,10 @@ import { Alert, Platform } from 'react-native';
 const getBaseURL = (): string => {
   if (Platform.OS === 'android') {
     // Physical Android device (Expo in development or production)
-    return 'http://192.168.1.3:5000'; // Use your PC's LAN IP
+    return 'http://192.168.1.13:5000'; // Replace with your machine's IP
   } else if (Platform.OS === 'ios') {
     // Physical iOS device (Expo in development or production)
-    return 'http://192.168.1.3:5000'; // Use your PC's LAN IP
+    return 'http://192.168.1.4:5000'; // Replace with your machine's IP
   } else {
     // Default (e.g., running on simulator or other environment)
     return 'http://localhost:5000';
@@ -29,8 +29,9 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    const fullUrl = `${config.baseURL}${config.url}`;
     console.log(
-      `[${new Date().toISOString()}] API Request: ${config.method?.toUpperCase() || 'UNKNOWN'} ${config.url}`
+      `[${new Date().toISOString()}] API Request: ${config.method?.toUpperCase() || 'UNKNOWN'} ${fullUrl}`
     );
     console.log('Request Headers:', config.headers);
     console.log('Request Data:', config.data);
@@ -47,7 +48,7 @@ api.interceptors.response.use(
     console.log(
       `[${new Date().toISOString()}] API Response: ${response.config.method?.toUpperCase() || 'UNKNOWN'} ${
         response.config.url
-      } - Status: ${response.status}`
+      } - Status: ${response.status} - Data: ${JSON.stringify(response.data)}`
     );
     return response;
   },
@@ -65,7 +66,8 @@ api.interceptors.response.use(
     } else if (error.request) {
       console.log('No response received:', error.request);
       console.log('Error Details:', error.message);
-      console.log('Base URL:', api.defaults.baseURL);
+      console.log('Full Base URL:', api.defaults.baseURL);
+      console.log('Requested URL:', error.request.responseURL || error.config.url);
       console.log('Platform:', Platform.OS);
       console.log('Development Mode:', __DEV__);
     }

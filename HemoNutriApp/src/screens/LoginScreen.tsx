@@ -5,7 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CommonActions } from '@react-navigation/native';
 import api from '../api/api';
 import { storeAuthData, clearAuthData } from '../utils/auth';
-import { colors } from '../theme/colors';
+import { useColors } from '../theme/ThemeContext'; // Updated import
 import type { LoginCredentials, AuthResponse } from '../types/auth';
 
 // Define the navigation stack param list
@@ -22,6 +22,7 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const navigation = useNavigation<NavigationProp>();
+  const colors = useColors(); // Use the hook to get dynamic colors
 
   const handleLogin = async () => {
     if (!identifier || !password) {
@@ -79,33 +80,45 @@ const LoginScreen: React.FC = () => {
     }
   };
 
+  const isFormValid = identifier.trim().length > 0 && password.trim().length > 0;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>Login</Text>
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: colors.secondary, color: colors.textPrimary }]}
         placeholder="Username or Email"
+        placeholderTextColor={colors.textSecondary}
         value={identifier}
         onChangeText={setIdentifier}
         autoCapitalize="none"
         keyboardType="email-address"
+        accessibilityLabel="Username or Email input"
       />
       <TextInput
-        style={styles.input}
+        style={[styles.input, { borderColor: colors.secondary, color: colors.textPrimary }]}
         placeholder="Password"
+        placeholderTextColor={colors.textSecondary}
         value={password}
         onChangeText={setPassword}
         secureTextEntry
         autoCapitalize="none"
+        accessibilityLabel="Password input"
       />
       <Button
         title={loading ? 'Logging in...' : 'Login'}
         onPress={handleLogin}
         color={colors.primary}
-        disabled={loading}
+        disabled={loading || !isFormValid}
+        accessibilityLabel="Login button"
       />
       {loading && (
-        <ActivityIndicator size="large" color={colors.primary} style={styles.loadingIndicator} />
+        <ActivityIndicator
+          size="large"
+          color={colors.primary}
+          style={styles.loadingIndicator}
+          accessibilityLabel="Loading indicator"
+        />
       )}
     </View>
   );
@@ -116,22 +129,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     padding: 20,
-    backgroundColor: colors.background,
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.textPrimary,
     marginBottom: 20,
     textAlign: 'center',
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.secondary,
     padding: 10,
     marginBottom: 10,
     borderRadius: 5,
-    color: colors.textPrimary,
     backgroundColor: '#fff',
   },
   loadingIndicator: {

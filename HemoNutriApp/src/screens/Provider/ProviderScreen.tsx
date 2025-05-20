@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList } from 'react-native';
 import { Button } from '@rneui/themed';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { clearAuthData } from '../../utils/auth';
-import { colors } from '../../theme/colors';
 import api from '../../api/api';
+import { useColors } from '../../theme/ThemeContext';
 
-// Define the stack and tab param lists
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
@@ -32,7 +30,6 @@ type TabParamList = {
   ProviderMealPlans: undefined;
 };
 
-// Combine navigation props
 type NavigationProp = NativeStackNavigationProp<RootStackParamList> & BottomTabNavigationProp<TabParamList, 'Provider'>;
 
 type FoodLog = {
@@ -59,6 +56,7 @@ const ProviderScreen: React.FC = () => {
   const [recentLogs, setRecentLogs] = useState<FoodLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const colors = useColors();
 
   const fetchData = async () => {
     try {
@@ -121,11 +119,11 @@ const ProviderScreen: React.FC = () => {
   const renderRecentLog = ({ item }: { item: FoodLog }) => {
     const username = typeof item.userId === 'object' && item.userId ? item.userId.username : 'Unknown User';
     return (
-      <View style={styles.logItem}>
-        <Text style={styles.logText}>
+      <View style={[styles.logItem, { backgroundColor: colors.background, borderColor: colors.secondary }]}>
+        <Text style={[styles.logText, { color: colors.textPrimary }]}>
           {username}: {item.foodItem} - {item.quantity}{item.isFluid ? 'ml' : 'g'}
         </Text>
-        <Text style={styles.logDate}>
+        <Text style={[styles.logDate, { color: colors.textSecondary }]}>
           <Ionicons name="time-outline" size={14} color={colors.textSecondary} /> {formatDate(item.date)}
         </Text>
       </View>
@@ -136,25 +134,26 @@ const ProviderScreen: React.FC = () => {
     switch (item.type) {
       case 'header':
         return (
-          <View style={styles.header}>
-            <Text style={styles.title}>Provider Dashboard</Text>
-            <Text style={styles.subtitle}>Monitor your patients and manage their nutrition.</Text>
+          <View style={[styles.header, { shadowColor: '#000' }]}>
+            <Text style={[styles.title, { color: colors.primary }]}>Provider Dashboard</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Monitor your patients and manage their nutrition.</Text>
           </View>
         );
       case 'overview':
         return (
           <View style={styles.overviewContainer}>
-            <View style={styles.statCard}>
+            <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.secondary, shadowColor: '#000' }]}>
               <View style={styles.statHeader}>
-                <Text style={styles.statTitle}>Patients</Text>
+                <Text style={[styles.statTitle, { color: colors.primary }]}>Patients</Text>
                 <Ionicons name="people-outline" size={24} color={colors.primary} />
               </View>
-              <Text style={styles.statNumber}>{stats.patients}</Text>
+              <Text style={[styles.statNumber, { color: colors.textPrimary }]}>{stats.patients}</Text>
               <Button
                 title="View All Patients"
                 onPress={handleManagePatients}
                 type="clear"
-                titleStyle={styles.statButton}
+                titleStyle={[styles.statButton, { color: colors.primary }]}
+                accessibilityLabel="View all patients"
               />
             </View>
           </View>
@@ -163,11 +162,11 @@ const ProviderScreen: React.FC = () => {
         return (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Food Logs</Text>
+              <Text style={[styles.sectionTitle, { color: colors.primary }]}>Recent Food Logs</Text>
               <Ionicons name="fast-food-outline" size={24} color={colors.primary} />
             </View>
             {recentLogs.length === 0 ? (
-              <Text style={styles.emptyText}>No recent logs.</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No recent logs.</Text>
             ) : (
               <FlatList
                 data={recentLogs}
@@ -183,23 +182,25 @@ const ProviderScreen: React.FC = () => {
         return (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Quick Actions</Text>
+              <Text style={[styles.sectionTitle, { color: colors.primary }]}>Quick Actions</Text>
               <Ionicons name="flash-outline" size={24} color={colors.primary} />
             </View>
             <View style={styles.quickActions}>
               <Button
                 title="Manage Patients"
                 onPress={handleManagePatients}
-                buttonStyle={styles.actionButton}
+                buttonStyle={[styles.actionButton, { backgroundColor: colors.primary }]}
                 containerStyle={styles.actionButtonContainer}
                 titleStyle={styles.actionButtonTitle}
+                accessibilityLabel="Manage patients button"
               />
               <Button
                 title="Add Resource"
                 onPress={handleAddResource}
-                buttonStyle={styles.actionButton}
+                buttonStyle={[styles.actionButton, { backgroundColor: colors.primary }]}
                 containerStyle={styles.actionButtonContainer}
                 titleStyle={styles.actionButtonTitle}
+                accessibilityLabel="Add resource button"
               />
             </View>
           </View>
@@ -211,23 +212,24 @@ const ProviderScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading dashboard...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading dashboard...</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
+      <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
         <Ionicons name="alert-circle-outline" size={24} color={colors.danger} />
-        <Text style={styles.errorText}>{error}</Text>
+        <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
         <Button
           title="Retry"
           onPress={handleRetry}
-          buttonStyle={styles.retryButton}
+          buttonStyle={[styles.retryButton, { backgroundColor: colors.primary }]}
           containerStyle={styles.retryButtonContainer}
           titleStyle={styles.retryButtonTitle}
+          accessibilityLabel="Retry dashboard load"
         />
       </View>
     );
@@ -245,7 +247,7 @@ const ProviderScreen: React.FC = () => {
       data={sections}
       renderItem={renderSection}
       keyExtractor={(item) => item.id}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.contentContainer}
       ListFooterComponent={<View style={{ height: 20 }} />}
     />
@@ -255,7 +257,6 @@ const ProviderScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
     padding: 20,
   },
   contentContainer: {
@@ -265,22 +266,18 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
   },
   loadingText: {
     fontSize: 18,
-    color: colors.textSecondary,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
     padding: 20,
   },
   errorText: {
     fontSize: 18,
-    color: colors.danger,
     marginTop: 10,
     marginBottom: 20,
     textAlign: 'center',
@@ -290,7 +287,6 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   retryButton: {
-    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 12,
   },
@@ -306,12 +302,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: colors.primary,
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: colors.textSecondary,
     textAlign: 'center',
   },
   overviewContainer: {
@@ -320,14 +314,11 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   statCard: {
-    backgroundColor: '#fff',
     padding: 15,
     borderRadius: 8,
     alignItems: 'center',
     width: '45%',
     borderWidth: 1,
-    borderColor: colors.secondary,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -343,17 +334,14 @@ const styles = StyleSheet.create({
   statTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: colors.primary,
   },
   statNumber: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: colors.textPrimary,
     marginBottom: 10,
   },
   statButton: {
     fontSize: 14,
-    color: colors.primary,
   },
   section: {
     marginBottom: 30,
@@ -367,31 +355,25 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: colors.primary,
   },
   list: {
     flexGrow: 0,
   },
   logItem: {
-    backgroundColor: '#fff',
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: colors.secondary,
   },
   logText: {
     fontSize: 16,
-    color: colors.textPrimary,
     marginBottom: 5,
   },
   logDate: {
     fontSize: 14,
-    color: colors.textSecondary,
   },
   emptyText: {
     fontSize: 16,
-    color: colors.textSecondary,
     textAlign: 'center',
   },
   quickActions: {
@@ -404,25 +386,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   actionButton: {
-    backgroundColor: colors.primary,
     borderRadius: 8,
     paddingVertical: 12,
   },
   actionButtonTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  buttonContainer: {
-    width: '100%',
-    marginTop: 20,
-  },
-  button: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    paddingVertical: 12,
-  },
-  buttonTitle: {
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
