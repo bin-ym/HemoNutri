@@ -2,16 +2,16 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform } from 'react-native';
 
-// Dynamically set baseURL based on platform
+// Dynamically set baseURL based on platform and environment
 const getBaseURL = (): string => {
   if (Platform.OS === 'android') {
-    // Physical Android device (Expo in development or production)
-    return 'http://192.168.1.13:5000'; // Replace with your machine's IP
+    // Android Emulator in development, physical device in production
+    return __DEV__ ? 'http://10.0.2.2:5000' : 'http://192.168.98.6:5000' ;
   } else if (Platform.OS === 'ios') {
-    // Physical iOS device (Expo in development or production)
-    return 'http://192.168.1.4:5000'; // Replace with your machine's IP
+    // iOS Simulator in development, physical device in production
+    return __DEV__ ? 'http://localhost:5000' : 'http://192.168.1.4:5000';
   } else {
-    // Default (e.g., running on simulator or other environment)
+    // Default (e.g., web or other environments)
     return 'http://localhost:5000';
   }
 };

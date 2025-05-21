@@ -4,8 +4,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "../theme/ThemeContext"; // Import useTheme from ThemeContext
-import { useColors } from "../theme/colors"; // Import useColors from colors
+import { useTheme } from "../theme/ThemeContext"; // Updated import
+import { useColors } from "../theme/ThemeContext"; // Updated import
 import HomeScreen from "../screens/Shared/HomeScreen";
 import LoginScreen from "../screens/LoginScreen";
 import AdminScreen from "../screens/Admin/AdminScreen";
@@ -119,33 +119,19 @@ const NavigationContent: React.FC = () => {
       return {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: IconName;
-          if (route.name === "Admin") {
-            iconName = focused ? "shield" : "shield";
-          } else if (route.name === "Users") {
-            iconName = focused ? "people" : "people";
-          } else if (route.name === "Resources") {
-            iconName = focused ? "book" : "book";
-          } else if (route.name === "Reports") {
-            iconName = focused ? "document" : "document";
-          } else if (route.name === "Backup") {
-            iconName = focused ? "cloud-upload" : "cloud-upload";
-          } else if (route.name === "Settings") {
-            iconName = focused ? "settings" : "settings";
-          } else if (route.name === "HomeTab") {
-            iconName = focused ? "home" : "home";
-          } else if (route.name === "FoodLogs") {
-            iconName = focused ? "fast-food" : "fast-food";
-          } else if (route.name === "MealPlans") {
-            iconName = focused ? "list" : "list";
-          } else if (route.name === "Messages") {
-            iconName = focused ? "chatbox" : "chatbox-outline";
-          } else if (route.name === "Patients") {
-            iconName = focused ? "list" : "list";
-          } else if (route.name === "ProviderEducationTab") {
-            iconName = focused ? "book" : "book";
-          } else {
-            iconName = "home";
-          }
+          if (route.name === "Admin") iconName = focused ? "shield" : "shield";
+          else if (route.name === "Users") iconName = focused ? "people" : "people";
+          else if (route.name === "Resources") iconName = focused ? "book" : "book";
+          else if (route.name === "Reports") iconName = focused ? "document" : "document";
+          else if (route.name === "Backup") iconName = focused ? "cloud-upload" : "cloud-upload";
+          else if (route.name === "Settings") iconName = focused ? "settings" : "settings";
+          else if (route.name === "HomeTab") iconName = focused ? "home" : "home";
+          else if (route.name === "FoodLogs") iconName = focused ? "fast-food" : "fast-food";
+          else if (route.name === "MealPlans") iconName = focused ? "list" : "list";
+          else if (route.name === "Messages") iconName = focused ? "chatbox" : "chatbox-outline";
+          else if (route.name === "Patients") iconName = focused ? "list" : "list";
+          else if (route.name === "ProviderEducationTab") iconName = focused ? "book" : "book";
+          else iconName = "home";
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       };
@@ -169,10 +155,7 @@ const NavigationContent: React.FC = () => {
     }
 
     return (
-      <Tab.Navigator
-        screenOptions={screenOptions}
-        initialRouteName={tabInitialRouteName(role)}
-      >
+      <Tab.Navigator screenOptions={screenOptions} initialRouteName={tabInitialRouteName(role)}>
         {role === "admin" && (
           <>
             <Tab.Screen
@@ -335,14 +318,10 @@ const NavigationContent: React.FC = () => {
 
   const tabInitialRouteName = (role: string): keyof TabParamList => {
     switch (role) {
-      case "admin":
-        return "Admin";
-      case "patient":
-        return "Patient";
-      case "provider":
-        return "Provider";
-      default:
-        return "HomeTab";
+      case "admin": return "Admin";
+      case "patient": return "Patient";
+      case "provider": return "Provider";
+      default: return "HomeTab";
     }
   };
 
@@ -370,7 +349,6 @@ const NavigationContent: React.FC = () => {
 
   console.log("AppNavigator: initialRoute =", initialRoute, "userRole =", userRole);
 
-  // Wait for both theme and auth to be ready
   if (!isThemeLoaded || !initialRoute || (initialRoute === "Tabs" && !userRole)) {
     return null;
   }

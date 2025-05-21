@@ -1,14 +1,25 @@
 const express = require('express');
-const router = express.Router();
-const authController = require('../controllers/authController');
+const {
+  login,
+  register,
+  activateAccount,
+  changePassword,
+  forgotPassword,
+  resetPassword,
+  getProfile,
+  selectProvider,
+} = require('../controllers/authController');
 const auth = require('../middleware/auth');
 
-router.post('/login', authController.login);
-router.post('/register', authController.register);
-router.post('/change-password', auth(['patient', 'provider', 'admin']), authController.changePassword);
-router.post('/forgot-password', authController.forgotPassword);
-router.post('/reset-password', authController.resetPassword);
+const router = express.Router();
 
-router.get('/profile', auth(['patient', 'provider', 'admin']), authController.getProfile);
+router.post('/login', login);
+router.post('/register', register);
+router.post('/activate', activateAccount);
+router.post('/change-password', auth, changePassword);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password', resetPassword);
+router.get('/profile', auth, getProfile);
+router.post('/select-provider', selectProvider);
 
 module.exports = router;

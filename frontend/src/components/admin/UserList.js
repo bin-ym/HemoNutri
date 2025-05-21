@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
 import { UserPlus, X, Trash2, AlertCircle } from 'lucide-react';
 
 const UserList = () => {
+  const { t } = useTranslation();
   const [users, setUsers] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newUser, setNewUser] = useState({ username: '', email: '', role: 'patient' });
@@ -31,6 +33,7 @@ const UserList = () => {
   }, []);
 
   const handleDeleteUser = async (userId) => {
+    if (!window.confirm(t('confirm_delete_user'))) return;
     try {
       const token = localStorage.getItem('token');
       await api.delete(`/admin/users/${userId}`, {
@@ -55,19 +58,19 @@ const UserList = () => {
       setAddError('');
     } catch (err) {
       console.error('Add user error:', err.response?.data || err.message);
-      setAddError(err.response?.data?.error || 'Failed to add user');
+      setAddError(err.response?.data?.error || t('failed_add_user'));
     }
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
-      <div className="max-w-4xl mx-auto p-6">
+    <div className="flex flex-col min-h-screen bg-gray-50">
+      <div className="max-w-4xl p-6 mx-auto">
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-extrabold text-teal-700 animate-fade-in">
-            User Management
+            {t('user_management')}
           </h1>
           <p className="mt-2 text-lg text-teal-600">
-            Manage patients and providers in HemoNutri
+            {t('manage_patients_providers')}
           </p>
         </div>
 
@@ -83,12 +86,12 @@ const UserList = () => {
             {showAddForm ? (
               <>
                 <X className="w-5 h-5 mr-2" />
-                Cancel
+                {t('cancel')}
               </>
             ) : (
               <>
                 <UserPlus className="w-5 h-5 mr-2" />
-                Add User
+                {t('add_user')}
               </>
             )}
           </button>
@@ -96,45 +99,45 @@ const UserList = () => {
           {showAddForm && (
             <form
               onSubmit={handleAddUser}
-              className="mb-8 p-6 bg-teal-50 border border-teal-200 rounded-lg shadow-md space-y-4 animate-slide-down"
+              className="p-6 mb-8 space-y-4 border border-teal-200 rounded-lg shadow-md bg-teal-50 animate-slide-down"
             >
               <div>
-                <label className="block text-sm font-medium text-teal-700 mb-1">
-                  Username
+                <label className="block mb-1 text-sm font-medium text-teal-700">
+                  {t('username')}
                 </label>
                 <input
                   type="text"
                   value={newUser.username}
                   onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                  placeholder="Enter username"
-                  className="w-full p-2 border border-teal-200 rounded bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  placeholder={t('enter_username')}
+                  className="w-full p-2 bg-white border border-teal-200 rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-teal-700 mb-1">
-                  Email
+                <label className="block mb-1 text-sm font-medium text-teal-700">
+                  {t('email')}
                 </label>
                 <input
                   type="email"
                   value={newUser.email}
                   onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  placeholder="Enter email"
-                  className="w-full p-2 border border-teal-200 rounded bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  placeholder={t('enter_email')}
+                  className="w-full p-2 bg-white border border-teal-200 rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-teal-700 mb-1">
-                  Role
+                <label className="block mb-1 text-sm font-medium text-teal-700">
+                  {t('role')}
                 </label>
                 <select
                   value={newUser.role}
                   onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                  className="w-full p-2 border border-teal-200 rounded bg-white focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  className="w-full p-2 bg-white border border-teal-200 rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
-                  <option value="patient">Patient</option>
-                  <option value="provider">Provider</option>
+                  <option value="patient">{t('patient')}</option>
+                  <option value="provider">{t('provider')}</option>
                 </select>
               </div>
               {addError && (
@@ -147,24 +150,24 @@ const UserList = () => {
               )}
               <button
                 type="submit"
-                className="w-full flex items-center justify-center px-6 py-3 text-white bg-teal-600 rounded-lg shadow-md hover:bg-teal-700 hover:scale-105 transition-all duration-300"
+                className="flex items-center justify-center w-full px-6 py-3 text-white transition-all duration-300 bg-teal-600 rounded-lg shadow-md hover:bg-teal-700 hover:scale-105"
               >
                 <UserPlus className="w-5 h-5 mr-2" />
-                Add User
+                {t('add_user')}
               </button>
             </form>
           )}
 
           {users.length === 0 ? (
-            <p className="text-teal-600 text-center">No non-admin users found.</p>
+            <p className="text-center text-teal-600">{t('no_non_admin_users')}</p>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse bg-white shadow-md rounded-lg">
+              <table className="w-full bg-white border-collapse rounded-lg shadow-md">
                 <thead>
-                  <tr className="bg-teal-700 text-white">
-                    <th className="p-3 text-left font-semibold">Username</th>
-                    <th className="p-3 text-left font-semibold">Role</th>
-                    <th className="p-3 text-left font-semibold">Actions</th>
+                  <tr className="text-white bg-teal-700">
+                    <th className="p-3 font-semibold text-left">{t('username')}</th>
+                    <th className="p-3 font-semibold text-left">{t('role')}</th>
+                    <th className="p-3 font-semibold text-left">{t('actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -176,14 +179,14 @@ const UserList = () => {
                       } hover:bg-teal-100 transition-all duration-200`}
                     >
                       <td className="p-3 text-teal-800">{user.username}</td>
-                      <td className="p-3 text-teal-800 capitalize">{user.role}</td>
+                      <td className="p-3 text-teal-800 capitalize">{t(user.role)}</td>
                       <td className="p-3">
                         <button
                           onClick={() => handleDeleteUser(user._id)}
-                          className="flex items-center px-3 py-1 text-white bg-red-500 rounded-lg shadow-sm hover:bg-red-600 hover:scale-105 transition-all duration-300"
+                          className="flex items-center px-3 py-1 text-white transition-all duration-300 bg-red-500 rounded-lg shadow-sm hover:bg-red-600 hover:scale-105"
                         >
                           <Trash2 className="w-4 h-4 mr-1" />
-                          Delete
+                          {t('delete')}
                         </button>
                       </td>
                     </tr>

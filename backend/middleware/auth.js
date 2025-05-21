@@ -8,7 +8,7 @@ const auth = (roles) => {
     }
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET || 'HemoNutri');
       req.user = decoded;
       if (roles && !roles.includes(decoded.role)) {
         return res.status(403).json({ error: 'Insufficient permissions' });
@@ -18,6 +18,7 @@ const auth = (roles) => {
       if (err.name === 'TokenExpiredError') {
         return res.status(401).json({ error: 'Token expired' });
       }
+      console.error('Auth middleware error:', err);
       res.status(401).json({ error: 'Invalid token' });
     }
   };

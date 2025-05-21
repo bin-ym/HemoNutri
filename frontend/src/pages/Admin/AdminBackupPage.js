@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
 import api from "../../services/api";
-import { Database, Download, AlertCircle } from "lucide-react"
+import { Database, Download, AlertCircle } from "lucide-react";
 
 const AdminBackupPage = () => {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [lastBackup, setLastBackup] = useState(null);
@@ -16,7 +17,7 @@ const AdminBackupPage = () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) {
-          setError("Please log in to access this page.");
+          setError(t("please_login_access_page"));
           window.location.href = '/login';
           return;
         }
@@ -26,15 +27,15 @@ const AdminBackupPage = () => {
         setBackupHistory(res.data);
       } catch (err) {
         console.error("Fetch backup history error:", err.response?.data || err.message);
-        const errorMessage = err.response?.data?.error || "Failed to fetch backup history.";
+        const errorMessage = err.response?.data?.error || t("failed_fetch_backup_history");
         setError(errorMessage);
         if (err.response?.status === 401) {
-          setError("Session expired. Redirecting to login...");
+          setError(t("session_expired"));
         }
       }
     };
     fetchBackupHistory();
-  }, []);
+  }, [t]);
 
   const handleBackup = async () => {
     setLoading(true);
@@ -42,7 +43,7 @@ const AdminBackupPage = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        setError("Please log in to create a backup.");
+        setError(t("please_login_create_backup"));
         window.location.href = '/login';
         return;
       }
@@ -54,7 +55,7 @@ const AdminBackupPage = () => {
       // Check response status
       if (res.status !== 200) {
         const errorText = await res.data.text();
-        let errorMessage = "Failed to create backup";
+        let errorMessage = t("failed_create_backup");
         try {
           const errorData = JSON.parse(errorText);
           errorMessage = errorData.error || errorMessage;
@@ -67,7 +68,7 @@ const AdminBackupPage = () => {
       // Check Content-Type to ensure it's a file download
       const contentType = res.headers['content-type'];
       if (!contentType || !contentType.includes('application/json')) {
-        throw new Error("Unexpected response format. Expected a JSON file.");
+        throw new Error(t("unexpected_response_format"));
       }
 
       // Extract filename from Content-Disposition header
@@ -99,7 +100,7 @@ const AdminBackupPage = () => {
       setBackupHistory(historyRes.data);
     } catch (err) {
       console.error("Backup error:", err.message);
-      const errorMessage = err.response?.status === 401 ? "Session expired. Redirecting to login..." : err.message || "Failed to create backup. Please try again.";
+      const errorMessage = err.response?.status === 401 ? t("session_expired") : err.message || t("failed_create_backup");
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -110,7 +111,7 @@ const AdminBackupPage = () => {
     try {
       const token = localStorage.getItem("token");
       if (!token) {
-        setError("Please log in to download backups.");
+        setError(t("please_login_download_backups"));
         window.location.href = '/login';
         return;
       }
@@ -129,7 +130,7 @@ const AdminBackupPage = () => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Download backup error:", err.response?.data || err.message);
-      const errorMessage = err.response?.status === 401 ? "Session expired. Redirecting to login..." : "Failed to download backup. Please try again.";
+      const errorMessage = err.response?.status === 401 ? t("session_expired") : t("failed_download_backup");
       setError(errorMessage);
     }
   };
@@ -140,10 +141,10 @@ const AdminBackupPage = () => {
       <div className="max-w-4xl p-6 mx-auto">
         <div className="mb-8 text-center">
           <h1 className="text-4xl font-extrabold text-teal-700 animate-fade-in">
-            Database Backup
+            {t("database_backup")}
           </h1>
           <p className="mt-2 text-lg text-teal-600">
-            Create and manage backups of the HemoNutri database
+            {t("create_manage_backups")}
           </p>
         </div>
 
@@ -161,7 +162,7 @@ const AdminBackupPage = () => {
               ) : (
                 <Download className="w-5 h-5 mr-2" />
               )}
-              {loading ? "Creating Backup..." : "Create Backup"}
+              {loading ? t("creating_backup") : t("create_backup")}
             </button>
 
             {error && (
@@ -176,7 +177,7 @@ const AdminBackupPage = () => {
             {lastBackup && (
               <div className="p-4 rounded-lg shadow-md bg-teal-50">
                 <p className="text-teal-600">
-                  Last Backup: {lastBackup}
+                  {t("last_backup")}: {lastBackup}
                 </p>
               </div>
             )}
@@ -184,7 +185,7 @@ const AdminBackupPage = () => {
             {backupHistory.length > 0 && (
               <div className="w-full mt-6">
                 <h2 className="mb-4 text-xl font-semibold text-teal-700">
-                  Backup History
+                  {t("backup_history")}
                 </h2>
                 <div className="space-y-3">
                   {backupHistory.map((backup) => (
@@ -203,7 +204,7 @@ const AdminBackupPage = () => {
                         className="flex items-center px-4 py-2 text-white transition-all duration-300 bg-teal-600 rounded-lg hover:bg-teal-700 hover:scale-105"
                       >
                         <Download className="w-4 h-4 mr-2" />
-                        Download
+                        {t("download")}
                       </button>
                     </div>
                   ))}
