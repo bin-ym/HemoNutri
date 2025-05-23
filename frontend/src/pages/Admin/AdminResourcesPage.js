@@ -187,6 +187,77 @@ const AdminResourcesPage = () => {
           </div>
         )}
 
+        {editingResource && (
+          <div className="p-6 mb-6 bg-white border border-teal-200 shadow-lg rounded-xl animate-fade-in">
+            <h2 className="mb-4 text-2xl font-semibold text-teal-700">
+              {t("edit_resource")}
+            </h2>
+            <form onSubmit={handleSaveResource} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-teal-700">
+                  {t("resource_title")}
+                </label>
+                <input
+                  type="text"
+                  value={editingResource.title}
+                  onChange={(e) =>
+                    setEditingResource({ ...editingResource, title: e.target.value })
+                  }
+                  placeholder={t("resource_title")}
+                  className="w-full p-3 bg-white border border-teal-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-teal-700">
+                  {t("resource_description")}
+                </label>
+                <textarea
+                  value={editingResource.description}
+                  onChange={(e) =>
+                    setEditingResource({ ...editingResource, description: e.target.value })
+                  }
+                  placeholder={t("resource_description")}
+                  className="w-full p-3 bg-white border border-teal-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                  rows="4"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-teal-700">
+                  {t("resource_url")}
+                </label>
+                <input
+                  type="text"
+                  value={editingResource.url}
+                  onChange={(e) =>
+                    setEditingResource({ ...editingResource, url: e.target.value })
+                  }
+                  placeholder={t("resource_url")}
+                  className="w-full p-3 bg-white border border-teal-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                />
+              </div>
+              <div className="flex space-x-4">
+                <button
+                  type="submit"
+                  className="flex items-center justify-center flex-1 p-3 text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-800 hover:scale-105"
+                >
+                  <Save className="w-5 h-5 mr-2" />
+                  {t("save_resource")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingResource(null)}
+                  className="flex items-center justify-center flex-1 p-3 text-white transition-all duration-300 bg-gray-500 rounded-lg shadow-md hover:bg-gray-600 hover:scale-105"
+                >
+                  <X className="w-5 h-5 mr-2" />
+                  {t("cancel")}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
         {loading ? (
           <div className="flex items-center justify-center">
             <div className="w-12 h-12 border-4 border-teal-700 rounded-full border-t-transparent animate-spin"></div>

@@ -6,7 +6,6 @@ const MealPlan = require('../models/MealPlan');
 const Message = require('../models/Message');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 
 // Email setup
@@ -140,7 +139,7 @@ const adminController = {
   getUserActivity: async (req, res) => {
     try {
       const logs = await FoodLog.find()
-        .populate('userId', 'username') // Updated to userId
+        .populate('userId', 'username')
         .sort({ date: -1 })
         .limit(50);
       console.log('Fetched user activity:', logs.length);
@@ -166,22 +165,26 @@ const adminController = {
   },
 
   addUser: async (req, res) => {
-    const { username, email, role } = req.body;
+    const { firstName, lastName, email, role } = req.body;
     try {
+      if (!firstName || !lastName || !email || !role) {
+        return res.status(400).json({ error: 'First name, last name, email, and role are required' });
+      }
+
+      const username = `${firstName} ${lastName}`;
       const existingUser = await User.findOne({ $or: [{ username }, { email }] });
       if (existingUser) {
         return res.status(400).json({ error: 'Username or email already exists' });
       }
 
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      const hashedPassword = await bcrypt.hash(otp, 10);
+      const temporaryPassword = Math.floor(10000000 + Math.random() * 90000000).toString();
+      const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
       const user = new User({
         username,
         email,
         password: hashedPassword,
         role,
-        otp,
         isFirstLogin: true,
       });
       await user.save();
@@ -190,12 +193,13 @@ const adminController = {
         await transporter.sendMail({
           from: process.env.EMAIL_USER,
           to: email,
-          subject: 'Your HemoNutri OTP',
-          text: `Welcome to HemoNutri! Your OTP is: ${otp}. Use it to log in for the first time and change your password.`,
+          subject: 'Your HemoNutri Temporary Password',
+          text: `Welcome to HemoNutri, ${firstName}! Your temporary password is: ${temporaryPassword}. Use it to log in for the first time and change your password.`,
         });
-        console.log(`OTP sent to ${email}: ${otp}`);
+        console.log(`Temporary password sent to ${email}: ${temporaryPassword}`);
       } catch (emailErr) {
         console.error('Email sending error:', emailErr.stack);
+        // Continue despite email error to ensure user is created
       }
 
       console.log('Added user:', user._id);

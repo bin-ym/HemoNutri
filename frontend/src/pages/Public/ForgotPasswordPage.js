@@ -18,6 +18,7 @@ const ForgotPasswordPage = () => {
       setMessage(
         res.data.message || "A password reset link has been sent to your email."
       );
+      setTimeout(() => navigate("/login"), 2000); // Redirect to login after 2s
     } catch (err) {
       setError(err.response?.data?.error || "Failed to send reset request.");
     }
@@ -27,8 +28,8 @@ const ForgotPasswordPage = () => {
     <div className="min-h-screen flex flex-col bg-gray-100">
       <Navbar role={null} />
       <div className="flex-grow flex items-center justify-center">
-        <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
-          <h2 className="text-2xl font-bold mb-6 text-center text-teal-600">
+        <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md animate-fade-in">
+          <h2 className="text-2xl font-bold mb-6 text-center text-blue-600">
             Forgot Password
           </h2>
           {message && (
@@ -44,13 +45,13 @@ const ForgotPasswordPage = () => {
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
+                className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter email or username"
               />
             </div>
             <button
               type="submit"
-              className="w-full bg-teal-500 text-white p-2 rounded hover:bg-teal-600 transition duration-300"
+              className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition duration-300"
             >
               Send Reset Link
             </button>
@@ -58,7 +59,7 @@ const ForgotPasswordPage = () => {
           <div className="mt-4 text-center">
             <button
               onClick={() => navigate("/login")}
-              className="w-full bg-teal-100 text-teal-600 p-2 rounded hover:bg-teal-200 transition duration-300"
+              className="w-full bg-blue-100 text-blue-600 p-2 rounded hover:bg-blue-200 transition duration-300"
             >
               Back to Login
             </button>

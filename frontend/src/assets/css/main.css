@@ -1,0 +1,75 @@
+/* ---------- Animations ---------- */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes content-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ---------- Animation Utility Classes ---------- */
+.animate-fade-in {
+  animation: fade-in 0.5s ease-in;
+}
+
+.animate-card-enter {
+  animation: card-enter 0.6s ease-out forwards;
+}
+
+.animate-content-reveal {
+  animation: content-reveal 0.4s ease-out forwards;
+}
+
+/* ---------- Hover Effects for Cards ---------- */
+.card-hover-effect {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-hover-effect:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(59, 130, 246, 0.3); /* Tailwind blue-500 glow */
+}
+
+/* ---------- Password Strength Indicator ---------- */
+.text-red-500 { color: #ef4444; }
+.text-yellow-500 { color: #eab308; }
+.text-green-500 { color: #22c55e; }
+.bg-red-500 { background-color: #ef4444; }
+.bg-yellow-500 { background-color: #eab308; }
+.bg-green-500 { background-color: #22c55e; }
+
+/* ---------- Accessibility ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-card-enter,
+  .animate-content-reveal,
+  .card-hover-effect {
+    animation: none !important;
+    transition: none !important;
+  }
+}

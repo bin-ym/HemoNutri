@@ -38,12 +38,12 @@ export const AuthProvider = ({ children }) => {
     console.log('AuthContext login called with:', identifier);
     const response = await api.post('/auth/login', { identifier, password });
     console.log('AuthContext login response:', response.data);
-    const { token, role, userId, isFirstLogin, needsProviderSelection, providers } = response.data;
+    const { token, role, userId, isFirstLogin, isTempPassword, resetToken, needsProviderSelection, providers } = response.data;
     localStorage.setItem('token', token);
     localStorage.setItem('role', role);
     localStorage.setItem('userId', userId);
-    setUser({ token, role, userId, isFirstLogin, needsProviderSelection, providers });
-    console.log('AuthContext: User set after login:', { token, role, userId, isFirstLogin, needsProviderSelection, providers });
+    setUser({ token, role, userId, isFirstLogin, isTempPassword, resetToken, needsProviderSelection, providers });
+    console.log('AuthContext: User set after login:', { token, role, userId, isFirstLogin, isTempPassword, resetToken, needsProviderSelection, providers });
     return response.data;
   };
 

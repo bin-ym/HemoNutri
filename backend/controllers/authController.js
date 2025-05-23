@@ -28,6 +28,20 @@ const generateActivationCode = () => {
   return Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit code
 };
 
+const generateTempPassword = () => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@$!%*?&';
+  let password = '';
+  for (let i = 0; i < 8; i++) {
+    password += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  // Ensure at least one of each required type
+  if (!/[A-Z]/.test(password)) password = password.slice(0, -1) + 'A';
+  if (!/[a-z]/.test(password)) password = password.slice(0, -1) + 'a';
+  if (!/\d/.test(password)) password = password.slice(0, -1) + '1';
+  if (!/[@$!%*?&]/.test(password)) password = password.slice(0, -1) + '@';
+  return password;
+};
+
 const login = async (req, res) => {
   const { identifier, password } = req.body;
   try {
@@ -44,7 +58,12 @@ const login = async (req, res) => {
     if (!user.isActivated)
       return res.status(400).json({ error: "Account not activated" });
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    let isTempPassword = false;
+    let isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch && user.tempPassword) {
+      isMatch = await bcrypt.compare(password, user.tempPassword);
+      isTempPassword = isMatch;
+    }
     if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
     const token = jwt.sign(
@@ -53,15 +72,23 @@ const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    if (isTempPassword) {
+      return res.json({
+        token,
+        role: user.role,
+        userId: user._id.toString(),
+        isTempPassword: true,
+        resetToken: user.resetPasswordToken,
+      });
+    }
+
     if (user.isFirstLogin) {
       if (user.role === "provider") {
-        // Providers are assigned as their own provider
         user.provider = user._id;
         user.isFirstLogin = false;
         await user.save();
         console.log(`Provider ${user.username} assigned as own provider`);
       } else if (user.role === "patient") {
-        // Patients need to select a provider
         const providers = await User.find({ role: "provider" }).select(
           "username _id"
         );
@@ -78,13 +105,11 @@ const login = async (req, res) => {
             })),
           });
         } else {
-          // No providers available, proceed without provider
           user.isFirstLogin = false;
           await user.save();
           console.log(`No providers available for patient ${user.username}`);
         }
       } else {
-        // Admins or other roles proceed normally
         user.isFirstLogin = false;
         await user.save();
       }
@@ -167,19 +192,16 @@ const register = async (req, res) => {
     if (!passwordRegex.test(password)) {
       console.log("Password does not meet requirements");
       return res.status(400).json({
-        error:
-          "Password must be at least 8 characters long, include uppercase, lowercase, a number, and a special character",
+        error: "password_requirements",
       });
     }
 
+    const username = `${firstName} ${lastName}`;
     const existingUser = await User.findOne({
-      $or: [{ email }, { username: `${firstName} ${lastName}` }],
+      $or: [{ email }, { username }],
     });
     if (existingUser) {
-      console.log("User already exists:", {
-        email,
-        username: `${firstName} ${lastName}`,
-      });
+      console.log("User already exists:", { email, username });
       return res
         .status(400)
         .json({ error: "Email or username already exists" });
@@ -188,7 +210,9 @@ const register = async (req, res) => {
     const activationCode = generateActivationCode();
     const hashedPassword = await bcrypt.hash(password, 12);
     const user = new User({
-      username: `${firstName} ${lastName}`,
+      username,
+      firstName,
+      lastName,
       email,
       password: hashedPassword,
       role,
@@ -205,12 +229,12 @@ const register = async (req, res) => {
         to: email,
         subject: "HemoNutri Account Activation",
         text: `
-              Dear ${firstName} ${lastName},
-              Thank you for registering with HemoNutri. Please use the following 6-digit code to activate your account:
-              ${activationCode}
-              Enter this code on the activation page to complete your registration. The code expires in 10 minutes.
-              If you did not request this, please ignore this email.
-            `,
+          Dear ${firstName} ${lastName},
+          Thank you for registering with HemoNutri. Please use the following 6-digit code to activate your account:
+          ${activationCode}
+          Enter this code on the activation page to complete your registration. The code expires in 10 minutes.
+          If you did not request this, please ignore this email.
+        `,
       });
       console.log(`Activation code sent to ${email}: ${activationCode}`);
     } catch (emailErr) {
@@ -262,36 +286,38 @@ const activateAccount = async (req, res) => {
 };
 
 const changePassword = async (req, res) => {
-  const { oldPassword, newPassword } = req.body;
+  const { currentPassword, newPassword } = req.body;
   try {
-    if (!oldPassword || !newPassword) {
+    if (!currentPassword || !newPassword) {
       return res
         .status(400)
-        .json({ error: "Old and new passwords are required" });
+        .json({ error: "Current and new passwords are required" });
     }
 
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
-        error:
-          "New password must be at least 8 characters long, include uppercase, lowercase, a number, and a special character",
+        error: "password_requirements",
       });
     }
 
     const user = await User.findById(req.user.id);
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
-    if (!isMatch)
-      return res.status(400).json({ error: "Invalid old password" });
+    if (!user) return res.status(404).json({ error: "user_not_found" });
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: "invalid_current_password" });
+    }
 
     user.password = await bcrypt.hash(newPassword, 12);
     user.isFirstLogin = false;
     await user.save();
 
-    res.json({ message: "Password changed successfully" });
+    res.json({ message: "password_changed" });
   } catch (err) {
     console.error("Change password error:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "server_error" });
   }
 };
 
@@ -307,9 +333,11 @@ const forgotPassword = async (req, res) => {
     });
     if (!user) return res.status(404).json({ error: "User not found" });
 
-    const resetToken = Math.random().toString(36).toString("hex");
-    user.resetToken = resetToken;
-    user.resetTokenExpires = Date.now() + 3600000; // 1 hour
+    const resetToken = Math.random().toString(36).slice(2); // Secure random token
+    const tempPassword = generateTempPassword(); // Standard password
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
+    user.tempPassword = await bcrypt.hash(tempPassword, 12);
     await user.save();
 
     await transporter.sendMail({
@@ -317,13 +345,13 @@ const forgotPassword = async (req, res) => {
       to: user.email,
       subject: "HemoNutri Password Reset",
       text: `
-            Dear ${user.username},
-            You requested a password reset. Use the token below to reset your password:
-            ${resetToken}
-            Or click the link: http://localhost:3000/reset-password?token=${resetToken}
-            This link expires in 1 hour.
-            If you did not request this, please ignore this email.
-          `,
+        Dear ${user.username},
+        You requested a password reset. Use the temporary password below to reset your password:
+        Temporary Password: ${tempPassword}
+        Click the link: http://localhost:3000/reset-password?token=${resetToken}
+        This link and password expire in 1 hour.
+        If you did not request this, please ignore this email.
+      `,
     });
 
     console.log(`Reset email sent to ${user.email}`);
@@ -335,36 +363,41 @@ const forgotPassword = async (req, res) => {
 };
 
 const resetPassword = async (req, res) => {
-  const { token, newPassword } = req.body;
+  const { token, tempPassword, newPassword } = req.body;
   try {
-    if (!token || !newPassword) {
+    if (!token || !tempPassword || !newPassword) {
       return res
         .status(400)
-        .json({ error: "Token and new password are required" });
+        .json({ error: "Token, temporary password, and new password are required" });
     }
 
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
       return res.status(400).json({
-        error:
-          "New password must be at least 8 characters long, include uppercase, lowercase, a number, and a special character",
+        error: "password_requirements",
       });
     }
 
     const user = await User.findOne({
-      resetToken: token,
-      resetTokenExpires: { $gt: Date.now() },
+      resetPasswordToken: token,
+      resetPasswordExpires: { $gt: Date.now() },
     });
     if (!user)
       return res.status(400).json({ error: "Invalid or expired reset token" });
 
+    const isTempPasswordValid = await bcrypt.compare(tempPassword, user.tempPassword);
+    if (!isTempPasswordValid)
+      return res.status(400).json({ error: "Invalid temporary password" });
+
     user.password = await bcrypt.hash(newPassword, 12);
-    user.resetToken = null;
-    user.resetTokenExpires = null;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    user.tempPassword = null;
+    user.isFirstLogin = false;
     await user.save();
 
-    res.json({ message: "Password reset successfully" });
+    res.json({ message: "Password reset successfully", role: user.role });
   } catch (err) {
     console.error("Reset password error:", err);
     res.status(500).json({ error: "Server error" });
@@ -374,41 +407,55 @@ const resetPassword = async (req, res) => {
 const getProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select(
-      "username email role provider"
+      "username email role provider firstName lastName"
     );
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) return res.status(404).json({ error: "user_not_found" });
     res.json({
       username: user.username,
       email: user.email,
       role: user.role,
       provider: user.provider,
+      firstName: user.firstName,
+      lastName: user.lastName,
     });
   } catch (err) {
     console.error("Profile fetch error:", err.stack);
-    res.status(500).json({ error: "Server error", details: err.message });
+    res.status(500).json({ error: "server_error", details: err.message });
   }
 };
-exports.selectProvider = async (req, res) => {
+
+const updateProfile = async (req, res) => {
+  const { firstName, lastName } = req.body;
   try {
-    const { userId, providerId } = req.body;
-    const patient = await User.findById(userId);
-    if (!patient || patient.role !== "patient") {
-      return res.status(400).json({ error: "Invalid patient" });
+    if (!firstName || !lastName) {
+      return res.status(400).json({ error: "firstName_lastName_required" });
     }
-    const provider = await User.findById(providerId);
-    if (!provider || provider.role !== "provider") {
-      return res.status(400).json({ error: "Invalid provider" });
+
+    const username = `${firstName} ${lastName}`;
+    const existingUser = await User.findOne({
+      username,
+      _id: { $ne: req.user.id },
+    });
+    if (existingUser) {
+      return res.status(400).json({ error: "username_already_exists" });
     }
-    patient.provider = providerId;
-    patient.isFirstLogin = false;
-    await patient.save();
-    console.log(
-      `Provider ${provider.username} assigned to patient ${patient.firstName} ${patient.lastName}`
-    );
-    res.status(200).json({ message: "Provider selected successfully" });
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      { firstName, lastName, username },
+      { new: true }
+    ).select("username email role provider firstName lastName");
+    if (!user) return res.status(404).json({ error: "user_not_found" });
+
+    res.json({
+      message: "profile_updated",
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    });
   } catch (err) {
-    console.error("Select provider error:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error("Update profile error:", err);
+    res.status(500).json({ error: "server_error" });
   }
 };
 
@@ -421,4 +468,5 @@ module.exports = {
   resetPassword,
   getProfile,
   selectProvider,
+  updateProfile,
 };

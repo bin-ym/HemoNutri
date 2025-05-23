@@ -20,6 +20,10 @@ const userSchema = new mongoose.Schema({
     required: [true, 'Password is required'],
     minlength: [8, 'Password must be at least 8 characters'],
   },
+  tempPassword: {
+    type: String,
+    default: null,
+  },
   role: {
     type: String,
     enum: {
@@ -27,6 +31,16 @@ const userSchema = new mongoose.Schema({
       message: 'Role must be patient, provider, or admin',
     },
     required: [true, 'Role is required'],
+  },
+  firstName: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  lastName: {
+    type: String,
+    trim: true,
+    default: '',
   },
   provider: {
     type: mongoose.Schema.Types.ObjectId,
@@ -40,11 +54,13 @@ const userSchema = new mongoose.Schema({
   },
   otp: { type: String, default: null },
   isFirstLogin: { type: Boolean, default: true },
-  resetToken: { type: String, default: null },
-  resetTokenExpires: { type: Date, default: null },
+  resetPasswordToken: { type: String, default: null },
+  resetPasswordExpires: { type: Date, default: null },
   activationCode: { type: String, default: null },
   activationCodeExpires: { type: Date, default: null },
   isActivated: { type: Boolean, default: false },
+}, {
+  timestamps: true,
 });
 
 module.exports = mongoose.model('User', userSchema);

@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { MessageSquare, Bell, LogOut, Database, Globe } from "lucide-react";
+import { MessageSquare, Bell, LogOut, Database, Globe, User, Phone } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import api from "../services/api";
 import HemoNutriLogo from "../assets/HemoNutri.jpg";
@@ -22,6 +22,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
     !!localStorage.getItem("token")
   );
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  const [showEmergencyDropdown, setShowEmergencyDropdown] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -119,8 +120,14 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
     setShowLanguageDropdown(false);
   };
 
+  const emergencyContacts = [
+    { name: t("emergency_medical"), number: "+251-911-123-456" },
+    { name: t("local_hospital"), number: "+251-922-789-012" },
+    { name: t("support_center"), number: "+251-933-456-789" },
+  ];
+
   return (
-    <nav className="sticky top-0 z-50 px-6 py-4 transition-all duration-300 transform shadow-lg bg-gradient-to-r from-teal-600 to-teal-800">
+    <nav className="sticky top-0 z-50 px-6 py-4 transition-all duration-300 transform shadow-lg bg-gradient-to-r from-blue-600 to-blue-800">
       <div className="flex items-center justify-between mx-auto max-w-7xl">
         <div
           className="flex items-center space-x-3 cursor-pointer"
@@ -139,7 +146,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
             alt="HemoNutri Logo"
             className="w-10 h-10 rounded-full shadow-md"
           />
-          <h1 className="text-3xl font-extrabold tracking-tight text-white transition-colors duration-300 hover:text-teal-200 animate-fade-in">
+          <h1 className="text-3xl font-extrabold tracking-tight text-white transition-colors duration-300 hover:text-blue-200 animate-fade-in">
             {t("app_name")}
           </h1>
         </div>
@@ -148,34 +155,53 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
           {!role && (
             <>
               <NavButton label={t("home")} icon="🏠" path="/" />
-              <NavButton label={t("about")} icon="ℹ️" path="/about" />
-              <NavButton label={t("contact")} icon="📞" path="/contact" />
+              <a
+                href="#about"
+                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+              >
+                <span className="mr-2">ℹ️</span>
+                {t("about")}
+              </a>
+              <a
+                href="#contact"
+                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+              >
+                <span className="mr-2">📞</span>
+                {t("contact")}
+              </a>
               <NavButton label={t("login")} icon="🔑" path="/login" highlight />
+              <button
+                onClick={() => navigate("/profile")}
+                className="flex items-center justify-center w-10 h-10 text-white bg-blue-700 rounded-full shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+                aria-label={t("profile")}
+              >
+                <User className="w-6 h-6" />
+              </button>
               <div className="relative">
                 <button
                   onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-900 hover:scale-105"
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
                 >
                   <Globe className="w-4 h-4 mr-2" />
                   {t("language")}
                 </button>
                 {showLanguageDropdown && (
-                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-teal-200 shadow-2xl rounded-xl animate-slide-down">
+                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down">
                     <button
                       onClick={() => changeLanguage("en")}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇬🇧</span> English
                     </button>
                     <button
                       onClick={() => changeLanguage("am")}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇪🇹</span> አማርኛ
                     </button>
                     <button
                       onClick={() => changeLanguage("om")}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇪🇹</span> Afaan Oromo
                     </button>
@@ -187,9 +213,9 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
           {role === "patient" && (
             <>
               <NavButton label={t("dashboard")} icon="📊" path="/dashboard" />
-              <NavButton label={t("food_logs")} icon="🍽️" path="/food-logs" />
               <NavButton label={t("meal_plan")} icon="📋" path="/meal-plan" />
               <NavButtonWithBadge
+                t={t}
                 label={t("messages")}
                 icon={<MessageSquare className="w-4 h-4" />}
                 path="/messages"
@@ -198,29 +224,60 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
               <NavButton label={t("education")} icon="📚" path="/education" />
               <div className="relative">
                 <button
+                  onClick={() => setShowEmergencyDropdown(!showEmergencyDropdown)}
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+                  aria-label={t("emergency_contact")}
+                >
+                  <Phone className="w-4 h-4 mr-2" />
+                  {t("emergency_contact")}
+                </button>
+                {showEmergencyDropdown && (
+                  <div className="absolute right-0 z-50 w-64 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down">
+                    {emergencyContacts.map((contact, index) => (
+                      <a
+                        key={index}
+                        href={`tel:${contact.number}`}
+                        className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
+                      >
+                        <span className="mr-2">{contact.name}:</span> {contact.number}
+                      </a>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => navigate("/profile")}
+                className="flex items-center justify-center w-10 h-10 text-white bg-blue-700 rounded-full shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+                aria-label={t("profile")}
+              >
+                <User className="w-6 h-6" />
+              </button>
+              <div className="relative">
+                <button
                   onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-900 hover:scale-105"
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+                  aria-label={t("language")}
                 >
                   <Globe className="w-4 h-4 mr-2" />
                   {t("language")}
                 </button>
                 {showLanguageDropdown && (
-                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-teal-200 shadow-2xl rounded-xl animate-slide-down">
+                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down">
                     <button
                       onClick={() => changeLanguage("en")}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇬🇧</span> English
                     </button>
                     <button
                       onClick={() => changeLanguage("am")}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇪🇹</span> አማርኛ
                     </button>
                     <button
                       onClick={() => changeLanguage("om")}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇪🇹</span> Afaan Oromo
                     </button>
@@ -238,6 +295,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                 path="/provider/patients"
               />
               <NavButtonWithBadge
+                t={t}
                 label={t("messages")}
                 icon={<MessageSquare className="w-4 h-4" />}
                 path="/provider/messages"
@@ -248,31 +306,39 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                 icon="📚"
                 path="/provider/education"
               />
+              <button
+                onClick={() => navigate("/profile")}
+                className="flex items-center justify-center w-10 h-10 text-white bg-blue-700 rounded-full shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+                aria-label={t("profile")}
+              >
+                <User className="w-6 h-6" />
+              </button>
               <div className="relative">
                 <button
                   onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-900 hover:scale-105"
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+                  aria-label={t("language")}
                 >
                   <Globe className="w-4 h-4 mr-2" />
                   {t("language")}
                 </button>
                 {showLanguageDropdown && (
-                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-teal-200 shadow-2xl rounded-xl animate-slide-down">
+                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down">
                     <button
                       onClick={() => changeLanguage("en")}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇬🇧</span> English
                     </button>
                     <button
                       onClick={() => changeLanguage("am")}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇪🇹</span> አማርኛ
                     </button>
                     <button
                       onClick={() => changeLanguage("om")}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇪🇹</span> Afaan Oromo
                     </button>
@@ -290,7 +356,11 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                 icon="📚"
                 path="/admin/resources"
               />
-              <NavButton label={t("reports")} icon="📈" path="/admin/report" />
+              <NavButton
+                label={t("reports")}
+                icon="📈"
+                path="/admin/report"
+              />
               <NavButton
                 label={t("backup")}
                 icon={<Database className="w-4 h-4" />}
@@ -299,14 +369,15 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
               <div className="relative">
                 <button
                   onClick={() => setShowForm(!showForm)}
-                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-teal-700 rounded-lg hover:bg-teal-900 hover:scale-105"
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+                  aria-label={t("notify")}
                 >
                   <Bell className="w-4 h-4 mr-2" />
                   {t("notify")}
                 </button>
                 {showForm && (
-                  <div className="absolute right-0 p-4 mt-2 text-black bg-white border border-teal-200 shadow-2xl w-80 rounded-xl animate-slide-down">
-                    <h3 className="mb-3 text-lg font-semibold text-teal-700">
+                  <div className="absolute right-0 p-4 mt-2 text-black bg-white border border-blue-200 shadow-2xl w-80 rounded-xl animate-slide-down">
+                    <h3 className="mb-3 text-lg font-semibold text-blue-700">
                       {t("send_notification")}
                     </h3>
                     <form
@@ -327,7 +398,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                             })
                           }
                           placeholder={t("notification_title_placeholder")}
-                          className="w-full p-2 border border-teal-200 rounded bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className="w-full p-2 border border-blue-200 rounded bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           required
                         />
                       </div>
@@ -344,7 +415,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                             })
                           }
                           placeholder={t("message_placeholder")}
-                          className="w-full p-2 border border-teal-200 rounded bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className="w-full p-2 border border-blue-200 rounded bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                           rows="3"
                           required
                         />
@@ -365,7 +436,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                                   : notificationForm.recipientIds,
                             })
                           }
-                          className="w-full p-2 border border-teal-200 rounded bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          className="w-full p-2 border border-blue-200 rounded bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="all">{t("all_users")}</option>
                           <option value="patients">{t("all_patients")}</option>
@@ -378,7 +449,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                         </select>
                       </div>
                       {notificationForm.recipientType === "specific" && (
-                        <div className="p-2 overflow-y-auto border border-teal-100 rounded max-h-24 bg-teal-50">
+                        <div className="p-2 overflow-y-auto border border-blue-100 rounded max-h-24 bg-blue-50">
                           {users.map((user) => (
                             <div
                               key={user._id}
@@ -390,7 +461,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                                   user._id
                                 )}
                                 onChange={() => toggleRecipient(user._id)}
-                                className="w-4 h-4 mr-2 text-teal-600 border-teal-300 rounded focus:ring-teal-500"
+                                className="w-4 h-4 mr-2 text-blue-600 border-blue-300 rounded focus:ring-blue-500"
                               />
                               <span className="text-sm text-gray-700">
                                 {user.username} ({t(user.role)})
@@ -402,7 +473,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                       <div className="flex space-x-2">
                         <button
                           type="submit"
-                          className="flex-1 p-2 text-white transition-all duration-300 bg-teal-600 rounded-lg shadow-md hover:bg-teal-700 hover:scale-105"
+                          className="flex-1 p-2 text-white transition-all duration-300 bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 hover:scale-105"
                         >
                           {t("send")}
                         </button>
@@ -418,31 +489,39 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                   </div>
                 )}
               </div>
+              <button
+                onClick={() => navigate("/profile")}
+                className="flex items-center justify-center w-10 h-10 text-white bg-blue-700 rounded-full shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+                aria-label={t("profile")}
+              >
+                <User className="w-6 h-6" />
+              </button>
               <div className="relative">
                 <button
                   onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-900 hover:scale-105"
+                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+                  aria-label={t("language")}
                 >
                   <Globe className="w-4 h-4 mr-2" />
                   {t("language")}
                 </button>
                 {showLanguageDropdown && (
-                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-teal-200 shadow-2xl rounded-xl animate-slide-down">
+                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down">
                     <button
                       onClick={() => changeLanguage("en")}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇬🇧</span> English
                     </button>
                     <button
                       onClick={() => changeLanguage("am")}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇪🇹</span> አማርኛ
                     </button>
                     <button
                       onClick={() => changeLanguage("om")}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-teal-100 hover:text-teal-800"
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇪🇹</span> Afaan Oromo
                     </button>
@@ -455,6 +534,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
             <button
               onClick={handleLogout}
               className="flex items-center px-4 py-2 text-sm font-semibold text-white transition-all duration-300 bg-red-600 rounded-lg shadow-md hover:bg-red-700 hover:scale-105"
+              aria-label={t("logout")}
             >
               <LogOut className="w-4 h-4 mr-2" />
               {t("logout")}
@@ -472,21 +552,23 @@ const NavButton = ({ label, icon, path, highlight = false }) => {
     <button
       onClick={() => navigate(path)}
       className={`flex items-center px-4 py-2 text-sm font-medium text-white ${
-        highlight ? "bg-teal-800" : "bg-teal-700"
-      } rounded-lg shadow-md hover:bg-teal-900 transition-all duration-300 hover:scale-105`}
+        highlight ? "bg-blue-800" : "bg-blue-700"
+      } rounded-lg shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105`}
+      aria-label={label}
     >
-      <span className="mr-2">{icon}</span>
+      {typeof icon === "string" ? <span className="mr-2">{icon}</span> : <span className="mr-2">{icon}</span>}
       {label}
     </button>
   );
 };
 
-const NavButtonWithBadge = ({ label, icon, path, badge }) => {
+const NavButtonWithBadge = ({ t, label, icon, path, badge }) => {
   const navigate = useNavigate();
   return (
     <button
       onClick={() => navigate(path)}
-      className="relative flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-900 hover:scale-105"
+      className="relative flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+      aria-label={`${label} ${badge > 0 ? t("with_notifications", { count: badge }) : ""}`}
     >
       <span className="flex items-center">
         {icon}
