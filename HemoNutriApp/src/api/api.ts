@@ -6,7 +6,7 @@ import { Alert, Platform } from 'react-native';
 const getBaseURL = (): string => {
   if (Platform.OS === 'android') {
     // Android Emulator in development, physical device in production
-    return __DEV__ ? 'http://10.0.2.2:5000' : 'http://192.168.98.6:5000' ;
+    return __DEV__ ? 'http://10.0.2.2:5000' : 'http://192.168.122.245:5000' ;
   } else if (Platform.OS === 'ios') {
     // iOS Simulator in development, physical device in production
     return __DEV__ ? 'http://localhost:5000' : 'http://192.168.1.4:5000';

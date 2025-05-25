@@ -194,5 +194,12 @@
   "view_resource": "View Resource",
   "read_more": "Read More",
   "view_external_resource": "View External Resource",
-  "close": "Close"
+  "close": "Close",
+  "about_hemonutri": "About HemoNutri",
+  "our_mission": "Our Mission",
+  "mission_description": "Empowering hemodialysis patients with personalized nutrition tools for improved health, confidence, and independence.",
+  "what_we_offer": "What We Offer",
+  "offer_description": "Tailored meal plans, smart tracking, and expert guidance aligned with modern kidney care standards.",
+  "supportive_community": "Supportive Community",
+  "community_description": "A connected space for patients and professionals to share, support, and thrive together."
 }
