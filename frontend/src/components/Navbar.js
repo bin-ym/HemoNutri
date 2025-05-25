@@ -1,16 +1,16 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { MessageSquare, Bell, LogOut, Database, Globe, User, Phone } from "lucide-react";
+import { MessageSquare, Bell, LogOut, Database, Globe, User, Phone, Menu, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import api from "../services/api";
 import HemoNutriLogo from "../assets/HemoNutri.jpg";
 
-const Navbar = ({ role, unreadCount, totalMessages }) => {
+const Navbar = ({ role }) => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const [users, setUsers] = useState([]);
-  const [newMessages, setNewMessages] = useState(totalMessages || 0);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [notificationForm, setNotificationForm] = useState({
     title: "",
     message: "",
@@ -23,6 +23,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
   );
   const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
   const [showEmergencyDropdown, setShowEmergencyDropdown] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,28 +40,25 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
         }
 
         if (role === "patient" || role === "provider") {
-          const endpoint =
-            role === "patient" ? "/patient/messages" : "/provider/messages";
+          const endpoint = role === "patient" ? "/patient/messages" : "/provider/messages";
           const res = await api.get(endpoint);
           const userId = localStorage.getItem("userId");
-          const receivedMessages = res.data.filter(
-            (msg) => msg.recipient?._id === userId
+          const unreadMessages = res.data.filter(
+            (msg) => String(msg.recipient?._id || msg.recipient) === String(userId) && !msg.read
           );
-          setNewMessages(receivedMessages.length);
+          setUnreadCount(unreadMessages.length);
         }
       } catch (err) {
         console.error("Fetch data error:", err.response?.data || err.message);
       }
     };
 
-    if (isAuthenticated && !totalMessages) {
+    if (isAuthenticated) {
       fetchData();
       const interval = setInterval(fetchData, 30000);
       return () => clearInterval(interval);
-    } else if (totalMessages) {
-      setNewMessages(totalMessages);
     }
-  }, [role, isAuthenticated, totalMessages]);
+  }, [role, isAuthenticated]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -127,10 +125,11 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
   ];
 
   return (
-    <nav className="sticky top-0 z-50 px-6 py-4 transition-all duration-300 transform shadow-lg bg-gradient-to-r from-blue-600 to-blue-800">
+    <nav className="sticky top-0 z-50 px-4 py-3 transition-all duration-300 shadow-lg bg-gradient-to-r from-blue-600 to-blue-800">
       <div className="flex items-center justify-between mx-auto max-w-7xl">
+        {/* Logo and Title */}
         <div
-          className="flex items-center space-x-3 cursor-pointer"
+          className="flex items-center space-x-2 cursor-pointer"
           onClick={() =>
             navigate(
               role === "patient"
@@ -144,49 +143,64 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
           <img
             src={HemoNutriLogo}
             alt="HemoNutri Logo"
-            className="w-10 h-10 rounded-full shadow-md"
+            className="w-8 h-8 rounded-full shadow-md md:w-10 md:h-10"
           />
-          <h1 className="text-3xl font-extrabold tracking-tight text-white transition-colors duration-300 hover:text-blue-200 animate-fade-in">
+          <h1 className="text-xl font-extrabold tracking-tight text-white transition-colors duration-300 hover:text-blue-200 animate-fade-in md:text-3xl">
             {t("app_name")}
           </h1>
         </div>
 
-        <div className="flex items-center space-x-4">
+        {/* Hamburger Menu for Mobile */}
+        <div className="md:hidden">
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="text-white focus:outline-none"
+            aria-label={isMobileMenuOpen ? t("close_menu") : t("open_menu")}
+          >
+            {isMobileMenuOpen ? (
+              <X className="w-6 h-6" />
+            ) : (
+              <Menu className="w-6 h-6" />
+            )}
+          </button>
+        </div>
+
+        {/* Navigation Links */}
+        <div
+          className={`md:flex md:items-center md:space-x-3 ${
+            isMobileMenuOpen
+              ? "flex flex-col absolute top-14 left-0 w-full bg-blue-700 p-4 space-y-4 md:space-y-0 md:bg-transparent md:p-0 md:static md:flex-row"
+              : "hidden md:flex"
+          }`}
+        >
           {!role && (
             <>
               <NavButton label={t("home")} icon="🏠" path="/" />
               <a
                 href="#about"
-                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+                className="flex items-center px-3 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105 md:bg-transparent md:shadow-none"
               >
                 <span className="mr-2">ℹ️</span>
                 {t("about")}
               </a>
               <a
                 href="#contact"
-                className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+                className="flex items-center px-3 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105 md:bg-transparent md:shadow-none"
               >
                 <span className="mr-2">📞</span>
                 {t("contact")}
               </a>
               <NavButton label={t("login")} icon="🔑" path="/login" highlight />
-              <button
-                onClick={() => navigate("/profile")}
-                className="flex items-center justify-center w-10 h-10 text-white bg-blue-700 rounded-full shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
-                aria-label={t("profile")}
-              >
-                <User className="w-6 h-6" />
-              </button>
               <div className="relative">
                 <button
                   onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+                  className="flex items-center px-3 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105 md:bg-transparent md:shadow-none"
                 >
                   <Globe className="w-4 h-4 mr-2" />
                   {t("language")}
                 </button>
                 {showLanguageDropdown && (
-                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down">
+                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down md:w-48">
                     <button
                       onClick={() => changeLanguage("en")}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
@@ -219,20 +233,20 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                 label={t("messages")}
                 icon={<MessageSquare className="w-4 h-4" />}
                 path="/messages"
-                badge={newMessages}
+                badge={unreadCount}
               />
               <NavButton label={t("education")} icon="📚" path="/education" />
               <div className="relative">
                 <button
                   onClick={() => setShowEmergencyDropdown(!showEmergencyDropdown)}
-                  className="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+                  className="flex items-center px-3 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105 md:bg-transparent md:shadow-none"
                   aria-label={t("emergency_contact")}
                 >
                   <Phone className="w-4 h-4 mr-2" />
                   {t("emergency_contact")}
                 </button>
                 {showEmergencyDropdown && (
-                  <div className="absolute right-0 z-50 w-64 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down">
+                  <div className="absolute right-0 z-50 w-64 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down md:w-72">
                     {emergencyContacts.map((contact, index) => (
                       <a
                         key={index}
@@ -247,22 +261,22 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
               </div>
               <button
                 onClick={() => navigate("/profile")}
-                className="flex items-center justify-center w-10 h-10 text-white bg-blue-700 rounded-full shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+                className="flex items-center justify-center text-white transition-all duration-300 bg-blue-700 rounded-full shadow-md w-9 h-9 hover:bg-blue-900 hover:scale-105 md:w-10 md:h-10"
                 aria-label={t("profile")}
               >
-                <User className="w-6 h-6" />
+                <User className="w-5 h-5 md:w-6 md:h-6" />
               </button>
               <div className="relative">
                 <button
                   onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+                  className="flex items-center px-3 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105 md:bg-transparent md:shadow-none"
                   aria-label={t("language")}
                 >
                   <Globe className="w-4 h-4 mr-2" />
                   {t("language")}
                 </button>
                 {showLanguageDropdown && (
-                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down">
+                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down md:w-48">
                     <button
                       onClick={() => changeLanguage("en")}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
@@ -299,7 +313,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
                 label={t("messages")}
                 icon={<MessageSquare className="w-4 h-4" />}
                 path="/provider/messages"
-                badge={newMessages}
+                badge={unreadCount}
               />
               <NavButton
                 label={t("education")}
@@ -308,22 +322,22 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
               />
               <button
                 onClick={() => navigate("/profile")}
-                className="flex items-center justify-center w-10 h-10 text-white bg-blue-700 rounded-full shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+                className="flex items-center justify-center text-white transition-all duration-300 bg-blue-700 rounded-full shadow-md w-9 h-9 hover:bg-blue-900 hover:scale-105 md:w-10 md:h-10"
                 aria-label={t("profile")}
               >
-                <User className="w-6 h-6" />
+                <User className="w-5 h-5 md:w-6 md:h-6" />
               </button>
               <div className="relative">
                 <button
                   onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+                  className="flex items-center px-3 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105 md:bg-transparent md:shadow-none"
                   aria-label={t("language")}
                 >
                   <Globe className="w-4 h-4 mr-2" />
                   {t("language")}
                 </button>
                 {showLanguageDropdown && (
-                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down">
+                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down md:w-48">
                     <button
                       onClick={() => changeLanguage("en")}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
@@ -369,14 +383,14 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
               <div className="relative">
                 <button
                   onClick={() => setShowForm(!showForm)}
-                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+                  className="flex items-center px-3 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105 md:bg-transparent md:shadow-none"
                   aria-label={t("notify")}
                 >
                   <Bell className="w-4 h-4 mr-2" />
                   {t("notify")}
                 </button>
                 {showForm && (
-                  <div className="absolute right-0 p-4 mt-2 text-black bg-white border border-blue-200 shadow-2xl w-80 rounded-xl animate-slide-down">
+                  <div className="absolute right-0 p-4 mt-2 text-black bg-white border border-blue-200 shadow-2xl w-72 rounded-xl animate-slide-down md:w-80">
                     <h3 className="mb-3 text-lg font-semibold text-blue-700">
                       {t("send_notification")}
                     </h3>
@@ -491,22 +505,22 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
               </div>
               <button
                 onClick={() => navigate("/profile")}
-                className="flex items-center justify-center w-10 h-10 text-white bg-blue-700 rounded-full shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105"
+                className="flex items-center justify-center text-white transition-all duration-300 bg-blue-700 rounded-full shadow-md w-9 h-9 hover:bg-blue-900 hover:scale-105 md:w-10 md:h-10"
                 aria-label={t("profile")}
               >
-                <User className="w-6 h-6" />
+                <User className="w-5 h-5 md:w-6 md:h-6" />
               </button>
               <div className="relative">
                 <button
                   onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-                  className="flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+                  className="flex items-center px-3 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105 md:bg-transparent md:shadow-none"
                   aria-label={t("language")}
                 >
                   <Globe className="w-4 h-4 mr-2" />
                   {t("language")}
                 </button>
                 {showLanguageDropdown && (
-                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down">
+                  <div className="absolute right-0 z-50 w-40 mt-2 overflow-hidden bg-white border border-blue-200 shadow-2xl rounded-xl animate-slide-down md:w-48">
                     <button
                       onClick={() => changeLanguage("en")}
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
@@ -533,7 +547,7 @@ const Navbar = ({ role, unreadCount, totalMessages }) => {
           {role && (
             <button
               onClick={handleLogout}
-              className="flex items-center px-4 py-2 text-sm font-semibold text-white transition-all duration-300 bg-red-600 rounded-lg shadow-md hover:bg-red-700 hover:scale-105"
+              className="flex items-center px-3 py-2 text-sm font-semibold text-white transition-all duration-300 bg-red-600 rounded-lg shadow-md hover:bg-red-700 hover:scale-105"
               aria-label={t("logout")}
             >
               <LogOut className="w-4 h-4 mr-2" />
@@ -551,9 +565,9 @@ const NavButton = ({ label, icon, path, highlight = false }) => {
   return (
     <button
       onClick={() => navigate(path)}
-      className={`flex items-center px-4 py-2 text-sm font-medium text-white ${
+      className={`flex items-center px-3 py-2 text-sm font-medium text-white ${
         highlight ? "bg-blue-800" : "bg-blue-700"
-      } rounded-lg shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105`}
+      } rounded-lg shadow-md hover:bg-blue-900 transition-all duration-300 hover:scale-105 w-full md:w-auto md:bg-transparent md:shadow-none`}
       aria-label={label}
     >
       {typeof icon === "string" ? <span className="mr-2">{icon}</span> : <span className="mr-2">{icon}</span>}
@@ -567,7 +581,7 @@ const NavButtonWithBadge = ({ t, label, icon, path, badge }) => {
   return (
     <button
       onClick={() => navigate(path)}
-      className="relative flex items-center px-4 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+      className="relative flex items-center w-full px-3 py-2 text-sm font-medium text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105 md:w-auto md:bg-transparent md:shadow-none"
       aria-label={`${label} ${badge > 0 ? t("with_notifications", { count: badge }) : ""}`}
     >
       <span className="flex items-center">
@@ -575,7 +589,7 @@ const NavButtonWithBadge = ({ t, label, icon, path, badge }) => {
         <span className="ml-2">{label}</span>
       </span>
       {badge > 0 && (
-        <span className="absolute inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full shadow-md -top-2 -right-2 animate-pulse">
+        <span className="absolute inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full shadow-md -top-1 -right-1 animate-pulse">
           {badge}
         </span>
       )}

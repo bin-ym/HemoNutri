@@ -1,48 +1,90 @@
-import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { MessageSquare, Clock, AlertCircle, Send, Inbox } from 'lucide-react';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
+import useAuth from '../../hooks/useAuth';
 
 const PatientMessagesPage = () => {
-  const navigate = useNavigate();
-  const [messages, setMessages] = useState([]);
+  const { isAuthenticated, isLoading, logout } = useAuth('patient');
+  const [conversations, setConversations] = useState({});
+  const [selectedConversation, setSelectedConversation] = useState(null);
   const [newMessage, setNewMessage] = useState('');
-  const [replyContent, setReplyContent] = useState({});
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const patientId = localStorage.getItem('userId');
+  const chatContainerRef = useRef(null);
 
   const fetchMessages = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
-      const role = localStorage.getItem('role');
-      if (!token || role !== 'patient') {
-        navigate('/login', { state: { message: 'Please log in as a patient.' } });
-        return;
-      }
-      console.log('Patient ID from localStorage:', patientId);
       const res = await api.get('/patient/messages');
       console.log('Fetched patient messages:', res.data);
       const fetchedMessages = Array.isArray(res.data) ? res.data : [];
-      setMessages(fetchedMessages);
-      await api.put('/patient/messages/read');
+
+      const groupedConversations = fetchedMessages.reduce((acc, msg) => {
+        const otherPartyId =
+          String(msg.sender._id || msg.sender) === String(patientId)
+            ? String(msg.recipient._id || msg.recipient)
+            : String(msg.sender._id || msg.sender);
+        const otherPartyName =
+          String(msg.sender._id || msg.sender) === String(patientId)
+            ? msg.providerUsername
+            : msg.patientUsername;
+
+        if (!acc[otherPartyId]) {
+          acc[otherPartyId] = {
+            otherPartyId,
+            otherPartyName,
+            messages: [],
+            unreadCount: 0,
+            lastMessage: msg,
+          };
+        }
+        acc[otherPartyId].messages.push(msg);
+        if (!msg.read && String(msg.recipient._id || msg.recipient) === String(patientId)) {
+          acc[otherPartyId].unreadCount += 1;
+        }
+        if (new Date(msg.createdAt) > new Date(acc[otherPartyId].lastMessage.createdAt)) {
+          acc[otherPartyId].lastMessage = msg;
+        }
+        return acc;
+      }, {});
+
+      Object.values(groupedConversations).forEach((conv) => {
+        conv.messages.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      });
+
+      setConversations(groupedConversations);
       setError('');
+
+      if (selectedConversation) {
+        const selectedMessages = groupedConversations[selectedConversation]?.messages || [];
+        const unreadMessages = selectedMessages.filter(
+          (msg) => !msg.read && String(msg.recipient._id || msg.recipient) === String(patientId)
+        );
+        if (unreadMessages.length > 0) {
+          await api.put('/patient/messages/read');
+          fetchMessages();
+        }
+      }
     } catch (err) {
       console.error('Fetch error:', err.response?.data || err.message);
       setError(err.response?.data?.error || 'Failed to load messages');
-      if (err.response?.data?.error.includes('Token expired') || err.response?.data?.error.includes('Token verification error')) {
-        localStorage.clear();
-        navigate('/login', { state: { message: 'Session expired. Please log in again.' } });
-      }
     } finally {
       setLoading(false);
     }
-  }, [navigate, patientId]);
+  }, [patientId, selectedConversation]);
 
   useEffect(() => {
-    fetchMessages();
-  }, [fetchMessages]);
+    if (isAuthenticated) {
+      fetchMessages();
+    }
+  }, [isAuthenticated, fetchMessages]);
+
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [selectedConversation, conversations]);
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -51,14 +93,13 @@ const PatientMessagesPage = () => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !selectedConversation) return;
     try {
-      const res = await api.post('/patient/message', { content: newMessage.trim() });
+      const recipientId = selectedConversation;
+      const res = await api.post('/patient/message', { content: newMessage.trim(), recipient: recipientId });
       console.log('Sent message response:', res.data);
-      setMessages([res.data, ...messages]);
       setNewMessage('');
       setError('');
-      alert('Message sent successfully!');
       await fetchMessages();
     } catch (err) {
       console.error('Send error:', err.response?.data || err.message);
@@ -66,24 +107,11 @@ const PatientMessagesPage = () => {
     }
   };
 
-  const handleReply = async (msgId) => {
-    const content = replyContent[msgId]?.trim();
-    if (!content) return;
-    try {
-      const res = await api.post('/patient/message', { content });
-      console.log('Reply sent response:', res.data);
-      setMessages([res.data, ...messages]);
-      setReplyContent((prev) => ({ ...prev, [msgId]: '' }));
-      setError('');
-      alert('Reply sent successfully!');
-      await fetchMessages();
-    } catch (err) {
-      console.error('Reply error:', err.response?.data || err.message);
-      setError(err.response?.data?.error || 'Failed to send reply');
-    }
+  const handleSelectConversation = (otherPartyId) => {
+    setSelectedConversation(otherPartyId);
   };
 
-  if (loading) {
+  if (isLoading || loading) {
     return (
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-teal-50 via-white to-gray-100">
         <Navbar role="patient" />
@@ -97,7 +125,7 @@ const PatientMessagesPage = () => {
     );
   }
 
-  if (error && !messages.length) {
+  if (error && Object.keys(conversations).length === 0) {
     return (
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-teal-50 via-white to-gray-100">
         <Navbar role="patient" />
@@ -115,18 +143,18 @@ const PatientMessagesPage = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-teal-50 via-white to-gray-100">
-      <Navbar role="patient" />
-      <div className="flex-grow max-w-6xl p-6 mx-auto">
+      <Navbar role="patient" unreadCount={Object.values(conversations).reduce((sum, conv) => sum + conv.unreadCount, 0)} logout={logout} />
+      <div className="flex-grow w-full px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
         <div className="relative mb-12 text-center">
           <div className="absolute inset-0 h-40 bg-teal-600 rounded-b-full -top-12 opacity-10 blur-3xl"></div>
-          <h1 className="relative text-4xl font-extrabold text-teal-700 md:text-5xl animate-fade-in">Messages</h1>
-          <p className="relative max-w-2xl mx-auto mt-3 text-lg text-gray-600">
+          <h1 className="relative text-3xl font-extrabold text-teal-700 sm:text-4xl lg:text-5xl animate-fade-in">Messages</h1>
+          <p className="relative max-w-2xl mx-auto mt-3 text-base text-gray-600 sm:text-lg">
             Communicate with your healthcare provider.
           </p>
-          <Inbox className="relative mx-auto mt-4 text-teal-500 w-14 h-14 animate-bounce-slow" />
+          <Inbox className="relative w-12 h-12 mx-auto mt-4 text-teal-500 sm:w-14 sm:h-14 animate-bounce-slow" />
         </div>
 
-        {error && messages.length > 0 && (
+        {error && Object.keys(conversations).length > 0 && (
           <div className="p-4 mb-8 text-center text-red-600 rounded-lg shadow-md bg-red-50 animate-fade-in">
             <div className="flex items-center justify-center space-x-2">
               <AlertCircle className="w-6 h-6" />
@@ -135,104 +163,110 @@ const PatientMessagesPage = () => {
           </div>
         )}
 
-        <section className="mb-12">
-          <div className="p-6 bg-white shadow-xl rounded-xl">
-            <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
-              <h2 className="text-2xl font-bold tracking-tight text-teal-700 animate-fade-in">New Message</h2>
-              <MessageSquare className="text-teal-500 w-7 h-7 animate-pulse" />
-            </div>
-            <form onSubmit={handleSendMessage} className="space-y-4">
-              <textarea
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder="Write your message here..."
-                className="w-full p-4 text-gray-700 bg-teal-50 border border-teal-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-300 resize-none"
-                rows="4"
-                required
-              />
-              <button
-                type="submit"
-                className="flex items-center justify-center w-full px-6 py-3 space-x-2 text-white bg-gradient-to-r from-teal-500 to-teal-700 rounded-xl shadow-md hover:from-teal-600 hover:to-teal-800 transition-all duration-300 hover:scale-105"
-              >
-                <Send className="w-5 h-5" />
-                <span className="font-semibold">Send Message</span>
-              </button>
-            </form>
-          </div>
-        </section>
-
-        <section className="mb-12">
-          <div className="p-6 bg-white shadow-xl rounded-xl">
-            <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
-              <h2 className="text-2xl font-bold tracking-tight text-teal-700 animate-fade-in">Conversation</h2>
-              <Inbox className="text-teal-500 w-7 h-7 animate-pulse" />
-            </div>
-            {messages.length === 0 ? (
-              <div className="py-12 text-center">
-                <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-lg text-gray-500">No messages yet</p>
+        <div className="flex flex-col space-y-6 lg:flex-row lg:space-y-0 lg:space-x-6">
+          <section className="w-full lg:w-1/3">
+            <div className="p-4 bg-white shadow-xl sm:p-6 rounded-xl">
+              <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
+                <h2 className="text-xl font-bold tracking-tight text-teal-700 sm:text-2xl animate-fade-in">Conversations</h2>
+                <MessageSquare className="w-6 h-6 text-teal-500 sm:w-7 sm:h-7 animate-pulse" />
               </div>
-            ) : (
-              <ul className="space-y-6">
-                {messages.map((msg) => {
-                  console.log('Rendering message:', {
-                    msgId: msg._id,
-                    sender: msg.sender,
-                    patientId: patientId,
-                    isSenderPatient: String(msg.sender._id || msg.sender) === String(patientId),
-                    providerUsername: msg.providerUsername,
-                    patientUsername: msg.patientUsername,
-                  });
-                  return (
+              {Object.keys(conversations).length === 0 ? (
+                <div className="py-12 text-center">
+                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg text-gray-500">No conversations yet</p>
+                </div>
+              ) : (
+                <ul className="space-y-4">
+                  {Object.values(conversations).map((conv) => (
                     <li
-                      key={msg._id}
-                      className={`p-4 rounded-xl shadow-md transition-all duration-300 ${msg.isEmergency ? 'border-red-300 bg-red-50' : 'border-teal-200 bg-teal-50 hover:bg-teal-100'}`}
+                      key={conv.otherPartyId}
+                      onClick={() => handleSelectConversation(conv.otherPartyId)}
+                      className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
+                        selectedConversation === conv.otherPartyId
+                          ? 'bg-teal-100 border-teal-300'
+                          : 'bg-teal-50 border-teal-200 hover:bg-teal-100'
+                      } border shadow-md`}
                     >
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <p className="font-semibold text-gray-800">
-                            {String(msg.sender._id || msg.sender) === String(patientId)
-                              ? `You: ${msg.patientUsername}`
-                              : `Provider: ${msg.providerUsername}`}
-                            {msg.isEmergency && <span className="ml-2 font-bold text-red-500">🚨 Emergency</span>}
-                          </p>
-                          <span className="flex items-center text-sm text-gray-500">
-                            <Clock className="w-4 h-4 mr-1" />
-                            {formatDate(msg.createdAt)}
-                          </span>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-gray-800">{conv.otherPartyName}</p>
+                          <p className="text-sm text-gray-600 truncate">{conv.lastMessage.content}</p>
                         </div>
-                        <p className="text-gray-700">{msg.content}</p>
-                        {String(msg.recipient._id || msg.recipient) === String(patientId) && (
-                          <form
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              handleReply(msg._id);
-                            }}
-                            className="flex mt-3 space-x-3"
-                          >
-                            <input
-                              type="text"
-                              value={replyContent[msg._id] || ''}
-                              onChange={(e) => setReplyContent({ ...replyContent, [msg._id]: e.target.value })}
-                              placeholder="Reply to this message..."
-                              className="flex-1 p-3 text-gray-700 bg-white border border-teal-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all duration-300"
-                            />
-                            <button
-                              type="submit"
-                              className="p-3 text-white bg-teal-600 rounded-xl shadow-md hover:bg-teal-700 transition-all duration-300 hover:scale-105"
-                            >
-                              <Send className="w-5 h-5" />
-                            </button>
-                          </form>
-                        )}
+                        <div className="text-right">
+                          <p className="text-sm text-gray-500">{formatDate(conv.lastMessage.createdAt)}</p>
+                          {conv.unreadCount > 0 && (
+                            <span className="inline-block px-2 py-1 mt-1 text-xs font-semibold text-white bg-red-500 rounded-full">
+                              {conv.unreadCount}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </section>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+
+          <section className="w-full lg:w-2/3">
+            <div className="p-4 bg-white shadow-xl sm:p-6 rounded-xl">
+              <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
+                <h2 className="text-xl font-bold tracking-tight text-teal-700 sm:text-2xl animate-fade-in">
+                  {selectedConversation ? `Chat with ${conversations[selectedConversation]?.otherPartyName}` : 'Select a Conversation'}
+                </h2>
+                <Inbox className="w-6 h-6 text-teal-500 sm:w-7 sm:h-7 animate-pulse" />
+              </div>
+              {selectedConversation ? (
+                <>
+                  <div ref={chatContainerRef} className="flex flex-col p-4 mb-6 overflow-y-auto rounded h-96 bg-teal-50">
+                    {conversations[selectedConversation].messages.map((msg) => (
+                      <div
+                        key={msg._id}
+                        className={`mb-4 flex ${
+                          String(msg.sender._id || msg.sender) === String(patientId) ? 'justify-end' : 'justify-start'
+                        }`}
+                      >
+                        <div
+                          className={`max-w-xs p-3 rounded-lg shadow-md ${
+                            String(msg.sender._id || msg.sender) === String(patientId)
+                              ? 'bg-teal-200 text-gray-800'
+                              : 'bg-white text-gray-700'
+                          } ${msg.isEmergency ? 'border border-red-300' : ''}`}
+                        >
+                          <p>{msg.content}</p>
+                          <p className="mt-1 text-xs text-gray-500">{formatDate(msg.createdAt)}</p>
+                          {msg.isEmergency && <p className="mt-1 text-xs font-semibold text-red-500">🚨 Emergency</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <form onSubmit={handleSendMessage} className="space-y-4">
+                    <textarea
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Write your message here..."
+                      className="w-full p-4 text-gray-700 transition-all duration-300 border border-teal-200 resize-none bg-teal-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      rows="3"
+                      required
+                    />
+                    <button
+                      type="submit"
+                      className="flex items-center justify-center w-full px-6 py-3 space-x-2 text-white transition-all duration-300 shadow-md bg-gradient-to-r from-teal-500 to-teal-700 rounded-xl hover:from-teal-600 hover:to-teal-800 hover:scale-105"
+                    >
+                      <Send className="w-5 h-5" />
+                      <span className="font-semibold">Send Message</span>
+                    </button>
+                  </form>
+                </>
+              ) : (
+                <div className="py-12 text-center">
+                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg text-gray-500">Select a conversation to start chatting</p>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

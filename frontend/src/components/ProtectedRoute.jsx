@@ -3,8 +3,12 @@ import { useAuth } from '../context/AuthContext';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
+  const token = localStorage.getItem('token');
+  const role = localStorage.getItem('role');
+
   console.log('ProtectedRoute: Checking access', { user, allowedRoles, loading });
 
+  // Loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -16,16 +20,19 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
 
-  if (!user) {
-    console.log('ProtectedRoute: No user, redirecting to /login');
+  // Check for token and user
+  if (!token || !user) {
+    console.log('ProtectedRoute: No token or user, redirecting to /login');
     return <Navigate to="/login" replace />;
   }
 
+  // Check for allowed roles
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     console.log('ProtectedRoute: Role not allowed, redirecting to /');
     return <Navigate to="/" replace />;
   }
 
+  // If authorized, render the child component
   return children;
 };
 

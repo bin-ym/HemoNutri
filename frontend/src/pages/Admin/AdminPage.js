@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
-import AdminDashboard from "../../components/admin/AdminDashboard";
 import Notifications from "../../components/Notifications";
 import api from "../../services/api";
 import { AlertCircle, RefreshCw } from "lucide-react";
@@ -50,11 +49,11 @@ const AdminPage = () => {
     <div className="flex flex-col min-h-screen bg-gray-50">
       <Navbar role="admin" />
       <div className="flex-grow max-w-6xl p-6 mx-auto">
-        <div className="mb-8 text-center">
-          <h1 className="text-4xl font-extrabold text-teal-700 animate-fade-in">
+        <div className="mb-6 text-center">
+          <h1 className="text-3xl font-bold text-black sm:text-4xl animate-fade-in">
             {t("admin_dashboard")}
           </h1>
-          <p className="mt-2 text-lg text-teal-600">
+          <p className="mt-2 text-lg text-gray-700">
             {t("manage_users_resources_notifications")}
           </p>
         </div>
@@ -62,28 +61,48 @@ const AdminPage = () => {
         {loading ? (
           <div className="flex items-center justify-center flex-grow">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 border-4 border-teal-700 rounded-full border-t-transparent animate-spin"></div>
-              <p className="text-xl font-semibold text-teal-700 animate-pulse">
+              <div className="w-10 h-10 border-4 border-blue-900 rounded-full border-t-transparent animate-spin"></div>
+              <p className="text-xl font-semibold text-black animate-pulse">
                 {t("loading_admin_data")}
               </p>
             </div>
           </div>
         ) : error ? (
-          <div className="max-w-md p-6 mx-auto bg-red-100 border border-red-300 rounded-xl animate-slide-down">
+          <div className="max-w-md p-4 mx-auto bg-red-100 border border-red-300 rounded-lg shadow-md animate-slide-down">
             <div className="flex items-center space-x-3">
-              <AlertCircle className="w-8 h-8 text-red-600" />
-              <p className="text-lg font-medium text-red-700">{error}</p>
+              <AlertCircle className="w-6 h-6 text-red-600" />
+              <p className="text-lg font-medium text-black">{error}</p>
             </div>
           </div>
         ) : (
-          <>
-            <div className="p-6 bg-white border border-teal-200 shadow-lg rounded-xl">
-              <AdminDashboard adminData={adminData} />
+          <div className="space-y-6">
+            <div className="p-6 bg-white shadow-lg rounded-xl">
+              <h2 className="mb-4 text-xl font-semibold text-black">Users Overview</h2>
+              <div className="overflow-x-auto">
+                <table className="w-full table-auto">
+                  <thead>
+                    <tr className="text-white bg-blue-900">
+                      <th className="p-3 text-left">Username</th>
+                      <th className="p-3 text-left">Role</th>
+                      <th className="p-3 text-left">Email</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {adminData.map((user) => (
+                      <tr key={user._id} className="border-b hover:bg-gray-50">
+                        <td className="p-3 text-black">{user.username}</td>
+                        <td className="p-3 text-black">{user.role}</td>
+                        <td className="p-3 text-black">{user.email}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <div className="p-6 mt-6 bg-white border border-teal-200 shadow-lg rounded-xl">
+            <div className="p-6 bg-white shadow-lg rounded-xl">
               <Notifications />
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>

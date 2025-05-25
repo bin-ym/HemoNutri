@@ -17,11 +17,19 @@ const router = express.Router();
 router.post('/login', login);
 router.post('/register', register);
 router.post('/activate', activateAccount);
-router.post('/change-password', auth, changePassword);
+router.post('/change-password', auth(['patient', 'provider', 'admin']), changePassword);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
-router.get('/profile', auth, getProfile);
-router.post('/profile/update', auth, updateProfile);
+router.get('/profile', auth(['patient', 'provider', 'admin']), (req, res, next) => {
+  console.log('authRoutes: Handling /profile request', { userId: req.user?.id });
+  getProfile(req, res, next);
+});
+router.post('/profile/update', auth(['patient', 'provider', 'admin']), updateProfile);
 router.post('/select-provider', selectProvider);
+
+// Add verify endpoint for token validation
+router.get('/verify', auth(['patient', 'provider', 'admin']), (req, res) => {
+  res.status(200).json({ message: 'Token valid', userId: req.user.id });
+});
 
 module.exports = router;

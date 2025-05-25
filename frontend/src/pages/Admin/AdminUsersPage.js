@@ -1,13 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
-import UserList from "../../components/admin/UserList";
-import { RefreshCw, Plus, X, Save } from "lucide-react";
+import { Plus, X, Save, Trash2, AlertCircle } from "lucide-react";
 import api from "../../services/api";
 
 const AdminUsersPage = () => {
   const { t } = useTranslation();
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [users, setUsers] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
@@ -18,10 +17,32 @@ const AdminUsersPage = () => {
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [addError, setAddError] = useState("");
 
-  const handleRefresh = () => {
-    setRefreshKey((prev) => prev + 1);
+  const fetchUsers = async () => {
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const res = await api.get("/admin/users", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("Raw API response:", res.data);
+      const filteredUsers = res.data.filter((user) => user.role !== "admin");
+      console.log("Filtered users:", filteredUsers);
+      setUsers(filteredUsers);
+    } catch (err) {
+      console.error("Fetch users error:", err.response?.data || err.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchUsers();
+    const interval = setInterval(fetchUsers, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const validateForm = () => {
     const newErrors = {};
@@ -71,7 +92,7 @@ const AdminUsersPage = () => {
       setFormData({ firstName: "", lastName: "", email: "", role: "patient" });
       setErrors({});
       setShowAddForm(false);
-      handleRefresh();
+      fetchUsers();
       alert(t("user_added_success"));
     } catch (err) {
       console.error("Add user error:", err.response?.data || err.message);
@@ -88,27 +109,33 @@ const AdminUsersPage = () => {
     setApiError("");
   };
 
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm(t("confirm_delete_user"))) return;
+    try {
+      const token = localStorage.getItem("token");
+      await api.delete(`/admin/users/${userId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setUsers(users.filter((user) => user._id !== userId));
+    } catch (err) {
+      console.error("Delete user error:", err.response?.data || err.message);
+    }
+  };
+
   return (
-    <div className="flex flex-col min-h-screen bg-gray-50">
+    <div className="flex flex-col min-h-screen bg-white">
       <Navbar role="admin" />
-      <div className="max-w-6xl p-6 mx-auto">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-teal-700">
+      <div className="flex-grow max-w-6xl p-6 mx-auto">
+        <div className="flex flex-col items-center justify-between mb-6 sm:flex-row">
+          <h1 className="text-3xl font-bold text-black">
             {t("manage_users")}
           </h1>
-          <div className="flex space-x-4">
-            <button
-              onClick={handleRefresh}
-              className="flex items-center px-4 py-2 text-white bg-teal-700 rounded-lg shadow-md hover:bg-teal-800 hover:scale-105 transition-all duration-300"
-              disabled={isLoading}
-              aria-label={t("refresh_users")}
-            >
-              <RefreshCw className="w-5 h-5 mr-2" />
-              {t("refresh")}
-            </button>
+          <div className="flex mt-4 space-x-4 sm:mt-0">
             <button
               onClick={() => setShowAddForm(!showAddForm)}
-              className="flex items-center px-4 py-2 text-white bg-teal-700 rounded-lg shadow-md hover:bg-teal-800 hover:scale-105 transition-all duration-300"
+              className={`flex items-center px-4 py-2 text-white bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105 transition-all duration-200 ${
+                showAddForm ? "bg-blue-800" : ""
+              }`}
               disabled={isLoading}
               aria-label={showAddForm ? t("close_form") : t("add_user")}
             >
@@ -119,15 +146,12 @@ const AdminUsersPage = () => {
         </div>
 
         {showAddForm && (
-          <div className="p-6 mb-6 bg-white border border-teal-200 shadow-lg rounded-xl animate-fade-in">
-            <h2 className="mb-4 text-2xl font-semibold text-teal-700">
+          <div className="p-6 mb-6 bg-white shadow-lg rounded-xl animate-slide-down">
+            <h2 className="mb-4 text-2xl font-semibold text-black">
               {t("add_new_user")}
             </h2>
             {apiError && (
-              <div
-                className="flex items-center justify-between p-4 mb-4 text-red-700 bg-red-100 rounded-lg"
-                role="alert"
-              >
+              <div className="flex items-center justify-between p-4 mb-4 text-black bg-red-100 rounded-lg shadow-md" role="alert">
                 <span>{apiError}</span>
                 <button
                   onClick={() => setApiError("")}
@@ -139,12 +163,9 @@ const AdminUsersPage = () => {
               </div>
             )}
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label
-                    htmlFor="firstName"
-                    className="block text-sm font-medium text-teal-700"
-                  >
+                  <label htmlFor="firstName" className="block text-sm font-medium text-black">
                     {t("first_name")}
                   </label>
                   <input
@@ -154,13 +175,11 @@ const AdminUsersPage = () => {
                     value={formData.firstName}
                     onChange={handleChange}
                     placeholder={t("enter_first_name")}
-                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900 ${
                       errors.firstName ? "border-red-500" : "border-gray-300"
                     }`}
                     aria-invalid={errors.firstName ? "true" : "false"}
-                    aria-describedby={
-                      errors.firstName ? "firstName-error" : undefined
-                    }
+                    aria-describedby={errors.firstName ? "firstName-error" : undefined}
                     disabled={isLoading}
                     required
                   />
@@ -171,10 +190,7 @@ const AdminUsersPage = () => {
                   )}
                 </div>
                 <div>
-                  <label
-                    htmlFor="lastName"
-                    className="block text-sm font-medium text-teal-700"
-                  >
+                  <label htmlFor="lastName" className="block text-sm font-medium text-black">
                     {t("last_name")}
                   </label>
                   <input
@@ -184,13 +200,11 @@ const AdminUsersPage = () => {
                     value={formData.lastName}
                     onChange={handleChange}
                     placeholder={t("enter_last_name")}
-                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                    className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900 ${
                       errors.lastName ? "border-red-500" : "border-gray-300"
                     }`}
                     aria-invalid={errors.lastName ? "true" : "false"}
-                    aria-describedby={
-                      errors.lastName ? "lastName-error" : undefined
-                    }
+                    aria-describedby={errors.lastName ? "lastName-error" : undefined}
                     disabled={isLoading}
                     required
                   />
@@ -202,10 +216,7 @@ const AdminUsersPage = () => {
                 </div>
               </div>
               <div>
-                <label
-                  htmlFor="email"
-                  className="block text-sm font-medium text-teal-700"
-                >
+                <label htmlFor="email" className="block text-sm font-medium text-black">
                   {t("email")}
                 </label>
                 <input
@@ -215,7 +226,7 @@ const AdminUsersPage = () => {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder={t("enter_email")}
-                  className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                  className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900 ${
                     errors.email ? "border-red-500" : "border-gray-300"
                   }`}
                   aria-invalid={errors.email ? "true" : "false"}
@@ -230,10 +241,7 @@ const AdminUsersPage = () => {
                 )}
               </div>
               <div>
-                <label
-                  htmlFor="role"
-                  className="block text-sm font-medium text-teal-700"
-                >
+                <label htmlFor="role" className="block text-sm font-medium text-black">
                   {t("role")}
                 </label>
                 <select
@@ -241,7 +249,7 @@ const AdminUsersPage = () => {
                   name="role"
                   value={formData.role}
                   onChange={handleChange}
-                  className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 ${
+                  className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900 ${
                     errors.role ? "border-red-500" : "border-gray-300"
                   }`}
                   aria-invalid={errors.role ? "true" : "false"}
@@ -262,7 +270,7 @@ const AdminUsersPage = () => {
               <div className="flex space-x-4">
                 <button
                   type="submit"
-                  className={`flex items-center justify-center flex-1 p-3 text-white transition-all duration-300 bg-teal-700 rounded-lg shadow-md hover:bg-teal-800 hover:scale-105 ${
+                  className={`flex items-center justify-center flex-1 p-3 text-white bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105 transition-all duration-200 ${
                     isLoading ? "opacity-50 cursor-not-allowed" : ""
                   }`}
                   disabled={isLoading}
@@ -274,7 +282,7 @@ const AdminUsersPage = () => {
                 <button
                   type="button"
                   onClick={() => setShowAddForm(false)}
-                  className="flex items-center justify-center flex-1 p-3 text-white transition-all duration-300 bg-gray-500 rounded-lg shadow-md hover:bg-gray-600 hover:scale-105"
+                  className="flex items-center justify-center flex-1 p-3 text-white transition-all duration-200 bg-gray-500 rounded-lg shadow-md hover:bg-gray-600 hover:scale-105"
                   disabled={isLoading}
                   aria-label={t("cancel")}
                 >
@@ -286,8 +294,44 @@ const AdminUsersPage = () => {
           </div>
         )}
 
-        <div className="p-6 bg-white border border-teal-200 shadow-lg rounded-xl">
-          <UserList key={refreshKey} />
+        <div className="p-6 bg-white shadow-lg rounded-xl">
+          {users.length === 0 ? (
+            <p className="text-center text-gray-700">{t("no_non_admin_users")}</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full bg-white border-collapse rounded-lg shadow-md">
+                <thead>
+                  <tr className="text-white bg-blue-900">
+                    <th className="p-3 font-semibold text-left">{t("username")}</th>
+                    <th className="p-3 font-semibold text-left">{t("role")}</th>
+                    <th className="p-3 font-semibold text-left">{t("actions")}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user, index) => (
+                    <tr
+                      key={user._id}
+                      className={`border-t ${
+                        index % 2 === 0 ? "bg-blue-50" : "bg-white"
+                      } hover:bg-blue-100 transition-all duration-200`}
+                    >
+                      <td className="p-3 text-black">{user.username}</td>
+                      <td className="p-3 text-black capitalize">{t(user.role)}</td>
+                      <td className="p-3">
+                        <button
+                          onClick={() => handleDeleteUser(user._id)}
+                          className="flex items-center px-3 py-1 text-white transition-all duration-200 bg-red-500 rounded-lg shadow-sm hover:bg-red-600 hover:scale-105"
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          {t("delete")}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

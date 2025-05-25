@@ -44,8 +44,10 @@ const generateTempPassword = () => {
 
 const login = async (req, res) => {
   const { identifier, password } = req.body;
+  console.log('authController: Login attempt', { identifier });
   try {
     if (!identifier || !password) {
+      console.log('authController: Missing fields', { identifier, password });
       return res
         .status(400)
         .json({ error: "Email/username and password are required" });
@@ -54,9 +56,14 @@ const login = async (req, res) => {
     const user = await User.findOne({
       $or: [{ email: identifier }, { username: identifier }],
     });
-    if (!user) return res.status(400).json({ error: "Invalid credentials" });
-    if (!user.isActivated)
+    if (!user) {
+      console.log('authController: User not found', { identifier });
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
+    if (!user.isActivated) {
+      console.log('authController: Account not activated', { identifier });
       return res.status(400).json({ error: "Account not activated" });
+    }
 
     let isTempPassword = false;
     let isMatch = await bcrypt.compare(password, user.password);
@@ -64,7 +71,10 @@ const login = async (req, res) => {
       isMatch = await bcrypt.compare(password, user.tempPassword);
       isTempPassword = isMatch;
     }
-    if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
+    if (!isMatch) {
+      console.log('authController: Invalid credentials', { identifier });
+      return res.status(400).json({ error: "Invalid credentials" });
+    }
 
     const token = jwt.sign(
       { id: user._id, role: user.role },
@@ -73,6 +83,7 @@ const login = async (req, res) => {
     );
 
     if (isTempPassword) {
+      console.log('authController: Login with temp password', { userId: user._id });
       return res.json({
         token,
         role: user.role,
@@ -87,12 +98,13 @@ const login = async (req, res) => {
         user.provider = user._id;
         user.isFirstLogin = false;
         await user.save();
-        console.log(`Provider ${user.username} assigned as own provider`);
+        console.log(`authController: Provider ${user.username} assigned as own provider`);
       } else if (user.role === "patient") {
         const providers = await User.find({ role: "provider" }).select(
           "username _id"
         );
         if (providers.length > 0) {
+          console.log('authController: Providers available for patient', { userId: user._id });
           return res.json({
             token,
             role: user.role,
@@ -107,7 +119,7 @@ const login = async (req, res) => {
         } else {
           user.isFirstLogin = false;
           await user.save();
-          console.log(`No providers available for patient ${user.username}`);
+          console.log(`authController: No providers available for patient ${user.username}`);
         }
       } else {
         user.isFirstLogin = false;
@@ -115,7 +127,7 @@ const login = async (req, res) => {
       }
     }
 
-    console.log(`Login successful - User: ${user.username}`);
+    console.log(`authController: Login successful`, { userId: user._id, role: user.role });
     res.json({
       token,
       role: user.role,
@@ -124,15 +136,17 @@ const login = async (req, res) => {
       needsProviderSelection: false,
     });
   } catch (err) {
-    console.error("Login error:", err);
+    console.error('authController: Login error:', err.stack);
     res.status(500).json({ error: "Server error" });
   }
 };
 
 const selectProvider = async (req, res) => {
   const { userId, providerId } = req.body;
+  console.log('authController: selectProvider', { userId, providerId });
   try {
     if (!userId || !providerId) {
+      console.log('authController: Missing fields', { userId, providerId });
       return res
         .status(400)
         .json({ error: "User ID and provider ID are required" });
@@ -140,11 +154,13 @@ const selectProvider = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user || user.role !== "patient") {
+      console.log('authController: Invalid user or role', { userId });
       return res.status(400).json({ error: "Invalid user or role" });
     }
 
     const provider = await User.findById(providerId);
     if (!provider || provider.role !== "provider") {
+      console.log('authController: Invalid provider', { providerId });
       return res.status(400).json({ error: "Invalid provider" });
     }
 
@@ -153,44 +169,43 @@ const selectProvider = async (req, res) => {
     await user.save();
 
     console.log(
-      `Provider ${provider.username} assigned to patient ${user.username}`
+      `authController: Provider ${provider.username} assigned to patient ${user.username}`
     );
     res.json({ message: "Provider selected successfully" });
   } catch (err) {
-    console.error("Select provider error:", err);
+    console.error('authController: Select provider error:', err.stack);
     res.status(500).json({ error: "Server error" });
   }
 };
 
 const register = async (req, res) => {
   const { firstName, lastName, email, password, role } = req.body;
+  console.log("authController: Register request", {
+    firstName,
+    lastName,
+    email,
+    role,
+  });
   try {
-    console.log("Register request received:", {
-      firstName,
-      lastName,
-      email,
-      role,
-    });
     if (!firstName || !lastName || !email || !password || !role) {
-      console.log("Missing fields:", {
+      console.log("authController: Missing fields", {
         firstName,
         lastName,
         email,
-        password,
         role,
       });
       return res.status(400).json({ error: "All fields are required" });
     }
 
     if (!validator.isEmail(email)) {
-      console.log("Invalid email:", email);
+      console.log("authController: Invalid email", { email });
       return res.status(400).json({ error: "Invalid email format" });
     }
 
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(password)) {
-      console.log("Password does not meet requirements");
+      console.log("authController: Password does not meet requirements");
       return res.status(400).json({
         error: "password_requirements",
       });
@@ -201,7 +216,7 @@ const register = async (req, res) => {
       $or: [{ email }, { username }],
     });
     if (existingUser) {
-      console.log("User already exists:", { email, username });
+      console.log("authController: User already exists", { email, username });
       return res
         .status(400)
         .json({ error: "Email or username already exists" });
@@ -221,7 +236,7 @@ const register = async (req, res) => {
       isActivated: false,
     });
     await user.save();
-    console.log("User saved:", user);
+    console.log("authController: User saved", { userId: user._id, email });
 
     try {
       await transporter.sendMail({
@@ -236,9 +251,9 @@ const register = async (req, res) => {
           If you did not request this, please ignore this email.
         `,
       });
-      console.log(`Activation code sent to ${email}: ${activationCode}`);
+      console.log(`authController: Activation code sent to ${email}`);
     } catch (emailErr) {
-      console.error("Email sending error:", emailErr);
+      console.error("authController: Email sending error:", emailErr.stack);
       return res.status(500).json({ error: "Failed to send activation email" });
     }
 
@@ -247,15 +262,17 @@ const register = async (req, res) => {
         "Registration successful. Please check your email for the activation code.",
     });
   } catch (err) {
-    console.error("Register error:", err);
+    console.error("authController: Register error:", err.stack);
     res.status(500).json({ error: "Server error" });
   }
 };
 
 const activateAccount = async (req, res) => {
   const { email, code } = req.body;
+  console.log('authController: activateAccount', { email, code });
   try {
     if (!email || !code) {
+      console.log('authController: Missing fields', { email, code });
       return res
         .status(400)
         .json({ error: "Email and activation code are required" });
@@ -268,6 +285,7 @@ const activateAccount = async (req, res) => {
     });
 
     if (!user) {
+      console.log('authController: Invalid or expired code', { email });
       return res
         .status(400)
         .json({ error: "Invalid or expired activation code" });
@@ -278,17 +296,20 @@ const activateAccount = async (req, res) => {
     user.activationCodeExpires = null;
     await user.save();
 
+    console.log('authController: Account activated', { email });
     res.json({ message: "Account activated successfully" });
   } catch (err) {
-    console.error("Activation error:", err);
+    console.error("authController: Activation error:", err.stack);
     res.status(500).json({ error: "Server error" });
   }
 };
 
-const changePassword = async (req, res) => {
+const changePassword = async (req, ciplesres) => {
   const { currentPassword, newPassword } = req.body;
+  console.log('authController: changePassword', { userId: req.user.id });
   try {
     if (!currentPassword || !newPassword) {
+      console.log('authController: Missing fields', { currentPassword, newPassword });
       return res
         .status(400)
         .json({ error: "Current and new passwords are required" });
@@ -297,16 +318,21 @@ const changePassword = async (req, res) => {
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
+      console.log('authController: Invalid new password');
       return res.status(400).json({
         error: "password_requirements",
       });
     }
 
     const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ error: "user_not_found" });
+    if (!user) {
+      console.log('authController: User not found', { userId: req.user.id });
+      return res.status(404).json({ error: "user_not_found" });
+    }
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
+      console.log('authController: Invalid current password', { userId: req.user.id });
       return res.status(400).json({ error: "invalid_current_password" });
     }
 
@@ -314,24 +340,30 @@ const changePassword = async (req, res) => {
     user.isFirstLogin = false;
     await user.save();
 
+    console.log('authController: Password changed', { userId: req.user.id });
     res.json({ message: "password_changed" });
   } catch (err) {
-    console.error("Change password error:", err);
+    console.error("authController: Change password error:", err.stack);
     res.status(500).json({ error: "server_error" });
   }
 };
 
 const forgotPassword = async (req, res) => {
   const { identifier } = req.body;
+  console.log('authController: forgotPassword', { identifier });
   try {
     if (!identifier) {
+      console.log('authController: Missing identifier');
       return res.status(400).json({ error: "Email or username is required" });
     }
 
     const user = await User.findOne({
       $or: [{ email: identifier }, { username: identifier }],
     });
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) {
+      console.log('authController: User not found', { identifier });
+      return res.status(404).json({ error: "User not found" });
+    }
 
     const resetToken = Math.random().toString(36).slice(2); // Secure random token
     const tempPassword = generateTempPassword(); // Standard password
@@ -354,18 +386,20 @@ const forgotPassword = async (req, res) => {
       `,
     });
 
-    console.log(`Reset email sent to ${user.email}`);
+    console.log(`authController: Reset email sent to ${user.email}`);
     res.json({ message: "A password reset link has been sent to your email." });
   } catch (err) {
-    console.error("Forgot password error:", err);
+    console.error("authController: Forgot password error:", err.stack);
     res.status(500).json({ error: "Server error" });
   }
 };
 
 const resetPassword = async (req, res) => {
   const { token, tempPassword, newPassword } = req.body;
+  console.log('authController: resetPassword', { token });
   try {
     if (!token || !tempPassword || !newPassword) {
+      console.log('authController: Missing fields', { token, tempPassword, newPassword });
       return res
         .status(400)
         .json({ error: "Token, temporary password, and new password are required" });
@@ -374,6 +408,7 @@ const resetPassword = async (req, res) => {
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
+      console.log('authController: Invalid new password');
       return res.status(400).json({
         error: "password_requirements",
       });
@@ -383,12 +418,16 @@ const resetPassword = async (req, res) => {
       resetPasswordToken: token,
       resetPasswordExpires: { $gt: Date.now() },
     });
-    if (!user)
+    if (!user) {
+      console.log('authController: Invalid or expired token');
       return res.status(400).json({ error: "Invalid or expired reset token" });
+    }
 
     const isTempPasswordValid = await bcrypt.compare(tempPassword, user.tempPassword);
-    if (!isTempPasswordValid)
+    if (!isTempPasswordValid) {
+      console.log('authController: Invalid temp password');
       return res.status(400).json({ error: "Invalid temporary password" });
+    }
 
     user.password = await bcrypt.hash(newPassword, 12);
     user.resetPasswordToken = null;
@@ -397,37 +436,55 @@ const resetPassword = async (req, res) => {
     user.isFirstLogin = false;
     await user.save();
 
+    console.log('authController: Password reset', { userId: user._id });
     res.json({ message: "Password reset successfully", role: user.role });
   } catch (err) {
-    console.error("Reset password error:", err);
+    console.error("authController: Reset password error:", err.stack);
     res.status(500).json({ error: "Server error" });
   }
 };
 
 const getProfile = async (req, res) => {
+  console.log('authController: getProfile request received', { userId: req.user.id });
   try {
-    const user = await User.findById(req.user.id).select(
-      "username email role provider firstName lastName"
-    );
-    if (!user) return res.status(404).json({ error: "user_not_found" });
+    const user = await User.findById(req.user.id)
+      .select("username email role provider firstName lastName")
+      .maxTimeMS(2000); // 2s query timeout
+    if (!user) {
+      console.log('authController: User not found', { userId: req.user.id });
+      return res.status(404).json({ error: "user_not_found" });
+    }
+
+    // Fallback to splitting username if firstName or lastName are missing
+    let firstName = user.firstName;
+    let lastName = user.lastName;
+    if (!firstName || !lastName) {
+      const nameParts = user.username ? user.username.split(' ') : ['Unknown', ''];
+      firstName = nameParts[0] || 'Unknown';
+      lastName = nameParts.slice(1).join(' ') || '';
+    }
+
+    console.log('authController: Profile fetched', { userId: req.user.id, email: user.email });
     res.json({
       username: user.username,
       email: user.email,
       role: user.role,
       provider: user.provider,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      firstName,
+      lastName,
     });
   } catch (err) {
-    console.error("Profile fetch error:", err.stack);
+    console.error('authController: Profile fetch error:', err.stack);
     res.status(500).json({ error: "server_error", details: err.message });
   }
 };
 
 const updateProfile = async (req, res) => {
   const { firstName, lastName } = req.body;
+  console.log('authController: updateProfile', { userId: req.user.id, firstName, lastName });
   try {
     if (!firstName || !lastName) {
+      console.log('authController: Missing fields', { firstName, lastName });
       return res.status(400).json({ error: "firstName_lastName_required" });
     }
 
@@ -437,6 +494,7 @@ const updateProfile = async (req, res) => {
       _id: { $ne: req.user.id },
     });
     if (existingUser) {
+      console.log('authController: Username exists', { username });
       return res.status(400).json({ error: "username_already_exists" });
     }
 
@@ -445,8 +503,12 @@ const updateProfile = async (req, res) => {
       { firstName, lastName, username },
       { new: true }
     ).select("username email role provider firstName lastName");
-    if (!user) return res.status(404).json({ error: "user_not_found" });
+    if (!user) {
+      console.log('authController: User not found', { userId: req.user.id });
+      return res.status(404).json({ error: "user_not_found" });
+    }
 
+    console.log('authController: Profile updated', { userId: user._id, username });
     res.json({
       message: "profile_updated",
       username: user.username,
@@ -454,7 +516,7 @@ const updateProfile = async (req, res) => {
       lastName: user.lastName,
     });
   } catch (err) {
-    console.error("Update profile error:", err);
+    console.error('authController: Update profile error:', err.stack);
     res.status(500).json({ error: "server_error" });
   }
 };

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Users, Utensils, MessageSquare, BookOpen, AlertCircle, Clock } from 'lucide-react';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
 
 const ProviderPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [patients, setPatients] = useState([]);
   const [logs, setLogs] = useState([]);
@@ -29,18 +31,18 @@ const ProviderPage = () => {
           api.get('/provider/education'),
         ]);
         setPatients(Array.isArray(patientsRes.data) ? patientsRes.data : []);
-        setLogs(Array.isArray(logsRes.data) ? logsRes.data.slice(0, 5) : []); // Top 5 logs
-        setMessages(Array.isArray(messagesRes.data) ? messagesRes.data.slice(0, 5) : []); // Top 5 messages
-        setResources(Array.isArray(resourcesRes.data) ? resourcesRes.data.slice(0, 3) : []); // Top 3 resources
+        setLogs(Array.isArray(logsRes.data) ? logsRes.data.slice(0, 5) : []);
+        setMessages(Array.isArray(messagesRes.data) ? messagesRes.data.slice(0, 5) : []);
+        setResources(Array.isArray(resourcesRes.data) ? resourcesRes.data.slice(0, 3) : []);
         setError('');
       } catch (err) {
         console.error('Fetch data error:', err.response?.data || err.message);
-        const errorMsg = err.response?.data?.error || 'Failed to load dashboard';
+        const errorMsg = err.response?.data?.error || t('dashboard_error_load');
         setError(errorMsg);
         if (errorMsg.includes('Token expired') || errorMsg.includes('Token verification error')) {
           localStorage.removeItem('token');
           localStorage.removeItem('role');
-          navigate('/login', { state: { message: 'Your session has expired. Please log in again.' } });
+          navigate('/login', { state: { message: t('session_expired') } });
         }
       } finally {
         setLoading(false);
@@ -51,17 +53,17 @@ const ProviderPage = () => {
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleDateString();
+    return isNaN(date.getTime()) ? t('date_unavailable') : date.toLocaleDateString();
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen bg-gradient-to-b from-teal-50 to-gray-100">
+      <div className="flex flex-col min-h-screen bg-gradient-to-b from-blue-50 to-gray-100">
         <Navbar role="provider" />
         <div className="flex items-center justify-center flex-grow">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 border-4 border-teal-600 rounded-full border-t-transparent animate-spin"></div>
-            <p className="text-lg text-teal-700 animate-pulse">Loading dashboard...</p>
+            <div className="w-10 h-10 border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+            <p className="text-lg text-black animate-pulse">{t('dashboard_loading')}</p>
           </div>
         </div>
       </div>
@@ -70,7 +72,7 @@ const ProviderPage = () => {
 
   if (error) {
     return (
-      <div className="flex flex-col min-h-screen bg-gradient-to-b from-teal-50 to-gray-100">
+      <div className="flex flex-col min-h-screen bg-gradient-to-b from-blue-50 to-gray-100">
         <Navbar role="provider" />
         <div className="flex items-center justify-center flex-grow">
           <div className="max-w-md p-6 border border-red-200 rounded-lg shadow-md bg-red-50">
@@ -85,60 +87,60 @@ const ProviderPage = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-b from-teal-50 to-gray-100">
+    <div className="flex flex-col min-h-screen bg-gradient-to-b from-blue-50 to-gray-100">
       <Navbar role="provider" />
-      <div className="flex-grow p-6 mx-auto max-w-7xl">
+      <div className="flex-grow max-w-6xl p-6 mx-auto">
         {/* Header */}
         <div className="relative mb-12 text-center">
-          <div className="absolute inset-0 h-32 bg-teal-600 rounded-b-full -top-8 opacity-10 blur-2xl"></div>
-          <h1 className="relative text-4xl font-extrabold text-teal-700 md:text-5xl animate-fade-in">
-            Provider Dashboard
+          <div className="absolute inset-0 h-32 bg-blue-600 rounded-b-full -top-8 opacity-10 blur-2xl"></div>
+          <h1 className="relative text-3xl font-extrabold text-black sm:text-4xl md:text-5xl animate-fade-in">
+            {t('dashboard_title')}
           </h1>
-          <p className="relative max-w-2xl mx-auto mt-3 text-lg text-gray-600">
-            Monitor your patients, manage their nutrition, and communicate effectively.
+          <p className="relative max-w-2xl mx-auto mt-3 text-base text-gray-600 sm:text-lg">
+            {t('dashboard_subtitle')}
           </p>
-          <Users className="relative w-12 h-12 mx-auto mt-4 text-teal-500 animate-bounce-slow" />
+          <Users className="relative w-12 h-12 mx-auto mt-4 text-blue-500 animate-bounce-slow" />
         </div>
 
         {/* Overview Cards */}
-        <div className="grid grid-cols-1 gap-6 mb-12 md:grid-cols-3">
-          <div className="p-6 transition-all duration-300 bg-white shadow-lg rounded-xl hover:shadow-xl">
+        <div className="grid grid-cols-1 gap-6 mb-12 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="p-6 transition-all duration-300 bg-white shadow-lg rounded-xl hover:shadow-xl hover:scale-105">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-teal-600">Patients</h2>
-              <Users className="w-6 h-6 text-teal-500" />
+              <h2 className="text-xl font-semibold text-black">{t('patients')}</h2>
+              <Users className="w-6 h-6 text-blue-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-700">{patients.length}</p>
+            <p className="text-3xl font-bold text-black">{patients.length}</p>
             <button
               onClick={() => navigate('/provider/patients')}
-              className="mt-4 text-teal-600 hover:underline"
+              className="px-4 py-2 mt-4 font-semibold text-white transition duration-300 bg-blue-700 rounded-lg hover:bg-blue-900"
             >
-              View All Patients
+              {t('view_patients')}
             </button>
           </div>
-          <div className="p-6 transition-all duration-300 bg-white shadow-lg rounded-xl hover:shadow-xl">
+          <div className="p-6 transition-all duration-300 bg-white shadow-lg rounded-xl hover:shadow-xl hover:scale-105">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-teal-600">Recent Logs</h2>
-              <Utensils className="w-6 h-6 text-teal-500" />
+              <h2 className="text-xl font-semibold text-black">{t('recent_logs')}</h2>
+              <Utensils className="w-6 h-6 text-blue-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-700">{logs.length}</p>
+            <p className="text-3xl font-bold text-black">{logs.length}</p>
             <button
               onClick={() => navigate('/provider/logs')}
-              className="mt-4 text-teal-600 hover:underline"
+              className="px-4 py-2 mt-4 font-semibold text-white transition duration-300 bg-blue-700 rounded-lg hover:bg-blue-900"
             >
-              See All Logs
+              {t('see_logs')}
             </button>
           </div>
-          <div className="p-6 transition-all duration-300 bg-white shadow-lg rounded-xl hover:shadow-xl">
+          <div className="p-6 transition-all duration-300 bg-white shadow-lg rounded-xl hover:shadow-xl hover:scale-105">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-teal-600">Messages</h2>
-              <MessageSquare className="w-6 h-6 text-teal-500" />
+              <h2 className="text-xl font-semibold text-black">{t('messages')}</h2>
+              <MessageSquare className="w-6 h-6 text-blue-500" />
             </div>
-            <p className="text-3xl font-bold text-gray-700">{messages.length}</p>
+            <p className="text-3xl font-bold text-black">{messages.length}</p>
             <button
               onClick={() => navigate('/provider/messages')}
-              className="mt-4 text-teal-600 hover:underline"
+              className="px-4 py-2 mt-4 font-semibold text-white transition duration-300 bg-blue-700 rounded-lg hover:bg-blue-900"
             >
-              View Messages
+              {t('view_messages')}
             </button>
           </div>
         </div>
@@ -148,16 +150,16 @@ const ProviderPage = () => {
           {/* Recent Food Logs */}
           <div className="p-6 bg-white shadow-lg rounded-xl">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-teal-600">Recent Food Logs</h2>
-              <Utensils className="w-6 h-6 text-teal-500" />
+              <h2 className="text-xl font-semibold text-black">{t('recent_food_logs')}</h2>
+              <Utensils className="w-6 h-6 text-blue-500" />
             </div>
             {logs.length === 0 ? (
-              <p className="text-gray-500">No recent logs.</p>
+              <p className="text-gray-500">{t('no_logs')}</p>
             ) : (
               <ul className="space-y-3">
                 {logs.map((log) => (
-                  <li key={log._id} className="p-3 rounded-lg bg-teal-50">
-                    <p className="text-gray-700">
+                  <li key={log._id} className="p-3 rounded-lg bg-blue-50">
+                    <p className="text-black">
                       {log.patientUsername}: {log.foodItem} - {log.quantity}
                       {log.isFluid ? 'ml' : 'g'}
                     </p>
@@ -174,19 +176,19 @@ const ProviderPage = () => {
           {/* Recent Messages */}
           <div className="p-6 bg-white shadow-lg rounded-xl">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-teal-600">Recent Messages</h2>
-              <MessageSquare className="w-6 h-6 text-teal-500" />
+              <h2 className="text-xl font-semibold text-black">{t('recent_messages')}</h2>
+              <MessageSquare className="w-6 h-6 text-blue-500" />
             </div>
             {messages.length === 0 ? (
-              <p className="text-gray-500">No recent messages.</p>
+              <p className="text-gray-500">{t('no_messages')}</p>
             ) : (
               <ul className="space-y-3">
                 {messages.map((msg) => (
                   <li
                     key={msg._id}
-                    className={`p-3 rounded-lg ${msg.isEmergency ? 'bg-red-50' : 'bg-teal-50'}`}
+                    className={`p-3 rounded-lg ${msg.isEmergency ? 'bg-red-50' : 'bg-blue-50'}`}
                   >
-                    <p className="text-gray-700">
+                    <p className="text-black">
                       {msg.patientUsername}: {msg.content}
                     </p>
                     <p className="flex items-center text-sm text-gray-500">
@@ -203,27 +205,27 @@ const ProviderPage = () => {
         {/* Quick Actions */}
         <div className="p-6 bg-white shadow-lg rounded-xl">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-teal-600">Quick Actions</h2>
-            <BookOpen className="w-6 h-6 text-teal-500" />
+            <h2 className="text-xl font-semibold text-black">{t('quick_actions')}</h2>
+            <BookOpen className="w-6 h-6 text-blue-500" />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <button
               onClick={() => navigate('/provider/patients')}
-              className="p-4 text-white transition duration-300 bg-teal-600 rounded-lg hover:bg-teal-700"
+              className="p-4 font-semibold text-white transition duration-300 bg-blue-700 rounded-lg hover:bg-blue-900 hover:scale-105"
             >
-              Manage Patients
+              {t('manage_patients')}
             </button>
             <button
               onClick={() => navigate('/provider/education')}
-              className="p-4 text-white transition duration-300 bg-teal-600 rounded-lg hover:bg-teal-700"
+              className="p-4 font-semibold text-white transition duration-300 bg-blue-700 rounded-lg hover:bg-blue-900 hover:scale-105"
             >
-              Add Resource
+              {t('add_resource')}
             </button>
             <button
               onClick={() => navigate('/provider/messages')}
-              className="p-4 text-white transition duration-300 bg-teal-600 rounded-lg hover:bg-teal-700"
+              className="p-4 font-semibold text-white transition duration-300 bg-blue-700 rounded-lg hover:bg-blue-900 hover:scale-105"
             >
-              Send Message
+              {t('send_message')}
             </button>
           </div>
         </div>

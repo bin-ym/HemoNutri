@@ -26,37 +26,35 @@ const app = express();
 
 // CORS configuration
 app.use(cors({
-  origin: (origin, callback) => {
-    const allowedOrigins = [
-      'http://localhost:3000',
-      'http://localhost:19000',
-      'http://192.168.1.4:19000',
-      'http://192.168.1.4:5000',
-      'http://192.168.1.3:19000',
-      'http://192.168.1.3:5000',
-      'http://10.0.2.2:5000',
-      'http://localhost:5000',
-    ];
-    if (!origin || allowedOrigins.includes(origin)) {
-      console.log(`[${new Date().toISOString()}] CORS allowed for origin: ${origin || 'No origin'}`);
-      callback(null, true);
-    } else {
-      console.log(`[${new Date().toISOString()}] CORS error: Origin ${origin} not allowed`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+  origin: 'http://localhost:3000',
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
-app.use(express.json());
+app.options('*', cors()); // Handle preflight
 
 // Debug logging for incoming requests
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] Incoming request: ${req.method} ${req.url} from ${req.headers.origin || 'No origin'}`);
-  console.log('Request headers:', req.headers);
-  console.log('Request body:', req.body);
+  if (req.url === '/api/auth/profile') {
+    console.log('server: Profile request received', { headers: req.headers });
+  }
   next();
+});
+
+app.use(express.json());
+
+// Mount routes
+app.use('/api/auth', authRoutes);
+app.use('/api/patient', patientRoutes);
+app.use('/api/provider', providerRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+// Handle 404 errors
+app.use((req, res) => {
+  console.log(`[${new Date().toISOString()}] 404 error: ${req.method} ${req.url}`);
+  res.status(404).json({ error: 'Route not found' });
 });
 
 // Global error handler
@@ -67,11 +65,11 @@ app.use((err, req, res, next) => {
   res.status(statusCode).json({ error: errorMessage });
 });
 
+// Database connection
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
+      // Removed deprecated options
     });
     console.log('MongoDB connected');
   } catch (err) {
@@ -80,28 +78,9 @@ const connectDB = async () => {
   }
 };
 
-// Mount routes with debug logging
-console.log('Mounting routes...');
-app.use('/api/auth', authRoutes);
-console.log('Mounted /api/auth routes');
-app.use('/api/patient', patientRoutes);
-console.log('Mounted /api/patient routes');
-app.use('/api/provider', providerRoutes);
-console.log('Mounted /api/provider routes');
-app.use('/api/admin', adminRoutes);
-console.log('Mounted /api/admin routes');
-app.use('/api/notifications', notificationRoutes);
-console.log('Mounted /api/notifications routes');
-
-// Handle 404 errors
-app.use((req, res) => {
-  console.log(`[${new Date().toISOString()}] 404 error: ${req.method} ${req.url}`);
-  res.status(404).json({ error: 'Route not found' });
-});
-
-const PORT = process.env.PORT || 5000;
-
+// Start server
 const startServer = async () => {
+  const PORT = process.env.PORT || 5000;
   try {
     await connectDB();
     const server = app.listen(PORT, '0.0.0.0', () => {
