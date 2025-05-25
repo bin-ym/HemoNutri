@@ -219,6 +219,12 @@ const Navbar = ({ role }) => {
                     >
                       <span className="mr-2">🇪🇹</span> Afaan Oromo
                     </button>
+                    <button
+                      onClick={() => changeLanguage("ti")}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
+                    >
+                      <span className="mr-2">🇪🇹</span> ትግርኛ
+                    </button>
                   </div>
                 )}
               </div>
@@ -295,6 +301,12 @@ const Navbar = ({ role }) => {
                     >
                       <span className="mr-2">🇪🇹</span> Afaan Oromo
                     </button>
+                    <button
+                      onClick={() => changeLanguage("ti")}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
+                    >
+                      <span className="mr-2">🇪🇹</span> ትግርኛ
+                    </button>
                   </div>
                 )}
               </div>
@@ -355,6 +367,12 @@ const Navbar = ({ role }) => {
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇪🇹</span> Afaan Oromo
+                    </button>
+                    <button
+                      onClick={() => changeLanguage("ti")}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
+                    >
+                      <span className="mr-2">🇪🇹</span> ትግርኛ
                     </button>
                   </div>
                 )}
@@ -538,6 +556,12 @@ const Navbar = ({ role }) => {
                       className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
                     >
                       <span className="mr-2">🇪🇹</span> Afaan Oromo
+                    </button>
+                    <button
+                      onClick={() => changeLanguage("ti")}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 transition-all duration-200 hover:bg-blue-100 hover:text-blue-800"
+                    >
+                      <span className="mr-2">🇪🇹</span> ትግርኛ
                     </button>
                   </div>
                 )}

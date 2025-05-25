@@ -9,26 +9,37 @@ const useAuth = (requiredRole) => {
 
   useEffect(() => {
     const validateSession = async () => {
+      const token = localStorage.getItem('token');
+      const role = localStorage.getItem('role');
+
+      // No token or role → just clear and return silently
+      if (!token || !role) {
+        localStorage.clear();
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        return;
+      }
+
       try {
-        const token = localStorage.getItem('token');
-        const role = localStorage.getItem('role');
-
-        if (!token || !role) {
-          throw new Error('No token or role found');
-        }
-
         if (requiredRole && role !== requiredRole) {
           throw new Error('Unauthorized role');
         }
 
-        // Validate token with the backend
-        await api.get('/auth/verify'); // Assumes you have a verify endpoint
+        // Validate token with backend
+        await api.get('/auth/verify');
         setIsAuthenticated(true);
       } catch (err) {
         console.error('Session validation error:', err.message);
         localStorage.clear();
         setIsAuthenticated(false);
-        navigate('/login', { state: { message: err.message === 'Unauthorized role' ? 'Unauthorized access.' : 'Session expired. Please log in again.' } });
+
+        // Only redirect if user had a valid session attempt
+        const message =
+          err.message === 'Unauthorized role'
+            ? 'Unauthorized access.'
+            : 'Session expired. Please log in again.';
+
+        navigate('/login', { state: { message } });
       } finally {
         setIsLoading(false);
       }

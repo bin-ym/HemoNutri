@@ -113,12 +113,12 @@ const PatientMessagesPage = () => {
 
   if (isLoading || loading) {
     return (
-      <div className="flex flex-col min-h-screen bg-gradient-to-br from-teal-50 via-white to-gray-100">
+      <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-100">
         <Navbar role="patient" />
         <div className="flex items-center justify-center flex-grow">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 border-4 border-teal-600 rounded-full border-t-transparent animate-spin"></div>
-            <p className="text-xl font-semibold text-teal-700 animate-pulse">Loading messages...</p>
+            <div className="w-12 h-12 border-4 border-blue-700 rounded-full border-t-transparent animate-spin"></div>
+            <p className="text-xl font-semibold text-blue-700 animate-pulse">Loading messages...</p>
           </div>
         </div>
       </div>
@@ -127,7 +127,7 @@ const PatientMessagesPage = () => {
 
   if (error && Object.keys(conversations).length === 0) {
     return (
-      <div className="flex flex-col min-h-screen bg-gradient-to-br from-teal-50 via-white to-gray-100">
+      <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-100">
         <Navbar role="patient" />
         <div className="flex items-center justify-center flex-grow">
           <div className="max-w-md p-6 shadow-lg bg-red-50 rounded-xl animate-slide-down">
@@ -142,16 +142,16 @@ const PatientMessagesPage = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-gradient-to-br from-teal-50 via-white to-gray-100">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-100">
       <Navbar role="patient" unreadCount={Object.values(conversations).reduce((sum, conv) => sum + conv.unreadCount, 0)} logout={logout} />
       <div className="flex-grow w-full px-4 py-6 mx-auto max-w-7xl sm:px-6 lg:px-8">
         <div className="relative mb-12 text-center">
-          <div className="absolute inset-0 h-40 bg-teal-600 rounded-b-full -top-12 opacity-10 blur-3xl"></div>
-          <h1 className="relative text-3xl font-extrabold text-teal-700 sm:text-4xl lg:text-5xl animate-fade-in">Messages</h1>
+          <div className="absolute inset-0 h-40 bg-blue-700 rounded-b-full -top-12 opacity-10 blur-3xl"></div>
+          <h1 className="relative text-3xl font-extrabold text-blue-700 sm:text-4xl lg:text-5xl animate-fade-in">Messages</h1>
           <p className="relative max-w-2xl mx-auto mt-3 text-base text-gray-600 sm:text-lg">
             Communicate with your healthcare provider.
           </p>
-          <Inbox className="relative w-12 h-12 mx-auto mt-4 text-teal-500 sm:w-14 sm:h-14 animate-bounce-slow" />
+          <Inbox className="relative w-12 h-12 mx-auto mt-4 text-blue-500 sm:w-14 sm:h-14 animate-bounce-slow" />
         </div>
 
         {error && Object.keys(conversations).length > 0 && (
@@ -166,9 +166,9 @@ const PatientMessagesPage = () => {
         <div className="flex flex-col space-y-6 lg:flex-row lg:space-y-0 lg:space-x-6">
           <section className="w-full lg:w-1/3">
             <div className="p-4 bg-white shadow-xl sm:p-6 rounded-xl">
-              <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
-                <h2 className="text-xl font-bold tracking-tight text-teal-700 sm:text-2xl animate-fade-in">Conversations</h2>
-                <MessageSquare className="w-6 h-6 text-teal-500 sm:w-7 sm:h-7 animate-pulse" />
+              <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-blue-100">
+                <h2 className="text-xl font-bold tracking-tight text-blue-700 sm:text-2xl animate-fade-in">Conversations</h2>
+                <MessageSquare className="w-6 h-6 text-blue-500 sm:w-7 sm:h-7 animate-pulse" />
               </div>
               {Object.keys(conversations).length === 0 ? (
                 <div className="py-12 text-center">
@@ -183,8 +183,8 @@ const PatientMessagesPage = () => {
                       onClick={() => handleSelectConversation(conv.otherPartyId)}
                       className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
                         selectedConversation === conv.otherPartyId
-                          ? 'bg-teal-100 border-teal-300'
-                          : 'bg-teal-50 border-teal-200 hover:bg-teal-100'
+                          ? 'bg-blue-100 border-blue-300'
+                          : 'bg-blue-50 border-blue-200 hover:bg-blue-100'
                       } border shadow-md`}
                     >
                       <div className="flex items-center justify-between">
@@ -210,15 +210,15 @@ const PatientMessagesPage = () => {
 
           <section className="w-full lg:w-2/3">
             <div className="p-4 bg-white shadow-xl sm:p-6 rounded-xl">
-              <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
-                <h2 className="text-xl font-bold tracking-tight text-teal-700 sm:text-2xl animate-fade-in">
+              <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-blue-100">
+                <h2 className="text-xl font-bold tracking-tight text-blue-700 sm:text-2xl animate-fade-in">
                   {selectedConversation ? `Chat with ${conversations[selectedConversation]?.otherPartyName}` : 'Select a Conversation'}
                 </h2>
-                <Inbox className="w-6 h-6 text-teal-500 sm:w-7 sm:h-7 animate-pulse" />
+                <Inbox className="w-6 h-6 text-blue-500 sm:w-7 sm:h-7 animate-pulse" />
               </div>
               {selectedConversation ? (
                 <>
-                  <div ref={chatContainerRef} className="flex flex-col p-4 mb-6 overflow-y-auto rounded h-96 bg-teal-50">
+                  <div ref={chatContainerRef} className="flex flex-col p-4 mb-6 overflow-y-auto rounded h-96 bg-blue-50">
                     {conversations[selectedConversation].messages.map((msg) => (
                       <div
                         key={msg._id}
@@ -229,7 +229,7 @@ const PatientMessagesPage = () => {
                         <div
                           className={`max-w-xs p-3 rounded-lg shadow-md ${
                             String(msg.sender._id || msg.sender) === String(patientId)
-                              ? 'bg-teal-200 text-gray-800'
+                              ? 'bg-blue-200 text-gray-800'
                               : 'bg-white text-gray-700'
                           } ${msg.isEmergency ? 'border border-red-300' : ''}`}
                         >
@@ -245,13 +245,13 @@ const PatientMessagesPage = () => {
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       placeholder="Write your message here..."
-                      className="w-full p-4 text-gray-700 transition-all duration-300 border border-teal-200 resize-none bg-teal-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500"
+                      className="w-full p-4 text-gray-700 transition-all duration-300 border border-blue-200 resize-none bg-blue-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
                       rows="3"
                       required
                     />
                     <button
                       type="submit"
-                      className="flex items-center justify-center w-full px-6 py-3 space-x-2 text-white transition-all duration-300 shadow-md bg-gradient-to-r from-teal-500 to-teal-700 rounded-xl hover:from-teal-600 hover:to-teal-800 hover:scale-105"
+                      className="flex items-center justify-center w-full px-6 py-3 space-x-2 text-white transition-all duration-300 bg-blue-700 shadow-md rounded-xl hover:bg-blue-900 hover:scale-105"
                     >
                       <Send className="w-5 h-5" />
                       <span className="font-semibold">Send Message</span>
