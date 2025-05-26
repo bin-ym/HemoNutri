@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const nodemailer = require("nodemailer");
 const validator = require("validator");
 const path = require("path");
+const crypto = require("crypto");
 require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
 // Email setup
@@ -29,25 +30,30 @@ const generateActivationCode = () => {
 };
 
 const generateTempPassword = () => {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@$!%*?&';
-  let password = '';
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@$!%*?&";
+  let password = "";
   for (let i = 0; i < 8; i++) {
     password += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   // Ensure at least one of each required type
-  if (!/[A-Z]/.test(password)) password = password.slice(0, -1) + 'A';
-  if (!/[a-z]/.test(password)) password = password.slice(0, -1) + 'a';
-  if (!/\d/.test(password)) password = password.slice(0, -1) + '1';
-  if (!/[@$!%*?&]/.test(password)) password = password.slice(0, -1) + '@';
+  if (!/[A-Z]/.test(password)) password = password.slice(0, -1) + "A";
+  if (!/[a-z]/.test(password)) password = password.slice(0, -1) + "a";
+  if (!/\d/.test(password)) password = password.slice(0, -1) + "1";
+  if (!/[@$!%*?&]/.test(password)) password = password.slice(0, -1) + "@";
   return password;
+};
+
+const generateResetToken = () => {
+  return crypto.randomBytes(32).toString("hex"); // Secure random token
 };
 
 const login = async (req, res) => {
   const { identifier, password } = req.body;
-  console.log('authController: Login attempt', { identifier });
+  console.log("authController: Login attempt", { identifier });
   try {
     if (!identifier || !password) {
-      console.log('authController: Missing fields', { identifier, password });
+      console.log("authController: Missing fields", { identifier, password });
       return res
         .status(400)
         .json({ error: "Email/username and password are required" });
@@ -55,13 +61,15 @@ const login = async (req, res) => {
 
     const user = await User.findOne({
       $or: [{ email: identifier }, { username: identifier }],
-    });
+    }).select(
+      "_id username firstName lastName email role provider isActivated isFirstLogin tempPassword resetPasswordToken password"
+    );
     if (!user) {
-      console.log('authController: User not found', { identifier });
+      console.log("authController: User not found", { identifier });
       return res.status(400).json({ error: "Invalid credentials" });
     }
     if (!user.isActivated) {
-      console.log('authController: Account not activated', { identifier });
+      console.log("authController: Account not activated", { identifier });
       return res.status(400).json({ error: "Account not activated" });
     }
 
@@ -72,7 +80,7 @@ const login = async (req, res) => {
       isTempPassword = isMatch;
     }
     if (!isMatch) {
-      console.log('authController: Invalid credentials', { identifier });
+      console.log("authController: Invalid credentials", { identifier });
       return res.status(400).json({ error: "Invalid credentials" });
     }
 
@@ -82,14 +90,37 @@ const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
+    // Prepare user data for response
+    let firstName = user.firstName;
+    let lastName = user.lastName;
+    if (!firstName || !lastName) {
+      const nameParts = user.username
+        ? user.username.split(" ")
+        : ["Unknown", ""];
+      firstName = nameParts[0] || "Unknown";
+      lastName = nameParts.slice(1).join(" ") || "";
+    }
+
+    const userData = {
+      username: user.username,
+      firstName,
+      lastName,
+      email: user.email,
+      role: user.role,
+      provider: user.provider ? user.provider.toString() : null,
+    };
+
     if (isTempPassword) {
-      console.log('authController: Login with temp password', { userId: user._id });
+      console.log("authController: Login with temp password", {
+        userId: user._id,
+      });
       return res.json({
         token,
-        role: user.role,
         userId: user._id.toString(),
+        role: user.role, // Add role
         isTempPassword: true,
         resetToken: user.resetPasswordToken,
+        user: userData,
       });
     }
 
@@ -98,28 +129,35 @@ const login = async (req, res) => {
         user.provider = user._id;
         user.isFirstLogin = false;
         await user.save();
-        console.log(`authController: Provider ${user.username} assigned as own provider`);
+        console.log(
+          `authController: Provider ${user.username} assigned as own provider`
+        );
       } else if (user.role === "patient") {
         const providers = await User.find({ role: "provider" }).select(
           "username _id"
         );
         if (providers.length > 0) {
-          console.log('authController: Providers available for patient', { userId: user._id });
+          console.log("authController: Providers available for patient", {
+            userId: user._id,
+          });
           return res.json({
             token,
-            role: user.role,
             userId: user._id.toString(),
+            role: user.role, // Add role
             isFirstLogin: true,
             needsProviderSelection: true,
             providers: providers.map((p) => ({
               id: p._id.toString(),
               username: p.username,
             })),
+            user: userData,
           });
         } else {
           user.isFirstLogin = false;
           await user.save();
-          console.log(`authController: No providers available for patient ${user.username}`);
+          console.log(
+            `authController: No providers available for patient ${user.username}`
+          );
         }
       } else {
         user.isFirstLogin = false;
@@ -127,26 +165,31 @@ const login = async (req, res) => {
       }
     }
 
-    console.log(`authController: Login successful`, { userId: user._id, role: user.role });
+    console.log(`authController: Login successful`, {
+      userId: user._id,
+      role: user.role,
+      username: user.username,
+    });
     res.json({
       token,
-      role: user.role,
       userId: user._id.toString(),
+      role: user.role, // Add role
       isFirstLogin: user.isFirstLogin,
       needsProviderSelection: false,
+      user: userData,
     });
   } catch (err) {
-    console.error('authController: Login error:', err.stack);
+    console.error("authController: Login error:", err.stack);
     res.status(500).json({ error: "Server error" });
   }
 };
 
 const selectProvider = async (req, res) => {
   const { userId, providerId } = req.body;
-  console.log('authController: selectProvider', { userId, providerId });
+  console.log("authController: selectProvider", { userId, providerId });
   try {
     if (!userId || !providerId) {
-      console.log('authController: Missing fields', { userId, providerId });
+      console.log("authController: Missing fields", { userId, providerId });
       return res
         .status(400)
         .json({ error: "User ID and provider ID are required" });
@@ -154,13 +197,13 @@ const selectProvider = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user || user.role !== "patient") {
-      console.log('authController: Invalid user or role', { userId });
+      console.log("authController: Invalid user or role", { userId });
       return res.status(400).json({ error: "Invalid user or role" });
     }
 
     const provider = await User.findById(providerId);
     if (!provider || provider.role !== "provider") {
-      console.log('authController: Invalid provider', { providerId });
+      console.log("authController: Invalid provider", { providerId });
       return res.status(400).json({ error: "Invalid provider" });
     }
 
@@ -173,7 +216,7 @@ const selectProvider = async (req, res) => {
     );
     res.json({ message: "Provider selected successfully" });
   } catch (err) {
-    console.error('authController: Select provider error:', err.stack);
+    console.error("authController: Select provider error:", err.stack);
     res.status(500).json({ error: "Server error" });
   }
 };
@@ -269,10 +312,10 @@ const register = async (req, res) => {
 
 const activateAccount = async (req, res) => {
   const { email, code } = req.body;
-  console.log('authController: activateAccount', { email, code });
+  console.log("authController: activateAccount", { email, code });
   try {
     if (!email || !code) {
-      console.log('authController: Missing fields', { email, code });
+      console.log("authController: Missing fields", { email, code });
       return res
         .status(400)
         .json({ error: "Email and activation code are required" });
@@ -285,7 +328,7 @@ const activateAccount = async (req, res) => {
     });
 
     if (!user) {
-      console.log('authController: Invalid or expired code', { email });
+      console.log("authController: Invalid or expired code", { email });
       return res
         .status(400)
         .json({ error: "Invalid or expired activation code" });
@@ -296,7 +339,7 @@ const activateAccount = async (req, res) => {
     user.activationCodeExpires = null;
     await user.save();
 
-    console.log('authController: Account activated', { email });
+    console.log("authController: Account activated", { email });
     res.json({ message: "Account activated successfully" });
   } catch (err) {
     console.error("authController: Activation error:", err.stack);
@@ -304,12 +347,15 @@ const activateAccount = async (req, res) => {
   }
 };
 
-const changePassword = async (req, ciplesres) => {
+const changePassword = async (req, res) => {
   const { currentPassword, newPassword } = req.body;
-  console.log('authController: changePassword', { userId: req.user.id });
+  console.log("authController: changePassword", { userId: req.user.id });
   try {
     if (!currentPassword || !newPassword) {
-      console.log('authController: Missing fields', { currentPassword, newPassword });
+      console.log("authController: Missing fields", {
+        currentPassword,
+        newPassword,
+      });
       return res
         .status(400)
         .json({ error: "Current and new passwords are required" });
@@ -318,7 +364,7 @@ const changePassword = async (req, ciplesres) => {
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      console.log('authController: Invalid new password');
+      console.log("authController: Invalid new password");
       return res.status(400).json({
         error: "password_requirements",
       });
@@ -326,21 +372,24 @@ const changePassword = async (req, ciplesres) => {
 
     const user = await User.findById(req.user.id);
     if (!user) {
-      console.log('authController: User not found', { userId: req.user.id });
+      console.log("authController: User not found", { userId: req.user.id });
       return res.status(404).json({ error: "user_not_found" });
     }
 
     const isMatch = await bcrypt.compare(currentPassword, user.password);
     if (!isMatch) {
-      console.log('authController: Invalid current password', { userId: req.user.id });
+      console.log("authController: Invalid current password", {
+        userId: req.user.id,
+      });
       return res.status(400).json({ error: "invalid_current_password" });
     }
 
     user.password = await bcrypt.hash(newPassword, 12);
     user.isFirstLogin = false;
+    user.tempPassword = null; // Clear tempPassword after change
     await user.save();
 
-    console.log('authController: Password changed', { userId: req.user.id });
+    console.log("authController: Password changed", { userId: req.user.id });
     res.json({ message: "password_changed" });
   } catch (err) {
     console.error("authController: Change password error:", err.stack);
@@ -350,10 +399,10 @@ const changePassword = async (req, ciplesres) => {
 
 const forgotPassword = async (req, res) => {
   const { identifier } = req.body;
-  console.log('authController: forgotPassword', { identifier });
+  console.log("authController: forgotPassword", { identifier });
   try {
     if (!identifier) {
-      console.log('authController: Missing identifier');
+      console.log("authController: Missing identifier");
       return res.status(400).json({ error: "Email or username is required" });
     }
 
@@ -361,12 +410,12 @@ const forgotPassword = async (req, res) => {
       $or: [{ email: identifier }, { username: identifier }],
     });
     if (!user) {
-      console.log('authController: User not found', { identifier });
+      console.log("authController: User not found", { identifier });
       return res.status(404).json({ error: "User not found" });
     }
 
-    const resetToken = Math.random().toString(36).slice(2); // Secure random token
-    const tempPassword = generateTempPassword(); // Standard password
+    const resetToken = generateResetToken();
+    const tempPassword = generateTempPassword();
     user.resetPasswordToken = resetToken;
     user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
     user.tempPassword = await bcrypt.hash(tempPassword, 12);
@@ -396,19 +445,25 @@ const forgotPassword = async (req, res) => {
 
 const resetPassword = async (req, res) => {
   const { token, tempPassword, newPassword } = req.body;
-  console.log('authController: resetPassword', { token });
+  console.log("authController: resetPassword", { token });
   try {
     if (!token || !tempPassword || !newPassword) {
-      console.log('authController: Missing fields', { token, tempPassword, newPassword });
+      console.log("authController: Missing fields", {
+        token,
+        tempPassword,
+        newPassword,
+      });
       return res
         .status(400)
-        .json({ error: "Token, temporary password, and new password are required" });
+        .json({
+          error: "Token, temporary password, and new password are required",
+        });
     }
 
     const passwordRegex =
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      console.log('authController: Invalid new password');
+      console.log("authController: Invalid new password");
       return res.status(400).json({
         error: "password_requirements",
       });
@@ -419,13 +474,16 @@ const resetPassword = async (req, res) => {
       resetPasswordExpires: { $gt: Date.now() },
     });
     if (!user) {
-      console.log('authController: Invalid or expired token');
+      console.log("authController: Invalid or expired token");
       return res.status(400).json({ error: "Invalid or expired reset token" });
     }
 
-    const isTempPasswordValid = await bcrypt.compare(tempPassword, user.tempPassword);
+    const isTempPasswordValid = await bcrypt.compare(
+      tempPassword,
+      user.tempPassword
+    );
     if (!isTempPasswordValid) {
-      console.log('authController: Invalid temp password');
+      console.log("authController: Invalid temp password");
       return res.status(400).json({ error: "Invalid temporary password" });
     }
 
@@ -436,7 +494,7 @@ const resetPassword = async (req, res) => {
     user.isFirstLogin = false;
     await user.save();
 
-    console.log('authController: Password reset', { userId: user._id });
+    console.log("authController: Password reset", { userId: user._id });
     res.json({ message: "Password reset successfully", role: user.role });
   } catch (err) {
     console.error("authController: Reset password error:", err.stack);
@@ -445,46 +503,57 @@ const resetPassword = async (req, res) => {
 };
 
 const getProfile = async (req, res) => {
-  console.log('authController: getProfile request received', { userId: req.user.id });
+  console.log("authController: getProfile request received", {
+    userId: req.user.id,
+  });
   try {
     const user = await User.findById(req.user.id)
       .select("username email role provider firstName lastName")
       .maxTimeMS(2000); // 2s query timeout
     if (!user) {
-      console.log('authController: User not found', { userId: req.user.id });
+      console.log("authController: User not found", { userId: req.user.id });
       return res.status(404).json({ error: "user_not_found" });
     }
 
-    // Fallback to splitting username if firstName or lastName are missing
     let firstName = user.firstName;
     let lastName = user.lastName;
     if (!firstName || !lastName) {
-      const nameParts = user.username ? user.username.split(' ') : ['Unknown', ''];
-      firstName = nameParts[0] || 'Unknown';
-      lastName = nameParts.slice(1).join(' ') || '';
+      const nameParts = user.username
+        ? user.username.split(" ")
+        : ["Unknown", ""];
+      firstName = nameParts[0] || "Unknown";
+      lastName = nameParts.slice(1).join(" ") || "";
     }
 
-    console.log('authController: Profile fetched', { userId: req.user.id, email: user.email });
+    console.log("authController: Profile fetched", {
+      userId: user._id,
+      email: user.email,
+      username: user.username,
+    });
     res.json({
       username: user.username,
       email: user.email,
       role: user.role,
-      provider: user.provider,
+      provider: user.provider ? user.provider.toString() : null,
       firstName,
       lastName,
     });
   } catch (err) {
-    console.error('authController: Profile fetch error:', err.stack);
+    console.error("authController: Profile fetch error:", err.stack);
     res.status(500).json({ error: "server_error", details: err.message });
   }
 };
 
 const updateProfile = async (req, res) => {
   const { firstName, lastName } = req.body;
-  console.log('authController: updateProfile', { userId: req.user.id, firstName, lastName });
+  console.log("authController: updateProfile", {
+    userId: req.user.id,
+    firstName,
+    lastName,
+  });
   try {
     if (!firstName || !lastName) {
-      console.log('authController: Missing fields', { firstName, lastName });
+      console.log("authController: Missing fields", { firstName, lastName });
       return res.status(400).json({ error: "firstName_lastName_required" });
     }
 
@@ -494,7 +563,7 @@ const updateProfile = async (req, res) => {
       _id: { $ne: req.user.id },
     });
     if (existingUser) {
-      console.log('authController: Username exists', { username });
+      console.log("authController: Username exists", { username });
       return res.status(400).json({ error: "username_already_exists" });
     }
 
@@ -504,19 +573,27 @@ const updateProfile = async (req, res) => {
       { new: true }
     ).select("username email role provider firstName lastName");
     if (!user) {
-      console.log('authController: User not found', { userId: req.user.id });
+      console.log("authController: User not found", { userId: req.user.id });
       return res.status(404).json({ error: "user_not_found" });
     }
 
-    console.log('authController: Profile updated', { userId: user._id, username });
+    console.log("authController: Profile updated", {
+      userId: user._id,
+      username,
+    });
     res.json({
       message: "profile_updated",
-      username: user.username,
-      firstName: user.firstName,
-      lastName: user.lastName,
+      user: {
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        provider: user.provider ? user.provider.toString() : null,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
     });
   } catch (err) {
-    console.error('authController: Update profile error:', err.stack);
+    console.error("authController: Update profile error:", err.stack);
     res.status(500).json({ error: "server_error" });
   }
 };
@@ -531,4 +608,5 @@ module.exports = {
   getProfile,
   selectProvider,
   updateProfile,
+  generateTempPassword, // Export for use in adminController
 };

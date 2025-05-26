@@ -17,7 +17,6 @@ const AdminUsersPage = () => {
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [addError, setAddError] = useState("");
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -27,9 +26,7 @@ const AdminUsersPage = () => {
       const res = await api.get("/admin/users", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("Raw API response:", res.data);
       const filteredUsers = res.data.filter((user) => user.role !== "admin");
-      console.log("Filtered users:", filteredUsers);
       setUsers(filteredUsers);
     } catch (err) {
       console.error("Fetch users error:", err.response?.data || err.message);
@@ -48,24 +45,16 @@ const AdminUsersPage = () => {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!formData.firstName) {
-      newErrors.firstName = t("first_name_required");
-    } else if (formData.firstName.length < 2) {
+    if (!formData.firstName) newErrors.firstName = t("first_name_required");
+    else if (formData.firstName.length < 2)
       newErrors.firstName = t("first_name_too_short");
-    }
-    if (!formData.lastName) {
-      newErrors.lastName = t("last_name_required");
-    } else if (formData.lastName.length < 2) {
+    if (!formData.lastName) newErrors.lastName = t("last_name_required");
+    else if (formData.lastName.length < 2)
       newErrors.lastName = t("last_name_too_short");
-    }
-    if (!formData.email) {
-      newErrors.email = t("email_required");
-    } else if (!emailRegex.test(formData.email)) {
+    if (!formData.email) newErrors.email = t("email_required");
+    else if (!emailRegex.test(formData.email))
       newErrors.email = t("invalid_email");
-    }
-    if (!formData.role) {
-      newErrors.role = t("role_required");
-    }
+    if (!formData.role) newErrors.role = t("role_required");
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -79,7 +68,7 @@ const AdminUsersPage = () => {
     setIsLoading(true);
     try {
       const token = localStorage.getItem("token");
-      await api.post(
+      const response = await api.post(
         "/admin/add-user",
         {
           firstName: formData.firstName.trim(),
@@ -93,7 +82,10 @@ const AdminUsersPage = () => {
       setErrors({});
       setShowAddForm(false);
       fetchUsers();
-      alert(t("user_added_success"));
+      alert(
+        t("user_added_success") +
+          `\n${t("temp_password_sent")}: ${response.data.tempPassword}`
+      );
     } catch (err) {
       console.error("Add user error:", err.response?.data || err.message);
       setApiError(t(err.response?.data?.error || "failed_add_user"));
@@ -127,9 +119,7 @@ const AdminUsersPage = () => {
       <Navbar role="admin" />
       <div className="flex-grow max-w-6xl p-6 mx-auto">
         <div className="flex flex-col items-center justify-between mb-6 sm:flex-row">
-          <h1 className="text-3xl font-bold text-black">
-            {t("manage_users")}
-          </h1>
+          <h1 className="text-3xl font-bold text-black">{t("manage_users")}</h1>
           <div className="flex mt-4 space-x-4 sm:mt-0">
             <button
               onClick={() => setShowAddForm(!showAddForm)}
@@ -151,7 +141,10 @@ const AdminUsersPage = () => {
               {t("add_new_user")}
             </h2>
             {apiError && (
-              <div className="flex items-center justify-between p-4 mb-4 text-black bg-red-100 rounded-lg shadow-md" role="alert">
+              <div
+                className="flex items-center justify-between p-4 mb-4 text-black bg-red-100 rounded-lg shadow-md"
+                role="alert"
+              >
                 <span>{apiError}</span>
                 <button
                   onClick={() => setApiError("")}
@@ -165,7 +158,10 @@ const AdminUsersPage = () => {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-black">
+                  <label
+                    htmlFor="firstName"
+                    className="block text-sm font-medium text-black"
+                  >
                     {t("first_name")}
                   </label>
                   <input
@@ -179,18 +175,26 @@ const AdminUsersPage = () => {
                       errors.firstName ? "border-red-500" : "border-gray-300"
                     }`}
                     aria-invalid={errors.firstName ? "true" : "false"}
-                    aria-describedby={errors.firstName ? "firstName-error" : undefined}
+                    aria-describedby={
+                      errors.firstName ? "firstName-error" : undefined
+                    }
                     disabled={isLoading}
                     required
                   />
                   {errors.firstName && (
-                    <p id="firstName-error" className="mt-1 text-sm text-red-500">
+                    <p
+                      id="firstName-error"
+                      className="mt-1 text-sm text-red-500"
+                    >
                       {errors.firstName}
                     </p>
                   )}
                 </div>
                 <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-black">
+                  <label
+                    htmlFor="lastName"
+                    className="block text-sm font-medium text-black"
+                  >
                     {t("last_name")}
                   </label>
                   <input
@@ -204,19 +208,27 @@ const AdminUsersPage = () => {
                       errors.lastName ? "border-red-500" : "border-gray-300"
                     }`}
                     aria-invalid={errors.lastName ? "true" : "false"}
-                    aria-describedby={errors.lastName ? "lastName-error" : undefined}
+                    aria-describedby={
+                      errors.lastName ? "lastName-error" : undefined
+                    }
                     disabled={isLoading}
                     required
                   />
                   {errors.lastName && (
-                    <p id="lastName-error" className="mt-1 text-sm text-red-500">
+                    <p
+                      id="lastName-error"
+                      className="mt-1 text-sm text-red-500"
+                    >
                       {errors.lastName}
                     </p>
                   )}
                 </div>
               </div>
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-black">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-black"
+                >
                   {t("email")}
                 </label>
                 <input
@@ -241,7 +253,10 @@ const AdminUsersPage = () => {
                 )}
               </div>
               <div>
-                <label htmlFor="role" className="block text-sm font-medium text-black">
+                <label
+                  htmlFor="role"
+                  className="block text-sm font-medium text-black"
+                >
                   {t("role")}
                 </label>
                 <select
@@ -259,7 +274,6 @@ const AdminUsersPage = () => {
                 >
                   <option value="patient">{t("patient")}</option>
                   <option value="provider">{t("provider")}</option>
-                  <option value="admin">{t("admin")}</option>
                 </select>
                 {errors.role && (
                   <p id="role-error" className="mt-1 text-sm text-red-500">
@@ -296,15 +310,21 @@ const AdminUsersPage = () => {
 
         <div className="p-6 bg-white shadow-lg rounded-xl">
           {users.length === 0 ? (
-            <p className="text-center text-gray-700">{t("no_non_admin_users")}</p>
+            <p className="text-center text-gray-700">
+              {t("no_non_admin_users")}
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full bg-white border-collapse rounded-lg shadow-md">
                 <thead>
                   <tr className="text-white bg-blue-900">
-                    <th className="p-3 font-semibold text-left">{t("username")}</th>
+                    <th className="p-3 font-semibold text-left">
+                      {t("username")}
+                    </th>
                     <th className="p-3 font-semibold text-left">{t("role")}</th>
-                    <th className="p-3 font-semibold text-left">{t("actions")}</th>
+                    <th className="p-3 font-semibold text-left">
+                      {t("actions")}
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -316,7 +336,9 @@ const AdminUsersPage = () => {
                       } hover:bg-blue-100 transition-all duration-200`}
                     >
                       <td className="p-3 text-black">{user.username}</td>
-                      <td className="p-3 text-black capitalize">{t(user.role)}</td>
+                      <td className="p-3 text-black capitalize">
+                        {t(user.role)}
+                      </td>
                       <td className="p-3">
                         <button
                           onClick={() => handleDeleteUser(user._id)}

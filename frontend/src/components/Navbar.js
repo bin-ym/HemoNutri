@@ -4,9 +4,11 @@ import { MessageSquare, Bell, LogOut, Database, Globe, User, Phone, Menu, X } fr
 import { useTranslation } from "react-i18next";
 import api from "../services/api";
 import HemoNutriLogo from "../assets/HemoNutri.jpg";
+import { useAuth } from "../context/AuthContext";
 
 const Navbar = ({ role }) => {
-  const { t, i18n } = useTranslation();
+  const { t } = useTranslation();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [users, setUsers] = useState([]);
@@ -25,12 +27,16 @@ const Navbar = ({ role }) => {
   const [showEmergencyDropdown, setShowEmergencyDropdown] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Derive username from user object
+  const username = user?.username || (user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : "");
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem("token");
         if (!token) {
           setIsAuthenticated(false);
+          navigate("/login");
           return;
         }
 
@@ -39,10 +45,10 @@ const Navbar = ({ role }) => {
           setUsers(res.data.filter((user) => user.role !== "admin"));
         }
 
-        if (role === "patient" || role === "provider") {
+        if ((role === "patient" || role === "provider") && user?._id) {
           const endpoint = role === "patient" ? "/patient/messages" : "/provider/messages";
           const res = await api.get(endpoint);
-          const userId = localStorage.getItem("userId");
+          const userId = user._id || localStorage.getItem("userId");
           const unreadMessages = res.data.filter(
             (msg) => String(msg.recipient?._id || msg.recipient) === String(userId) && !msg.read
           );
@@ -50,15 +56,22 @@ const Navbar = ({ role }) => {
         }
       } catch (err) {
         console.error("Fetch data error:", err.response?.data || err.message);
+        if (err.response?.status === 401) {
+          setIsAuthenticated(false);
+          localStorage.removeItem("token");
+          localStorage.removeItem("role");
+          localStorage.removeItem("userId");
+          navigate("/login");
+        }
       }
     };
 
-    if (isAuthenticated) {
+    if (isAuthenticated && !loading && user) {
       fetchData();
       const interval = setInterval(fetchData, 30000);
       return () => clearInterval(interval);
     }
-  }, [role, isAuthenticated]);
+  }, [role, isAuthenticated, loading, user, navigate]);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -123,6 +136,29 @@ const Navbar = ({ role }) => {
     { name: t("local_hospital"), number: "+251-922-789-012" },
     { name: t("support_center"), number: "+251-933-456-789" },
   ];
+
+  // Don't render authenticated links if loading or no user
+  if (role && (loading || !user)) {
+    return (
+      <nav className="sticky top-0 z-50 px-4 py-3 transition-all duration-300 shadow-lg bg-gradient-to-r from-blue-600 to-blue-800">
+        <div className="flex items-center justify-between mx-auto max-w-7xl">
+          <div
+            className="flex items-center space-x-2 cursor-pointer"
+            onClick={() => navigate("/")}
+          >
+            <img
+              src={HemoNutriLogo}
+              alt="HemoNutri Logo"
+              className="w-8 h-8 rounded-full shadow-md md:w-10 md:h-10"
+            />
+            <h1 className="text-xl font-extrabold tracking-tight text-white transition-colors duration-300 hover:text-blue-200 animate-fade-in md:text-3xl">
+              {t("app_name")}
+            </h1>
+          </div>
+        </div>
+      </nav>
+    );
+  }
 
   return (
     <nav className="sticky top-0 z-50 px-4 py-3 transition-all duration-300 shadow-lg bg-gradient-to-r from-blue-600 to-blue-800">
@@ -267,10 +303,11 @@ const Navbar = ({ role }) => {
               </div>
               <button
                 onClick={() => navigate("/profile")}
-                className="flex items-center justify-center text-white transition-all duration-300 bg-blue-700 rounded-full shadow-md w-9 h-9 hover:bg-blue-900 hover:scale-105 md:w-10 md:h-10"
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-semibold text-white transition-all duration-300 bg-blue-700 rounded-lg hover:bg-blue-900 hover:scale-105"
                 aria-label={t("profile")}
               >
-                <User className="w-5 h-5 md:w-6 md:h-6" />
+                <User className="w-4 h-4 mr-2" />
+                <span>{username || t("profile")}</span>
               </button>
               <div className="relative">
                 <button
@@ -334,10 +371,11 @@ const Navbar = ({ role }) => {
               />
               <button
                 onClick={() => navigate("/profile")}
-                className="flex items-center justify-center text-white transition-all duration-300 bg-blue-700 rounded-full shadow-md w-9 h-9 hover:bg-blue-900 hover:scale-105 md:w-10 md:h-10"
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-semibold text-white transition-all duration-300 bg-blue-700 rounded-lg hover:bg-blue-900 hover:scale-105"
                 aria-label={t("profile")}
               >
-                <User className="w-5 h-5 md:w-6 md:h-6" />
+                <User className="w-4 h-4 mr-2" />
+                <span>{username || t("profile")}</span>
               </button>
               <div className="relative">
                 <button
@@ -505,7 +543,7 @@ const Navbar = ({ role }) => {
                       <div className="flex space-x-2">
                         <button
                           type="submit"
-                          className="flex-1 p-2 text-white transition-all duration-300 bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 hover:scale-105"
+                          className="flex-1 p-2 text-white transition-all duration-300 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
                         >
                           {t("send")}
                         </button>
@@ -523,10 +561,11 @@ const Navbar = ({ role }) => {
               </div>
               <button
                 onClick={() => navigate("/profile")}
-                className="flex items-center justify-center text-white transition-all duration-300 bg-blue-700 rounded-full shadow-md w-9 h-9 hover:bg-blue-900 hover:scale-105 md:w-10 md:h-10"
+                className="flex items-center space-x-2 px-3 py-2 text-sm font-semibold text-white transition-all duration-300 bg-blue-700 rounded-lg hover:bg-blue-900 hover:scale-105"
                 aria-label={t("profile")}
               >
-                <User className="w-5 h-5 md:w-6 md:h-6" />
+                <User className="w-4 h-4 mr-2" />
+                <span>{username || t("profile")}</span>
               </button>
               <div className="relative">
                 <button

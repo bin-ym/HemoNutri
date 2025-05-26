@@ -9,6 +9,7 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 const AdminPage = () => {
   const { t } = useTranslation();
   const [adminData, setAdminData] = useState(null);
+  const [contacts, setContacts] = useState(null); // New state for contacts
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -24,11 +25,20 @@ const AdminPage = () => {
         navigate("/login", { state: { message: t("please_login_admin") } });
         return;
       }
-      const res = await api.get("/admin/users", {
+
+      // Fetch users
+      const usersRes = await api.get("/admin/users", {
         headers: { Authorization: `Bearer ${token}` },
       });
-      console.log("Admin data response:", res.data);
-      setAdminData(Array.isArray(res.data) ? res.data : []);
+      console.log("Admin users response:", usersRes.data);
+      setAdminData(Array.isArray(usersRes.data) ? usersRes.data : []);
+
+      // Fetch contacts
+      const contactsRes = await api.get("/admin/contacts", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log("Admin contacts response:", contactsRes.data);
+      setContacts(Array.isArray(contactsRes.data) ? contactsRes.data : []);
     } catch (err) {
       console.error("Fetch admin data error:", err.response?.data || err.message);
       setError(t(err.response?.data?.error || "failed_load_admin_data"));
@@ -76,15 +86,16 @@ const AdminPage = () => {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Users Overview Section */}
             <div className="p-6 bg-white shadow-lg rounded-xl">
-              <h2 className="mb-4 text-xl font-semibold text-black">Users Overview</h2>
+              <h2 className="mb-4 text-xl font-semibold text-black">{t("users_overview")}</h2>
               <div className="overflow-x-auto">
                 <table className="w-full table-auto">
                   <thead>
                     <tr className="text-white bg-blue-900">
-                      <th className="p-3 text-left">Username</th>
-                      <th className="p-3 text-left">Role</th>
-                      <th className="p-3 text-left">Email</th>
+                      <th className="p-3 text-left">{t("username")}</th>
+                      <th className="p-3 text-left">{t("role")}</th>
+                      <th className="p-3 text-left">{t("email")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -99,6 +110,39 @@ const AdminPage = () => {
                 </table>
               </div>
             </div>
+
+            {/* Contact Submissions Section */}
+            <div className="p-6 bg-white shadow-lg rounded-xl">
+              <h2 className="mb-4 text-xl font-semibold text-black">{t("contact_submissions")}</h2>
+              {contacts && contacts.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full table-auto">
+                    <thead>
+                      <tr className="text-white bg-blue-900">
+                        <th className="p-3 text-left">{t("email")}</th>
+                        <th className="p-3 text-left">{t("message")}</th>
+                        <th className="p-3 text-left">{t("submitted_at")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {contacts.map((contact) => (
+                        <tr key={contact._id} className="border-b hover:bg-gray-50">
+                          <td className="p-3 text-black">{contact.email}</td>
+                          <td className="p-3 text-black">{contact.message}</td>
+                          <td className="p-3 text-black">
+                            {new Date(contact.createdAt).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-gray-600">{t("no_contacts_yet")}</p>
+              )}
+            </div>
+
+            {/* Notifications Section */}
             <div className="p-6 bg-white shadow-lg rounded-xl">
               <Notifications />
             </div>

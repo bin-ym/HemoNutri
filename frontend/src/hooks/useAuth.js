@@ -1,60 +1,71 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
-const useAuth = (requiredRole) => {
-  const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+const useAuth = () => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  const validateSession = async () => {
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+    const userId = localStorage.getItem('userId');
+    console.log('useAuth: Validating session', { tokenExists: !!token, role, userId });
+
+    if (!token || !role || !userId) {
+      setUser(null);
+      setLoading(false);
+      return null;
+    }
+
+    try {
+      const response = await api.get('auth/profile');
+      console.log('useAuth: Profile fetched', response.data);
+      const userData = {
+        ...response.data,
+        token,
+        role: response.data.role || role,
+        userId,
+      };
+      setUser(userData);
+      localStorage.setItem('role', userData.role); // Sync role
+      return userData;
+    } catch (err) {
+      console.error('useAuth: Profile fetch failed', err.message);
+      if (err.response?.status === 404 || err.response?.status === 401) {
+        console.log('useAuth: Using localStorage data');
+        setUser({
+          email: 'unknown',
+          role,
+          userId,
+          token,
+        });
+      } else {
+        setUser(null);
+      }
+      throw err;
+    } finally {
+      setLoading(false);
+      console.log('useAuth: Loading set to false');
+    }
+  };
 
   useEffect(() => {
-    const validateSession = async () => {
-      const token = localStorage.getItem('token');
-      const role = localStorage.getItem('role');
-
-      // No token or role → just clear and return silently
-      if (!token || !role) {
-        localStorage.clear();
-        setIsAuthenticated(false);
-        setIsLoading(false);
-        return;
-      }
-
+    const verifyToken = async () => {
       try {
-        if (requiredRole && role !== requiredRole) {
-          throw new Error('Unauthorized role');
-        }
-
-        // Validate token with backend
-        await api.get('/auth/verify');
-        setIsAuthenticated(true);
+        await api.get('auth/verify');
+        console.log('useAuth: Token verified');
+        await validateSession();
       } catch (err) {
-        console.error('Session validation error:', err.message);
-        localStorage.clear();
-        setIsAuthenticated(false);
-
-        // Only redirect if user had a valid session attempt
-        const message =
-          err.message === 'Unauthorized role'
-            ? 'Unauthorized access.'
-            : 'Session expired. Please log in again.';
-
-        navigate('/login', { state: { message } });
-      } finally {
-        setIsLoading(false);
+        console.error('useAuth: Token verification failed', err.message);
+        setUser(null);
+        setLoading(false);
       }
     };
 
-    validateSession();
-  }, [navigate, requiredRole]);
+    verifyToken();
+  }, []);
 
-  const logout = () => {
-    localStorage.clear();
-    setIsAuthenticated(false);
-    navigate('/login', { state: { message: 'You have been logged out.' } });
-  };
-
-  return { isAuthenticated, isLoading, logout };
+  return { user, loading, validateSession };
 };
 
 export default useAuth;
