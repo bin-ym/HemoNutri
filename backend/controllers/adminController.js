@@ -4,6 +4,7 @@ const EducationalResource = require("../models/EducationResource");
 const Notification = require("../models/Notification");
 const MealPlan = require("../models/MealPlan");
 const Message = require("../models/Message");
+const Contact = require("../models/Contact");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");

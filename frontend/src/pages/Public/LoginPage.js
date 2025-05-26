@@ -169,13 +169,7 @@ const LoginPage = () => {
           </form>
 
           <div className="mt-6 space-y-4 text-center">
-            <button
-              onClick={() => navigate("/register")}
-              className="w-full p-3 text-blue-700 transition-all duration-300 bg-blue-100 rounded-lg shadow-md hover:bg-blue-200 hover:text-blue-800 hover:scale-105"
-              disabled={isLoading}
-            >
-              {t("create_account")}
-            </button>
+            
             <p>
               <button
                 onClick={() => navigate("/forgot-password")}
