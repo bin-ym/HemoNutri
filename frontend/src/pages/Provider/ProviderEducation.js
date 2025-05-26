@@ -152,11 +152,8 @@ const ProviderEducation = () => {
         <div className="relative mb-12 text-center">
           <div className="absolute inset-0 h-32 bg-blue-600 rounded-b-full -top-8 opacity-10 blur-2xl"></div>
           <h1 className="relative text-3xl font-extrabold text-black sm:text-4xl md:text-5xl animate-fade-in">
-            {t("education_title")}
+            {t("Educational Resource")}
           </h1>
-          <p className="relative max-w-2xl mx-auto mt-3 text-base text-gray-600 sm:text-lg">
-            {t("education_subtitle")}
-          </p>
           <BookOpen className="relative w-12 h-12 mx-auto mt-4 text-blue-500 animate-bounce-slow" />
         </div>
 
@@ -173,7 +170,7 @@ const ProviderEducation = () => {
           <div className="p-6 bg-white shadow-lg rounded-xl">
             <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-blue-100">
               <div className="flex items-center">
-                <h2 className="text-xl font-semibold text-black sm:text-2xl">{t("your_resources")}</h2>
+                <h2 className="text-xl font-semibold text-black sm:text-2xl">{t("Resources")}</h2>
                 <BookOpen className="w-6 h-6 ml-2 text-blue-500" />
               </div>
               <button
@@ -189,7 +186,7 @@ const ProviderEducation = () => {
               </button>
             </div>
             {resources.length === 0 ? (
-              <p className="text-center text-gray-500">{t("no_resources")}</p>
+              <p className="text-center text-gray-500">{t("No resources found")}</p>
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 {resources.map((resource) => (
@@ -249,7 +246,7 @@ const ProviderEducation = () => {
                 ✕
               </button>
               <h3 className="mb-4 text-xl font-bold text-black">
-                {isEditing ? t("edit_resource") : t("add_new_resource")}
+                {isEditing ? t("edit_resource") : t("Add new resource")}
               </h3>
               <form onSubmit={isEditing ? handleSaveEdit : handleResourceSubmit} className="space-y-4">
                 <div>
@@ -264,7 +261,7 @@ const ProviderEducation = () => {
                   />
                 </div>
                 <div>
-                  <label className="block mb-1 text-sm font-medium text-gray-700">{t("description")}</label>
+                  <label className="block mb-1 text-sm font-medium text-gray-700">{t("Description")}</label>
                   <textarea
                     value={newResource.description}
                     onChange={(e) => setNewResource({ ...newResource, description: e.target.value })}
@@ -276,7 +273,7 @@ const ProviderEducation = () => {
                 </div>
                 <div>
                   <label className="block mb-1 text-sm font-medium text-gray-700">
-                    {t("url")} <span className="text-gray-500">({t("optional")})</span>
+                    {t("URL")} <span className="text-gray-500">({t("optional")})</span>
                   </label>
                   <input
                     type="text"

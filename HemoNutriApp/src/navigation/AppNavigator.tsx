@@ -4,8 +4,8 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
-import { useTheme } from "../theme/ThemeContext"; // Updated import
-import { useColors } from "../theme/ThemeContext"; // Updated import
+import { useTheme } from "../theme/ThemeContext";
+import { useColors } from "../theme/ThemeContext";
 import HomeScreen from "../screens/Shared/HomeScreen";
 import LoginScreen from "../screens/LoginScreen";
 import AdminScreen from "../screens/Admin/AdminScreen";
@@ -27,13 +27,13 @@ import BackupScreen from "../screens/Admin/BackupScreen";
 import { getAuthData } from "../utils/auth";
 import type { BottomTabNavigationOptions } from "@react-navigation/bottom-tabs";
 
-// Define navigation param lists
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
   Tabs: { role: string };
   ProviderPatientDetail: { patientId: string };
   ProviderEducation: undefined;
+  ProviderMessages: undefined; // Added missing route
   Messages: undefined;
   Conversation: { userId: string; username: string; role: string };
   Users: undefined;
@@ -379,6 +379,15 @@ const NavigationContent: React.FC = () => {
           component={ProviderEducationScreen}
           options={{
             title: "Educational Resources",
+            headerStyle: { backgroundColor: colors.primary },
+            headerTintColor: "#fff",
+          }}
+        />
+        <Stack.Screen
+          name="ProviderMessages"
+          component={ProviderMessagesScreen}
+          options={{
+            title: "Messages",
             headerStyle: { backgroundColor: colors.primary },
             headerTintColor: "#fff",
           }}

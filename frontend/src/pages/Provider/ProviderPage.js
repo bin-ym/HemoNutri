@@ -110,25 +110,13 @@ const ProviderPage = () => {
               <Users className="w-6 h-6 text-blue-500" />
             </div>
             <p className="text-3xl font-bold text-black">{patients.length}</p>
-            <button
-              onClick={() => navigate('/provider/patients')}
-              className="px-4 py-2 mt-4 font-semibold text-white transition duration-300 bg-blue-700 rounded-lg hover:bg-blue-900"
-            >
-              {t('view_patients')}
-            </button>
           </div>
           <div className="p-6 transition-all duration-300 bg-white shadow-lg rounded-xl hover:shadow-xl hover:scale-105">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-black">{t('recent_logs')}</h2>
+              <h2 className="text-xl font-semibold text-black">{t('Logs')}</h2>
               <Utensils className="w-6 h-6 text-blue-500" />
             </div>
             <p className="text-3xl font-bold text-black">{logs.length}</p>
-            <button
-              onClick={() => navigate('/provider/logs')}
-              className="px-4 py-2 mt-4 font-semibold text-white transition duration-300 bg-blue-700 rounded-lg hover:bg-blue-900"
-            >
-              {t('see_logs')}
-            </button>
           </div>
           <div className="p-6 transition-all duration-300 bg-white shadow-lg rounded-xl hover:shadow-xl hover:scale-105">
             <div className="flex items-center justify-between mb-4">
@@ -136,76 +124,12 @@ const ProviderPage = () => {
               <MessageSquare className="w-6 h-6 text-blue-500" />
             </div>
             <p className="text-3xl font-bold text-black">{messages.length}</p>
-            <button
-              onClick={() => navigate('/provider/messages')}
-              className="px-4 py-2 mt-4 font-semibold text-white transition duration-300 bg-blue-700 rounded-lg hover:bg-blue-900"
-            >
-              {t('view_messages')}
-            </button>
           </div>
         </div>
-
-        {/* Recent Activity */}
-        <div className="grid grid-cols-1 gap-6 mb-12 lg:grid-cols-2">
-          {/* Recent Food Logs */}
-          <div className="p-6 bg-white shadow-lg rounded-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-black">{t('recent_food_logs')}</h2>
-              <Utensils className="w-6 h-6 text-blue-500" />
-            </div>
-            {logs.length === 0 ? (
-              <p className="text-gray-500">{t('no_logs')}</p>
-            ) : (
-              <ul className="space-y-3">
-                {logs.map((log) => (
-                  <li key={log._id} className="p-3 rounded-lg bg-blue-50">
-                    <p className="text-black">
-                      {log.patientUsername}: {log.foodItem} - {log.quantity}
-                      {log.isFluid ? 'ml' : 'g'}
-                    </p>
-                    <p className="flex items-center text-sm text-gray-500">
-                      <Clock className="w-4 h-4 mr-1" />
-                      {formatDate(log.date)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Recent Messages */}
-          <div className="p-6 bg-white shadow-lg rounded-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-black">{t('recent_messages')}</h2>
-              <MessageSquare className="w-6 h-6 text-blue-500" />
-            </div>
-            {messages.length === 0 ? (
-              <p className="text-gray-500">{t('no_messages')}</p>
-            ) : (
-              <ul className="space-y-3">
-                {messages.map((msg) => (
-                  <li
-                    key={msg._id}
-                    className={`p-3 rounded-lg ${msg.isEmergency ? 'bg-red-50' : 'bg-blue-50'}`}
-                  >
-                    <p className="text-black">
-                      {msg.patientUsername}: {msg.content}
-                    </p>
-                    <p className="flex items-center text-sm text-gray-500">
-                      <Clock className="w-4 h-4 mr-1" />
-                      {formatDate(msg.createdAt)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
-
         {/* Quick Actions */}
         <div className="p-6 bg-white shadow-lg rounded-xl">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-black">{t('quick_actions')}</h2>
+            <h2 className="text-xl font-semibold text-black">{t('Quick Actions')}</h2>
             <BookOpen className="w-6 h-6 text-blue-500" />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

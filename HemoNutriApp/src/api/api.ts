@@ -1,17 +1,15 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert, Platform } from 'react-native';
+import { getAuthData } from '../utils/auth'; // Double-check this path
 
 // Dynamically set baseURL based on platform and environment
 const getBaseURL = (): string => {
   if (Platform.OS === 'android') {
-    // Android Emulator in development, physical device in production
-    return __DEV__ ? 'http://10.0.2.2:5000' : 'http://192.168.122.245:5000' ;
+    return __DEV__ ? 'http://192.168.137.1:5000' : 'http://192.168.122.245:5000';
   } else if (Platform.OS === 'ios') {
-    // iOS Simulator in development, physical device in production
     return __DEV__ ? 'http://localhost:5000' : 'http://192.168.1.4:5000';
   } else {
-    // Default (e.g., web or other environments)
     return 'http://localhost:5000';
   }
 };
@@ -21,13 +19,18 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000,
 });
 
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const authData = await getAuthData(); // Ensure this is a function call
+      if (authData.token) {
+        config.headers.Authorization = `Bearer ${authData.token}`;
+      }
+    } catch (error) {
+      console.error('Failed to get auth data in request interceptor:', error);
     }
     const fullUrl = `${config.baseURL}${config.url}`;
     console.log(

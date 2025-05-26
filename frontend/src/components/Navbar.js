@@ -5,12 +5,12 @@ import { useTranslation } from "react-i18next";
 import api from "../services/api";
 import HemoNutriLogo from "../assets/HemoNutri.jpg";
 import { useAuth } from "../context/AuthContext";
+import i18n from 'i18next'; // Import i18n
 
 const Navbar = ({ role }) => {
   const { t } = useTranslation();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [users, setUsers] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationForm, setNotificationForm] = useState({
@@ -105,10 +105,7 @@ const Navbar = ({ role }) => {
       setShowForm(false);
       alert(t("notification_sent_success"));
     } catch (err) {
-      console.error(
-        "Send notification error:",
-        err.response?.data || err.message
-      );
+      console.error("Send notification error:", err.response?.data || err.message);
       alert(
         err.response?.data?.error ||
           err.message ||
@@ -303,7 +300,7 @@ const Navbar = ({ role }) => {
               </div>
               <button
                 onClick={() => navigate("/profile")}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-semibold text-white transition-all duration-300 bg-blue-700 rounded-lg hover:bg-blue-900 hover:scale-105"
+                className="flex items-center px-3 py-2 space-x-2 text-sm font-semibold text-white transition-all duration-300 bg-blue-700 rounded-lg hover:bg-blue-900 hover:scale-105"
                 aria-label={t("profile")}
               >
                 <User className="w-4 h-4 mr-2" />
@@ -371,7 +368,7 @@ const Navbar = ({ role }) => {
               />
               <button
                 onClick={() => navigate("/profile")}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-semibold text-white transition-all duration-300 bg-blue-700 rounded-lg hover:bg-blue-900 hover:scale-105"
+                className="flex items-center px-3 py-2 space-x-2 text-sm font-semibold text-white transition-all duration-300 bg-blue-700 rounded-lg hover:bg-blue-900 hover:scale-105"
                 aria-label={t("profile")}
               >
                 <User className="w-4 h-4 mr-2" />
@@ -561,7 +558,7 @@ const Navbar = ({ role }) => {
               </div>
               <button
                 onClick={() => navigate("/profile")}
-                className="flex items-center space-x-2 px-3 py-2 text-sm font-semibold text-white transition-all duration-300 bg-blue-700 rounded-lg hover:bg-blue-900 hover:scale-105"
+                className="flex items-center px-3 py-2 space-x-2 text-sm font-semibold text-white transition-all duration-300 bg-blue-700 rounded-lg hover:bg-blue-900 hover:scale-105"
                 aria-label={t("profile")}
               >
                 <User className="w-4 h-4 mr-2" />

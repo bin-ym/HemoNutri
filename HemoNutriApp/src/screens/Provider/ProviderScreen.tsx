@@ -1,12 +1,30 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
-import { Button } from '@rneui/themed';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import api from '../../api/api';
-import { useColors } from '../../theme/ThemeContext';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+} from "react-native";
+import { Button } from "@rneui/themed";
+import { useNavigation } from "@react-navigation/native";
+import { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import { Ionicons } from "@expo/vector-icons";
+import api, { AxiosResponse } from "../../api/api"; // Ensure api is typed
+import { useTranslation } from "react-i18next";
+import { useColors } from "../../theme/ThemeContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CommonActions } from "@react-navigation/native";
+
+// Define valid Ionicons names (partial list, extend as needed)
+type IconName =
+  | "people-outline"
+  | "fast-food-outline"
+  | "chatbox-outline"
+  | "flash-outline"
+  | "time-outline"
+  | "alert-circle-outline";
 
 type RootStackParamList = {
   Home: undefined;
@@ -30,10 +48,11 @@ type TabParamList = {
   ProviderMealPlans: undefined;
 };
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList> & BottomTabNavigationProp<TabParamList, 'Provider'>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList> &
+  BottomTabNavigationProp<TabParamList, "Provider">;
 
 type FoodLog = {
-  id: string;
+  _id: string;
   userId?: string | { username: string };
   foodItem: string;
   quantity: string;
@@ -41,63 +60,110 @@ type FoodLog = {
   date: string;
 };
 
-type ScreenSection = {
-  id: string;
-  type: 'header' | 'overview' | 'logs' | 'quickActions';
-  content?: {
-    stats?: { patients: number; mealPlans: number };
-    logs?: FoodLog[];
-  };
+type Message = {
+  _id: string;
+  patientUsername: string;
+  content: string;
+  createdAt: string;
+  isEmergency: boolean;
+};
+
+type Resource = {
+  _id: string;
+  title: string;
+  content: string;
+  date: string;
 };
 
 const ProviderScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
-  const [stats, setStats] = useState<{ patients: number; mealPlans: number }>({ patients: 0, mealPlans: 0 });
-  const [recentLogs, setRecentLogs] = useState<FoodLog[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   const colors = useColors();
+  const [patients, setPatients] = useState<[] | any[]>([]); // Initial state as empty array
+  const [logs, setLogs] = useState<FoodLog[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [resources, setResources] = useState<Resource[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      setError('');
-      const [patientsResponse, mealPlansResponse, logsResponse] = await Promise.all([
-        api.get('/api/provider/patients'),
-        api.get('/api/provider/meal-plans'),
-        api.get('/api/provider/logs'),
-      ]);
-
-      setStats({
-        patients: patientsResponse.data.length,
-        mealPlans: mealPlansResponse.data.length,
-      });
-
-      setRecentLogs(
-        logsResponse.data.slice(0, 5).map((log: any) => {
-          let userIdData: string | { username: string } | undefined = log.userId;
-          if (!log.userId) {
-            console.warn(`Log with ID ${log._id} has no userId.`);
-            userIdData = { username: 'Unknown' };
-          } else if (typeof log.userId === 'string') {
-            userIdData = log.userId;
-          } else if (!log.userId.username) {
-            console.warn(`Log with ID ${log._id} has userId without username:`, log.userId);
-            userIdData = { username: 'Unknown' };
-          }
-          return {
-            id: log._id,
-            userId: userIdData,
-            foodItem: log.foodItem || 'Unknown',
-            quantity: log.quantity || '0',
-            isFluid: log.isFluid || false,
-            date: log.date || new Date().toISOString(),
-          };
-        })
+      setError("");
+      const token = await AsyncStorage.getItem("token");
+      const role = await AsyncStorage.getItem("role");
+      if (!token || role !== "provider") {
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: "Login" }],
+          })
+        );
+        return;
+      }
+      const promises = [
+        api.get("/provider/patients").catch((err) => {
+          console.error(
+            "Error fetching patients:",
+            err.response?.status,
+            err.response?.data
+          );
+          throw err;
+        }),
+        api.get("/provider/logs").catch((err) => {
+          console.error(
+            "Error fetching logs:",
+            err.response?.status,
+            err.response?.data
+          );
+          throw err;
+        }),
+        api.get("/provider/messages").catch((err) => {
+          console.error(
+            "Error fetching messages:",
+            err.response?.status,
+            err.response?.data
+          );
+          throw err;
+        }),
+        api.get("/provider/education").catch((err) => {
+          console.error(
+            "Error fetching education:",
+            err.response?.status,
+            err.response?.data
+          );
+          throw err;
+        }),
+      ];
+      const [patientsRes, logsRes, messagesRes, resourcesRes] =
+        await Promise.all(promises);
+      setPatients(Array.isArray(patientsRes.data) ? patientsRes.data : []);
+      setLogs(Array.isArray(logsRes.data) ? logsRes.data.slice(0, 5) : []);
+      setMessages(
+        Array.isArray(messagesRes.data) ? messagesRes.data.slice(0, 5) : []
+      );
+      setResources(
+        Array.isArray(resourcesRes.data) ? resourcesRes.data.slice(0, 3) : []
       );
     } catch (err: any) {
-      console.error('API Error:', err.message);
-      setError('Failed to load dashboard. Check your network or server.');
+      console.error("Fetch data error:", err.response?.data || err.message);
+      const errorMsg = err.response?.data?.error || t("dashboard_error_load");
+      setError(errorMsg);
+      if (
+        errorMsg.includes("Token expired") ||
+        errorMsg.includes("Token verification error")
+      ) {
+        await AsyncStorage.removeItem("token");
+        await AsyncStorage.removeItem("role");
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [
+              { name: "Login", params: { message: t("session_expired") } },
+            ],
+          })
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -105,128 +171,136 @@ const ProviderScreen: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
-
-  const handleManagePatients = () => navigation.navigate('Patients');
-  const handleAddResource = () => navigation.navigate('ProviderEducation');
-  const handleRetry = () => fetchData();
+  }, [navigation, t]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleDateString();
+    return isNaN(date.getTime())
+      ? t("date_unavailable")
+      : date.toLocaleDateString();
   };
 
-  const renderRecentLog = ({ item }: { item: FoodLog }) => {
-    const username = typeof item.userId === 'object' && item.userId ? item.userId.username : 'Unknown User';
-    return (
-      <View style={[styles.logItem, { backgroundColor: colors.background, borderColor: colors.secondary }]}>
-        <Text style={[styles.logText, { color: colors.textPrimary }]}>
-          {username}: {item.foodItem} - {item.quantity}{item.isFluid ? 'ml' : 'g'}
+  const renderOverviewCard = ({
+    title,
+    count,
+    icon,
+    onPress,
+  }: {
+    title: string;
+    count: number;
+    icon: IconName;
+    onPress: () => void;
+  }) => (
+    <View
+      style={[
+        styles.overviewCard,
+        {
+          backgroundColor: colors.background,
+          borderColor: colors.secondary,
+          shadowColor: "#000",
+        },
+      ]}
+    >
+      <View style={styles.statHeader}>
+        <Text style={[styles.statTitle, { color: colors.textPrimary }]}>
+          {title}
         </Text>
-        <Text style={[styles.logDate, { color: colors.textSecondary }]}>
-          <Ionicons name="time-outline" size={14} color={colors.textSecondary} /> {formatDate(item.date)}
+        <Ionicons name={icon} size={24} color={colors.primary} />
+      </View>
+      <Text style={[styles.statNumber, { color: colors.textPrimary }]}>
+        {count}
+      </Text>
+      <Button
+        title={t(`view_${title.toLowerCase().replace(" ", "_")}`)}
+        onPress={onPress}
+        type="clear"
+        titleStyle={[styles.statButton, { color: colors.primary }]}
+        accessibilityLabel={`View ${title.toLowerCase()} button`}
+      />
+    </View>
+  );
+
+  const renderRecentItem = ({
+    item,
+    type,
+  }: {
+    item: FoodLog | Message;
+    type: "log" | "message";
+  }) => {
+    const isLog = type === "log";
+    const username = isLog
+      ? typeof (item as FoodLog).userId === "object" && (item as FoodLog).userId
+        ? (item as FoodLog).userId.username
+        : "Unknown User"
+      : (item as Message).patientUsername || "Unknown User";
+    const content = isLog
+      ? `${(item as FoodLog).foodItem} - ${(item as FoodLog).quantity}${
+          (item as FoodLog).isFluid ? "ml" : "g"
+        }`
+      : (item as Message).content;
+    const dateField = isLog ? "date" : "createdAt";
+    const backgroundColor = isLog
+      ? (item as FoodLog).isFluid
+        ? "#e0f7fa"
+        : "#e6f3ff"
+      : (item as Message).isEmergency
+      ? "#ffebee"
+      : "#e6f3ff";
+
+    return (
+      <View
+        style={[
+          styles.recentItem,
+          { backgroundColor, borderColor: colors.secondary },
+        ]}
+      >
+        <Text style={[styles.recentText, { color: colors.textPrimary }]}>
+          {username}: {content}
+        </Text>
+        <Text style={[styles.recentDate, { color: colors.textSecondary }]}>
+          <Ionicons
+            name="time-outline"
+            size={14}
+            color={colors.textSecondary}
+          />{" "}
+          {formatDate((item as any)[dateField])}
         </Text>
       </View>
     );
   };
 
-  const renderSection = ({ item }: { item: ScreenSection }) => {
-    switch (item.type) {
-      case 'header':
-        return (
-          <View style={[styles.header, { shadowColor: '#000' }]}>
-            <Text style={[styles.title, { color: colors.primary }]}>Provider Dashboard</Text>
-            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Monitor your patients and manage their nutrition.</Text>
-          </View>
-        );
-      case 'overview':
-        return (
-          <View style={styles.overviewContainer}>
-            <View style={[styles.statCard, { backgroundColor: colors.background, borderColor: colors.secondary, shadowColor: '#000' }]}>
-              <View style={styles.statHeader}>
-                <Text style={[styles.statTitle, { color: colors.primary }]}>Patients</Text>
-                <Ionicons name="people-outline" size={24} color={colors.primary} />
-              </View>
-              <Text style={[styles.statNumber, { color: colors.textPrimary }]}>{stats.patients}</Text>
-              <Button
-                title="View All Patients"
-                onPress={handleManagePatients}
-                type="clear"
-                titleStyle={[styles.statButton, { color: colors.primary }]}
-                accessibilityLabel="View all patients"
-              />
-            </View>
-          </View>
-        );
-      case 'logs':
-        return (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.primary }]}>Recent Food Logs</Text>
-              <Ionicons name="fast-food-outline" size={24} color={colors.primary} />
-            </View>
-            {recentLogs.length === 0 ? (
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No recent logs.</Text>
-            ) : (
-              <FlatList
-                data={recentLogs}
-                renderItem={renderRecentLog}
-                keyExtractor={(item) => item.id}
-                style={styles.list}
-                nestedScrollEnabled
-              />
-            )}
-          </View>
-        );
-      case 'quickActions':
-        return (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.primary }]}>Quick Actions</Text>
-              <Ionicons name="flash-outline" size={24} color={colors.primary} />
-            </View>
-            <View style={styles.quickActions}>
-              <Button
-                title="Manage Patients"
-                onPress={handleManagePatients}
-                buttonStyle={[styles.actionButton, { backgroundColor: colors.primary }]}
-                containerStyle={styles.actionButtonContainer}
-                titleStyle={styles.actionButtonTitle}
-                accessibilityLabel="Manage patients button"
-              />
-              <Button
-                title="Add Resource"
-                onPress={handleAddResource}
-                buttonStyle={[styles.actionButton, { backgroundColor: colors.primary }]}
-                containerStyle={styles.actionButtonContainer}
-                titleStyle={styles.actionButtonTitle}
-                accessibilityLabel="Add resource button"
-              />
-            </View>
-          </View>
-        );
-      default:
-        return null;
-    }
-  };
-
   if (loading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading dashboard...</Text>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background },
+        ]}
+      >
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>
+          {t("dashboard_loading")}
+        </Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.errorContainer, { backgroundColor: colors.background }]}>
+      <View
+        style={[styles.errorContainer, { backgroundColor: colors.background }]}
+      >
         <Ionicons name="alert-circle-outline" size={24} color={colors.danger} />
-        <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
+        <Text style={[styles.errorText, { color: colors.danger }]}>
+          {error}
+        </Text>
         <Button
-          title="Retry"
-          onPress={handleRetry}
-          buttonStyle={[styles.retryButton, { backgroundColor: colors.primary }]}
+          title={t("retry")}
+          onPress={fetchData}
+          buttonStyle={[
+            styles.retryButton,
+            { backgroundColor: colors.primary },
+          ]}
           containerStyle={styles.retryButtonContainer}
           titleStyle={styles.retryButtonTitle}
           accessibilityLabel="Retry dashboard load"
@@ -235,17 +309,187 @@ const ProviderScreen: React.FC = () => {
     );
   }
 
-  const sections: ScreenSection[] = [
-    { id: '1', type: 'header' },
-    { id: '2', type: 'overview', content: { stats } },
-    { id: '3', type: 'logs', content: { logs: recentLogs } },
-    { id: '4', type: 'quickActions' },
-  ];
-
   return (
     <FlatList
-      data={sections}
-      renderItem={renderSection}
+      data={[
+        { id: "header", type: "header" },
+        { id: "overview", type: "overview" },
+        { id: "logs", type: "logs" },
+        { id: "messages", type: "messages" },
+        { id: "quickActions", type: "quickActions" },
+      ]}
+      renderItem={({ item }) => {
+        switch (item.type) {
+          case "header":
+            return (
+              <View style={[styles.header, { shadowColor: "#000" }]}>
+                <Text style={[styles.title, { color: colors.primary }]}>
+                  {t("dashboard_title")}
+                </Text>
+                <Text
+                  style={[styles.subtitle, { color: colors.textSecondary }]}
+                >
+                  {t("dashboard_subtitle")}
+                </Text>
+                <Ionicons
+                  name="people-outline"
+                  size={32}
+                  color={colors.primary}
+                />
+              </View>
+            );
+          case "overview":
+            return (
+              <View style={styles.overviewContainer}>
+                {renderOverviewCard({
+                  title: t("patients"),
+                  count: patients.length,
+                  icon: "people-outline",
+                  onPress: () => navigation.navigate({ name: "Patients" }),
+                })}
+                {renderOverviewCard({
+                  title: t("recent_logs"),
+                  count: logs.length,
+                  icon: "fast-food-outline",
+                  onPress: () => navigation.navigate({ name: "FoodLogs" }),
+                })}
+                {renderOverviewCard({
+                  title: t("messages"),
+                  count: messages.length,
+                  icon: "chatbox-outline",
+                  onPress: () =>
+                    navigation.navigate({ name: "ProviderMessages" }),
+                })}
+              </View>
+            );
+          case "logs":
+            return (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text
+                    style={[styles.sectionTitle, { color: colors.primary }]}
+                  >
+                    {t("recent_food_logs")}
+                  </Text>
+                  <Ionicons
+                    name="fast-food-outline"
+                    size={24}
+                    color={colors.primary}
+                  />
+                </View>
+                {logs.length === 0 ? (
+                  <Text
+                    style={[styles.emptyText, { color: colors.textSecondary }]}
+                  >
+                    {t("no_logs")}
+                  </Text>
+                ) : (
+                  <FlatList
+                    data={logs}
+                    renderItem={(log) =>
+                      renderRecentItem({ item: log.item, type: "log" })
+                    }
+                    keyExtractor={(item) => item._id}
+                    style={styles.list}
+                    nestedScrollEnabled
+                  />
+                )}
+              </View>
+            );
+          case "messages":
+            return (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text
+                    style={[styles.sectionTitle, { color: colors.primary }]}
+                  >
+                    {t("recent_messages")}
+                  </Text>
+                  <Ionicons
+                    name="chatbox-outline"
+                    size={24}
+                    color={colors.primary}
+                  />
+                </View>
+                {messages.length === 0 ? (
+                  <Text
+                    style={[styles.emptyText, { color: colors.textSecondary }]}
+                  >
+                    {t("no_messages")}
+                  </Text>
+                ) : (
+                  <FlatList
+                    data={messages}
+                    renderItem={(msg) =>
+                      renderRecentItem({ item: msg.item, type: "message" })
+                    }
+                    keyExtractor={(item) => item._id}
+                    style={styles.list}
+                    nestedScrollEnabled
+                  />
+                )}
+              </View>
+            );
+          case "quickActions":
+            return (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text
+                    style={[styles.sectionTitle, { color: colors.primary }]}
+                  >
+                    {t("quick_actions")}
+                  </Text>
+                  <Ionicons
+                    name="flash-outline"
+                    size={24}
+                    color={colors.primary}
+                  />
+                </View>
+                <View style={styles.quickActions}>
+                  <Button
+                    title={t("manage_patients")}
+                    onPress={() => navigation.navigate({ name: "Patients" })}
+                    buttonStyle={[
+                      styles.actionButton,
+                      { backgroundColor: colors.primary },
+                    ]}
+                    containerStyle={styles.actionButtonContainer}
+                    titleStyle={styles.actionButtonTitle}
+                    accessibilityLabel="Manage patients button"
+                  />
+                  <Button
+                    title={t("add_resource")}
+                    onPress={() =>
+                      navigation.navigate({ name: "ProviderEducation" })
+                    }
+                    buttonStyle={[
+                      styles.actionButton,
+                      { backgroundColor: colors.primary },
+                    ]}
+                    containerStyle={styles.actionButtonContainer}
+                    titleStyle={styles.actionButtonTitle}
+                    accessibilityLabel="Add resource button"
+                  />
+                  <Button
+                    title={t("send_message")}
+                    onPress={() =>
+                      navigation.navigate({ name: "ProviderMessages" })
+                    }
+                    buttonStyle={[
+                      styles.actionButton,
+                      { backgroundColor: colors.primary },
+                    ]}
+                    containerStyle={styles.actionButtonContainer}
+                    titleStyle={styles.actionButtonTitle}
+                    accessibilityLabel="Send message button"
+                  />
+                </View>
+              </View>
+            );
+          default:
+            return null;
+        }
+      }}
       keyExtractor={(item) => item.id}
       style={[styles.container, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.contentContainer}
@@ -264,26 +508,27 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   loadingText: {
     fontSize: 18,
+    marginTop: 10,
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
   },
   errorText: {
     fontSize: 18,
     marginTop: 10,
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
   },
   retryButtonContainer: {
-    width: '60%',
+    width: "60%",
     marginTop: 20,
   },
   retryButton: {
@@ -291,53 +536,59 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   retryButtonTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   header: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 30,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 10,
   },
   subtitle: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
   overviewContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
     marginBottom: 30,
+    flexWrap: "wrap",
   },
-  statCard: {
+  overviewCard: {
     padding: 15,
     borderRadius: 8,
-    alignItems: 'center',
-    width: '45%',
+    alignItems: "center",
+    width: "45%",
     borderWidth: 1,
+    marginBottom: 10,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   statHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width: '100%',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: "100%",
     marginBottom: 10,
   },
   statTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   statNumber: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 10,
   },
   statButton: {
@@ -347,42 +598,43 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 15,
   },
   sectionTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
   list: {
     flexGrow: 0,
   },
-  logItem: {
+  recentItem: {
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
     borderWidth: 1,
   },
-  logText: {
+  recentText: {
     fontSize: 16,
     marginBottom: 5,
   },
-  logDate: {
+  recentDate: {
     fontSize: 14,
   },
   emptyText: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
+    marginTop: 10,
   },
   quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    flexWrap: "wrap",
   },
   actionButtonContainer: {
-    width: '45%',
+    width: "45%",
     marginBottom: 10,
   },
   actionButton: {
@@ -390,9 +642,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
   },
   actionButtonTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
   },
 });
 

@@ -114,7 +114,7 @@ const FoodLog = ({ setLogs }) => {
               value={food === 'custom' ? '' : food}
               onChange={(e) => setFood(e.target.value)}
               placeholder="Enter custom food item"
-              className="mt-2 w-full p-3 pl-10 transition-all duration-200 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
+              className="w-full p-3 pl-10 mt-2 transition-all duration-200 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent"
               required
             />
           )}

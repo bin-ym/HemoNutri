@@ -4,11 +4,10 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CommonActions } from '@react-navigation/native';
 import api from '../api/api';
-import { storeAuthData, clearAuthData } from '../utils/auth';
-import { useColors } from '../theme/ThemeContext'; // Updated import
+import { storeAuthData, clearAuthData, getAuthData } from '../utils/auth';
+import { useColors } from '../theme/ThemeContext';
 import type { LoginCredentials, AuthResponse } from '../types/auth';
 
-// Define the navigation stack param list
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
@@ -22,7 +21,7 @@ const LoginScreen: React.FC = () => {
   const [password, setPassword] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const navigation = useNavigation<NavigationProp>();
-  const colors = useColors(); // Use the hook to get dynamic colors
+  const colors = useColors();
 
   const handleLogin = async () => {
     if (!identifier || !password) {
@@ -49,7 +48,6 @@ const LoginScreen: React.FC = () => {
 
       await storeAuthData(token, role, userId);
 
-      // Reset the navigation stack to 'Tabs' and pass the role
       navigation.dispatch(
         CommonActions.reset({
           index: 0,
@@ -72,13 +70,25 @@ const LoginScreen: React.FC = () => {
           : error.response?.data?.message || error.message || 'An error occurred. Please try again.';
       Alert.alert('Login Failed', errorMessage, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Retry', onPress: handleLogin },
+        { text: 'Retry', onPress: () => handleLogin() },
       ]);
       await clearAuthData();
     } finally {
       setLoading(false);
     }
   };
+
+  const checkAuth = async () => {
+  try {
+    const authData = await getAuthData();
+    if (!authData.token) {
+      navigation.navigate('Login');
+    }
+  } catch (error) {
+    console.error('Auth check failed:', error);
+    navigation.navigate('Login');
+  }
+};
 
   const isFormValid = identifier.trim().length > 0 && password.trim().length > 0;
 
@@ -94,6 +104,7 @@ const LoginScreen: React.FC = () => {
         autoCapitalize="none"
         keyboardType="email-address"
         accessibilityLabel="Username or Email input"
+        editable={!loading}
       />
       <TextInput
         style={[styles.input, { borderColor: colors.secondary, color: colors.textPrimary }]}
@@ -104,6 +115,7 @@ const LoginScreen: React.FC = () => {
         secureTextEntry
         autoCapitalize="none"
         accessibilityLabel="Password input"
+        editable={!loading}
       />
       <Button
         title={loading ? 'Logging in...' : 'Login'}

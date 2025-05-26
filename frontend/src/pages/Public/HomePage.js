@@ -114,12 +114,6 @@ const HomePage = () => {
             {t("welcome_to_hemonutri")}
           </h1>
           <p className="mb-6 text-xl md:text-2xl">{t("nutrition_partner")}</p>
-          <button
-            onClick={() => navigate("/register")}
-            className="px-8 py-3 text-lg transition duration-300 bg-blue-600 rounded-full shadow-md hover:bg-blue-700"
-          >
-            {t("get_started")}
-          </button>
         </div>
       </section>
 

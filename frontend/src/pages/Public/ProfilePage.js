@@ -259,7 +259,7 @@ const ProfilePage = () => {
               role="heading"
               aria-level="1"
             >
-              {t("profile")}
+              {t("Profile")}
             </h1>
             {apiMessage && (
               <div
@@ -291,7 +291,7 @@ const ProfilePage = () => {
             )}
             <div className="mb-8">
               <h2 className="mb-4 text-xl font-semibold text-blue-600">
-                {t("user_info")}
+                {t("User information")}
               </h2>
               <div className="space-y-4">
                 <div>
@@ -413,7 +413,7 @@ const ProfilePage = () => {
             </div>
             <form onSubmit={handlePasswordSubmit} className="mt-8 space-y-6">
               <h2 className="text-xl font-semibold text-blue-600">
-                {t("change_password")}
+                {t("Change password")}
               </h2>
               <div className="relative">
                 <label
