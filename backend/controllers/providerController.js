@@ -144,6 +144,7 @@ const getAllLogs = async (req, res) => {
 };
 
 const getMessages = async (req, res) => {
+  console.log("getMessages called with user:", req.user);
   try {
     const messages = await Message.find({
       $or: [{ sender: req.user.id }, { recipient: req.user.id }],

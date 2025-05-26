@@ -1,14 +1,18 @@
-import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { Navigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, loading } = useAuth();
-  const token = localStorage.getItem('token');
-  const role = localStorage.getItem('role');
+  const { user, isAuthenticated, loading } = useAuth();
+  const token = localStorage.getItem("token");
 
-  console.log('ProtectedRoute: Checking access', { user, allowedRoles, loading });
+  console.log("ProtectedRoute: Checking access", {
+    user: user ? { role: user.role, email: user.email } : null,
+    isAuthenticated,
+    allowedRoles,
+    loading,
+    token: token?.slice(0, 10) + "...",
+  });
 
-  // Loading state
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -20,19 +24,16 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
 
-  // Check for token and user
-  if (!token || !user) {
-    console.log('ProtectedRoute: No token or user, redirecting to /login');
+  if (!token || !isAuthenticated) {
+    console.log("ProtectedRoute: No token or not authenticated, redirecting to /login");
     return <Navigate to="/login" replace />;
   }
 
-  // Check for allowed roles
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
-    console.log('ProtectedRoute: Role not allowed, redirecting to /');
+  if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) {
+    console.log("ProtectedRoute: Role not allowed, redirecting to /", { userRole: user.role, allowedRoles });
     return <Navigate to="/" replace />;
   }
 
-  // If authorized, render the child component
   return children;
 };
 

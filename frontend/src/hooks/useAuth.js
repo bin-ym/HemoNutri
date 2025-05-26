@@ -1,15 +1,15 @@
-import { useState, useEffect } from 'react';
-import api from '../services/api';
+import { useState, useEffect } from "react";
+import api from "../services/api";
 
 const useAuth = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const validateSession = async () => {
-    const token = localStorage.getItem('token');
-    const role = localStorage.getItem('role');
-    const userId = localStorage.getItem('userId');
-    console.log('useAuth: Validating session', { tokenExists: !!token, role, userId });
+    const token = localStorage.getItem("token");
+    const role = localStorage.getItem("role");
+    const userId = localStorage.getItem("userId");
+    console.log("useAuth: Validating session", { tokenExists: !!token, role, userId });
 
     if (!token || !role || !userId) {
       setUser(null);
@@ -18,8 +18,8 @@ const useAuth = () => {
     }
 
     try {
-      const response = await api.get('auth/profile');
-      console.log('useAuth: Profile fetched', response.data);
+      const response = await api.get("auth/profile");
+      console.log("useAuth: Profile fetched", response.data);
       const userData = {
         ...response.data,
         token,
@@ -27,14 +27,14 @@ const useAuth = () => {
         userId,
       };
       setUser(userData);
-      localStorage.setItem('role', userData.role); // Sync role
+      localStorage.setItem("role", userData.role); // Sync role
       return userData;
     } catch (err) {
-      console.error('useAuth: Profile fetch failed', err.message);
+      console.error("useAuth: Profile fetch failed", err.message);
       if (err.response?.status === 404 || err.response?.status === 401) {
-        console.log('useAuth: Using localStorage data');
+        console.log("useAuth: Using localStorage data");
         setUser({
-          email: 'unknown',
+          email: "unknown",
           role,
           userId,
           token,
@@ -45,24 +45,34 @@ const useAuth = () => {
       throw err;
     } finally {
       setLoading(false);
-      console.log('useAuth: Loading set to false');
+      console.log("useAuth: Loading set to false");
     }
   };
 
   useEffect(() => {
     const verifyToken = async () => {
       try {
-        await api.get('auth/verify');
-        console.log('useAuth: Token verified');
+        await api.get("auth/verify");
+        console.log("useAuth: Token verified");
         await validateSession();
       } catch (err) {
-        console.error('useAuth: Token verification failed', err.message);
+        console.error("useAuth: Token verification failed", err.message);
         setUser(null);
         setLoading(false);
       }
     };
 
     verifyToken();
+
+    // Re-validate on focus or storage change
+    const handleStorageChange = () => verifyToken();
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("focus", handleStorageChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("focus", handleStorageChange);
+    };
   }, []);
 
   return { user, loading, validateSession };

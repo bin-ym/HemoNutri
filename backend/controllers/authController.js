@@ -453,11 +453,9 @@ const resetPassword = async (req, res) => {
         tempPassword,
         newPassword,
       });
-      return res
-        .status(400)
-        .json({
-          error: "Token, temporary password, and new password are required",
-        });
+      return res.status(400).json({
+        error: "Token, temporary password, and new password are required",
+      });
     }
 
     const passwordRegex =
@@ -503,9 +501,7 @@ const resetPassword = async (req, res) => {
 };
 
 const getProfile = async (req, res) => {
-  console.log("authController: getProfile request received", {
-    userId: req.user.id,
-  });
+  console.log("authController: getProfile request received", { userId: req.user.id });
   try {
     const user = await User.findById(req.user.id)
       .select("username email role provider firstName lastName")
@@ -598,6 +594,28 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const refreshToken = async (req, res) => {
+  console.log("authController: refreshToken", { userId: req.user?.id });
+  try {
+    if (!req.user) {
+      console.log("authController: No user in refreshToken");
+      return res.status(401).json({ error: "invalid_token" });
+    }
+
+    const newToken = jwt.sign(
+      { id: req.user.id, role: req.user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    console.log("authController: New token generated", { userId: req.user.id });
+    res.json({ token: newToken });
+  } catch (err) {
+    console.error("authController: Refresh token error:", err.stack);
+    res.status(500).json({ error: "server_error" });
+  }
+};
+
 module.exports = {
   login,
   register,
@@ -608,5 +626,6 @@ module.exports = {
   getProfile,
   selectProvider,
   updateProfile,
+  refreshToken,
   generateTempPassword, // Export for use in adminController
 };

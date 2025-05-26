@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const {
   login,
   register,
@@ -9,27 +9,30 @@ const {
   getProfile,
   selectProvider,
   updateProfile,
-} = require('../controllers/authController');
-const auth = require('../middleware/auth');
+  refreshToken, // Add refreshToken to imports
+} = require("../controllers/authController");
+const auth = require("../middleware/auth");
 
 const router = express.Router();
 
-router.post('/login', login);
-router.post('/register', register);
-router.post('/activate', activateAccount);
-router.post('/change-password', auth(['patient', 'provider', 'admin']), changePassword);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password', resetPassword);
-router.get('/profile', auth(['patient', 'provider', 'admin']), (req, res, next) => {
-  console.log('authRoutes: Handling /profile request', { userId: req.user?.id });
+router.post("/login", login);
+router.post("/register", register);
+router.post("/activate", activateAccount);
+router.post("/change-password", auth(["patient", "provider", "admin"]), changePassword);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
+router.get("/profile", auth(["patient", "provider", "admin"]), (req, res, next) => {
+  console.log("authRoutes: Handling /profile request", { userId: req.user?.id });
   getProfile(req, res, next);
 });
-router.post('/profile/update', auth(['patient', 'provider', 'admin']), updateProfile);
-router.post('/select-provider', selectProvider);
-
-// Add verify endpoint for token validation
-router.get('/verify', auth(['patient', 'provider', 'admin']), (req, res) => {
-  res.status(200).json({ message: 'Token valid', userId: req.user.id });
+router.post("/profile/update", auth(["patient", "provider", "admin"]), updateProfile);
+router.post("/select-provider", selectProvider);
+router.get("/verify", auth(["patient", "provider", "admin"]), (req, res) => {
+  res.status(200).json({ message: "Token valid", userId: req.user.id });
+});
+router.post("/refresh", auth(["patient", "provider", "admin"]), (req, res, next) => {
+  console.log("authRoutes: Handling /refresh request", { userId: req.user?.id });
+  refreshToken(req, res, next);
 });
 
 module.exports = router;
