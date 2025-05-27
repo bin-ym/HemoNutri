@@ -73,7 +73,7 @@ app.use("/api", contactRoutes);
 console.log("✅ API routes mounted");
 
 // Serve React frontend
-const buildPath = path.join(__dirname, "../frontend", "build");
+const buildPath = path.join(__dirname, "..", "frontend", "build");
 app.use(express.static(buildPath));
 app.get("*", (req, res) => {
   res.sendFile(path.resolve(buildPath, "index.html"));
