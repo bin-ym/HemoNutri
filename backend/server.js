@@ -16,7 +16,13 @@ const contactRoutes = require("./routes/contactRoutes");
 dotenv.config({ path: path.resolve(__dirname, ".env") });
 
 // Validate required environment variables
-const requiredEnvVars = ["MONGO_URI", "PORT", "JWT_SECRET", "EMAIL_USER", "EMAIL_PASS"];
+const requiredEnvVars = [
+  "MONGO_URI",
+  "PORT",
+  "JWT_SECRET",
+  "EMAIL_USER",
+  "EMAIL_PASS",
+];
 requiredEnvVars.forEach((varName) => {
   if (!process.env[varName]) {
     console.error(`❌ Error: Environment variable ${varName} is not defined`);
@@ -46,7 +52,9 @@ app.use(express.json());
 // Debug middleware
 app.use((req, res, next) => {
   console.log(
-    `[${new Date().toISOString()}] ${req.method} ${req.url} from ${req.headers.origin || "N/A"}`
+    `[${new Date().toISOString()}] ${req.method} ${req.url} from ${
+      req.headers.origin || "N/A"
+    }`
   );
   if (req.url === "/api/auth/profile") {
     console.log("🔐 Profile route hit", { headers: req.headers });
@@ -65,7 +73,7 @@ app.use("/api", contactRoutes);
 console.log("✅ API routes mounted");
 
 // Serve React frontend
-const buildPath = path.join(__dirname, "Frontend", "build");
+const buildPath = path.join(__dirname, "../frontend", "build");
 app.use(express.static(buildPath));
 app.get("*", (req, res) => {
   res.sendFile(path.resolve(buildPath, "index.html"));
@@ -73,14 +81,18 @@ app.get("*", (req, res) => {
 
 // 404 handler for API
 app.use((req, res) => {
-  console.log(`[${new Date().toISOString()}] 404 Not Found: ${req.method} ${req.url}`);
+  console.log(
+    `[${new Date().toISOString()}] 404 Not Found: ${req.method} ${req.url}`
+  );
   res.status(404).json({ error: "Route not found" });
 });
 
 // Global error handler
 app.use((err, req, res, next) => {
   console.error(`[${new Date().toISOString()}] Unhandled Error:`, err.stack);
-  res.status(err.status || 500).json({ error: err.message || "Internal server error" });
+  res
+    .status(err.status || 500)
+    .json({ error: err.message || "Internal server error" });
 });
 
 // Connect to MongoDB
