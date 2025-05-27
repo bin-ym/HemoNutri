@@ -15,7 +15,7 @@ const auth = require("../middleware/auth");
 
 const router = express.Router();
 
-router.post("/login", auth, login);
+router.post("/login", login);
 router.post("/register", register);
 router.post("/activate", activateAccount);
 router.post("/change-password", auth(["patient", "provider", "admin"]), changePassword);
