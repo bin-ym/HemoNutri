@@ -82,10 +82,7 @@ const AdminUsersPage = () => {
       setErrors({});
       setShowAddForm(false);
       fetchUsers();
-      alert(
-        t("user_added_success") +
-          `\n${t("temp_password_sent")}: ${response.data.tempPassword}`
-      );
+      
     } catch (err) {
       console.error("Add user error:", err.response?.data || err.message);
       setApiError(t(err.response?.data?.error || "failed_add_user"));

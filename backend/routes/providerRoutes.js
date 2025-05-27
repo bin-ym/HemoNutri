@@ -51,4 +51,5 @@ router.put('/patients/:id', auth(['provider']), providerController.updatePatient
 // Delete Patient
 router.delete('/patients/:id', auth(['provider']), providerController.deletePatient);
 
+
 module.exports = router;

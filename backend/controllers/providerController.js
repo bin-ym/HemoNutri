@@ -263,7 +263,7 @@ const getMealPlans = async (req, res) => {
 };
 
 const saveMealPlan = async (req, res) => {
-  const { breakfast, lunch, dinner, hemodialysisLimits, date, recommendedFoods } = req.body;
+  const { breakfast, lunch, dinner, hemodialysisLimits, date, recommendedFoods, recommendedFluids } = req.body;
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       console.log('providerController: Invalid patient ID', { id: req.params.id });
@@ -348,9 +348,8 @@ const saveMealPlan = async (req, res) => {
       mealPlan.lunch = lunch;
       mealPlan.dinner = dinner;
       mealPlan.hemodialysisLimits = hemodialysisLimits;
-      if (recommendedFoods) {
-        mealPlan.recommendedFoods = recommendedFoods;
-      }
+      if (recommendedFoods) mealPlan.recommendedFoods = recommendedFoods;
+      if (recommendedFluids) mealPlan.recommendedFluids = recommendedFluids; // Save recommendedFluids
       mealPlan.updatedAt = new Date();
     } else {
       mealPlan = new MealPlan({
@@ -361,11 +360,8 @@ const saveMealPlan = async (req, res) => {
         lunch,
         dinner,
         hemodialysisLimits,
-        recommendedFoods: recommendedFoods || {
-          breakfast: [],
-          lunch: [],
-          dinner: [],
-        },
+        recommendedFoods: recommendedFoods || { breakfast: [], lunch: [], dinner: [] },
+        recommendedFluids: recommendedFluids || [], // Initialize recommendedFluids
       });
     }
     await mealPlan.save();

@@ -4,19 +4,13 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../api/api';
-import { useColors } from '../../theme/ThemeContext'; // Corrected import path
+import { useColors } from '../../theme/ThemeContext';
 
 type RootStackParamList = {
-  Home: undefined;
-  Login: undefined;
-  Tabs: { role: string };
-  FoodLogs: undefined;
-  MealPlans: undefined;
-  Messages: undefined;
   Conversation: { userId: string; username: string; role: string };
 };
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Messages'>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Conversation'>;
 
 type User = {
   id: string;
@@ -43,14 +37,13 @@ const MessagesScreen: React.FC = () => {
           if ((sender.role === 'provider' || sender.role === 'admin') && !usersMap[sender._id]) {
             usersMap[sender._id] = {
               id: sender._id,
-              username: sender.username || `Unknown ${sender.role.charAt(0).toUpperCase() + sender.role.slice(1)}`,
+              username: sender.username || `Unknown ${sender.role}`,
               email: sender.email || 'No email provided',
               role: sender.role,
             };
           }
         });
-        const userData = Object.values(usersMap);
-        setUsers(userData);
+        setUsers(Object.values(usersMap));
         setError('');
       } catch (err: any) {
         setError(err.response?.data?.error || 'Failed to load users');
@@ -64,10 +57,7 @@ const MessagesScreen: React.FC = () => {
   const renderUser = ({ item }: { item: User }) => (
     <TouchableOpacity
       style={styles.userItem}
-      onPress={() => {
-        console.log('Navigating to Conversation with:', { userId: item.id, username: item.username, role: item.role });
-        navigation.navigate('Conversation', { userId: item.id, username: item.username, role: item.role });
-      }}
+      onPress={() => navigation.navigate('Conversation', { userId: item.id, username: item.username, role: item.role })}
     >
       <View style={styles.userInfo}>
         <Text style={styles.userName}>{item.username}</Text>
@@ -117,91 +107,79 @@ const MessagesScreen: React.FC = () => {
   );
 };
 
-const styles = (colors: ReturnType<typeof useColors>) =>
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.background,
-      padding: 20,
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.background,
-    },
-    loadingText: {
-      fontSize: 18,
-      color: colors.textSecondary,
-      marginTop: 10,
-    },
-    emptyContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginTop: 50,
-    },
-    emptyText: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      marginTop: 10,
-      textAlign: 'center',
-    },
-    errorMessage: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.errorBackground,
-      padding: 10,
-      borderRadius: 8,
-      marginBottom: 20,
-    },
-    errorText: {
-      fontSize: 16,
-      color: colors.danger,
-      marginLeft: 10,
-    },
-    header: {
-      alignItems: 'center',
-      marginBottom: 30,
-    },
-    title: {
-      fontSize: 28,
-      fontWeight: 'bold',
-      color: colors.primary,
-      marginBottom: 10,
-    },
-    subtitle: {
-      fontSize: 16,
-      color: colors.textSecondary,
-      textAlign: 'center',
-    },
-    list: {
-      flexGrow: 0,
-    },
-    userItem: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: colors.background,
-      padding: 15,
-      borderRadius: 8,
-      marginBottom: 10,
-      borderWidth: 1,
-      borderColor: colors.secondary,
-      justifyContent: 'space-between',
-    },
-    userInfo: {
-      flex: 1,
-    },
-    userName: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: colors.primary,
-      marginBottom: 5,
-    },
-    userRole: {
-      fontSize: 14,
-      color: colors.textSecondary,
-    },
-  });
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+    padding: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 18,
+    marginTop: 10,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    marginTop: 10,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    backgroundColor: '#ffdddd',
+    borderRadius: 8,
+    marginBottom: 20,
+  },
+  errorText: {
+    fontSize: 16,
+    marginLeft: 10,
+    color: '#d9534f',
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 30,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+  },
+  subtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  list: {
+    flexGrow: 0,
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  userRole: {
+    fontSize: 14,
+    color: '#777',
+  },
+});
 
 export default MessagesScreen;

@@ -1,18 +1,30 @@
 const mongoose = require('mongoose');
 
 const nutrientSchema = new mongoose.Schema({
-  carbohydrates: { type: Number, default: 0 }, // grams
-  proteins: { type: Number, default: 0 }, // grams
-  lipids: { type: Number, default: 0 }, // grams
+  carbohydrates: { type: Number, default: 0 },
+  proteins: { type: Number, default: 0 },
+  lipids: { type: Number, default: 0 },
 });
 
 const foodItemSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  quantity: { type: Number, required: true }, // grams or ml
+  quantity: { type: Number, required: true },
   isFluid: { type: Boolean, default: false },
-  carbohydrates: { type: Number, default: 0 }, // grams per serving
-  proteins: { type: Number, default: 0 }, // grams per serving
-  lipids: { type: Number, default: 0 }, // grams per serving
+  carbohydrates: { type: Number, default: 0 },
+  proteins: { type: Number, default: 0 },
+  lipids: { type: Number, default: 0 },
+  potassium: { type: Number, default: 0 },
+  phosphorus: { type: Number, default: 0 },
+  sodium: { type: Number, default: 0 },
+});
+
+const fluidItemSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  units: { type: Number, required: true },
+  totalFluid: { type: Number, required: true },
+  potassium: { type: Number, default: 0 },
+  phosphorus: { type: Number, default: 0 },
+  sodium: { type: Number, default: 0 },
 });
 
 const recommendedFoodsSchema = new mongoose.Schema({
@@ -22,10 +34,10 @@ const recommendedFoodsSchema = new mongoose.Schema({
 });
 
 const hemodialysisLimitsSchema = new mongoose.Schema({
-  potassium: { type: Number, default: 2000 }, // mg (target limit)
-  phosphorus: { type: Number, default: 800 }, // mg (target limit)
-  sodium: { type: Number, default: 2000 }, // mg (target limit)
-  fluid: { type: Number, default: 1000 }, // ml (target limit)
+  potassium: { type: Number, default: 2000 },
+  phosphorus: { type: Number, default: 800 },
+  sodium: { type: Number, default: 2000 },
+  fluid: { type: Number, default: 1000 },
 });
 
 const mealPlanSchema = new mongoose.Schema({
@@ -53,6 +65,7 @@ const mealPlanSchema = new mongoose.Schema({
     dinner: { type: Boolean, default: false },
   },
   recommendedFoods: recommendedFoodsSchema,
+  recommendedFluids: [fluidItemSchema], // Add recommendedFluids
   updatedAt: { type: Date, default: Date.now },
 });
 

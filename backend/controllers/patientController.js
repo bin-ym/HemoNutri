@@ -179,13 +179,14 @@ const getMealPlan = async (req, res) => {
         lunch: { carbohydrates: 0, proteins: 0, lipids: 0 },
         dinner: { carbohydrates: 0, proteins: 0, lipids: 0 },
         hemodialysisLimits: {
-          potassium: 0,
-          phosphorus: 0,
-          sodium: 0,
-          fluid: 0,
+          potassium: 2000,
+          phosphorus: 800,
+          sodium: 2000,
+          fluid: 1000,
         },
         consumed: { breakfast: false, lunch: false, dinner: false },
         recommendedFoods: { breakfast: [], lunch: [], dinner: [] },
+        recommendedFluids: [], // Add recommendedFluids
       });
     }
     const sanitizedPlan = {
@@ -220,6 +221,7 @@ const getMealPlan = async (req, res) => {
         lunch: [],
         dinner: [],
       },
+      recommendedFluids: mealPlan.recommendedFluids || [], // Include recommendedFluids
     };
     res.json(sanitizedPlan);
   } catch (err) {

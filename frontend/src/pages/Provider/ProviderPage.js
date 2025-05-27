@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Users, Utensils, MessageSquare, BookOpen, AlertCircle, Clock } from 'lucide-react';
+import { Users, Utensils, MessageSquare, BookOpen, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
 
@@ -49,11 +49,11 @@ const ProviderPage = () => {
       }
     };
     fetchData();
-  }, [navigate]);
+  }, [navigate, t]); // Added t to dependencies
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return isNaN(date.getTime()) ? t('date_unavailable') : date.toLocaleDateString();
+    return isNaN(date.getTime()) ? t('date_unavailable') : date.toLocaleDateString('am-ET');
   };
 
   if (loading) {
@@ -90,7 +90,6 @@ const ProviderPage = () => {
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-blue-50 to-gray-100">
       <Navbar role="provider" />
       <div className="flex-grow max-w-6xl p-6 mx-auto">
-        {/* Header */}
         <div className="relative mb-12 text-center">
           <div className="absolute inset-0 h-32 bg-blue-600 rounded-b-full -top-8 opacity-10 blur-2xl"></div>
           <h1 className="relative text-3xl font-extrabold text-black sm:text-4xl md:text-5xl animate-fade-in">
@@ -102,7 +101,6 @@ const ProviderPage = () => {
           <Users className="relative w-12 h-12 mx-auto mt-4 text-blue-500 animate-bounce-slow" />
         </div>
 
-        {/* Overview Cards */}
         <div className="grid grid-cols-1 gap-6 mb-12 sm:grid-cols-2 lg:grid-cols-3">
           <div className="p-6 transition-all duration-300 bg-white shadow-lg rounded-xl hover:shadow-xl hover:scale-105">
             <div className="flex items-center justify-between mb-4">
@@ -113,7 +111,7 @@ const ProviderPage = () => {
           </div>
           <div className="p-6 transition-all duration-300 bg-white shadow-lg rounded-xl hover:shadow-xl hover:scale-105">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-black">{t('Logs')}</h2>
+              <h2 className="text-xl font-semibold text-black">{t('logs')}</h2>
               <Utensils className="w-6 h-6 text-blue-500" />
             </div>
             <p className="text-3xl font-bold text-black">{logs.length}</p>
@@ -126,10 +124,29 @@ const ProviderPage = () => {
             <p className="text-3xl font-bold text-black">{messages.length}</p>
           </div>
         </div>
-        {/* Quick Actions */}
+
         <div className="p-6 bg-white shadow-lg rounded-xl">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-black">{t('Quick Actions')}</h2>
+            <h2 className="text-xl font-semibold text-black">{t('resources')}</h2>
+            <BookOpen className="w-6 h-6 text-blue-500" />
+          </div>
+          {resources.length === 0 ? (
+            <p className="text-gray-600">{t('no_resources')}</p>
+          ) : (
+            <ul className="space-y-4">
+              {resources.map((resource) => (
+                <li key={resource._id} className="p-4 rounded-lg bg-blue-50">
+                  <p className="text-gray-800">{resource.title || t('no_title')}</p>
+                  <p className="text-sm text-gray-600">{formatDate(resource.createdAt)}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="p-6 mt-6 bg-white shadow-lg rounded-xl">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold text-black">{t('quick_actions')}</h2>
             <BookOpen className="w-6 h-6 text-blue-500" />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

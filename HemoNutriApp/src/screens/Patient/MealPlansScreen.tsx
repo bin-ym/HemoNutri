@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Modal, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect, memo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { useColors } from '../../theme/colors';
 import api from '../../api/api';
 
+// Types
 type RootStackParamList = {
   Home: undefined;
   Login: undefined;
@@ -14,10 +15,16 @@ type RootStackParamList = {
   MealPlans: undefined;
 };
 
+type Meal = {
+  carbohydrates: number;
+  proteins: number;
+  lipids: number;
+};
+
 type MealPlan = {
-  breakfast: { carbohydrates: number; proteins: number; lipids: number };
-  lunch: { carbohydrates: number; proteins: number; lipids: number };
-  dinner: { carbohydrates: number; proteins: number; lipids: number };
+  breakfast: Meal;
+  lunch: Meal;
+  dinner: Meal;
   consumed: { breakfast: boolean; lunch: boolean; dinner: boolean };
   hemodialysisLimits: { potassium: number; phosphorus: number; sodium: number; fluid: number };
   recommendedFoods: {
@@ -42,17 +49,28 @@ type FoodLog = {
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Tabs'>;
 
-const MealPlansScreen: React.FC = () => {
-  const navigation = useNavigation<NavigationProp>();
-  const colors = useColors();
+// Utility Function
+const groupRecommendedFoods = (foods: any[]) => {
+  const grouped: { [key: string]: any[] } = { carbohydrates: [], proteins: [], lipids: [] };
+  foods.forEach((food) => {
+    const nutrients = [
+      { type: 'carbohydrates', value: Number(food.carbohydrates) },
+      { type: 'proteins', value: Number(food.proteins) },
+      { type: 'lipids', value: Number(food.lipids) },
+    ];
+    const dominant = nutrients.reduce((max, nutrient) => (nutrient.value > max.value ? nutrient : max), nutrients[0]);
+    grouped[dominant.type].push(food);
+  });
+  return grouped;
+};
+
+// Custom Hook
+const useMealPlanData = () => {
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [foodLogs, setFoodLogs] = useState<FoodLog[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedMeal, setSelectedMeal] = useState<'breakfast' | 'lunch' | 'dinner' | null>(null);
-  const [tempConsumed, setTempConsumed] = useState<boolean | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -106,6 +124,221 @@ const MealPlansScreen: React.FC = () => {
     };
     fetchData();
   }, []);
+
+  return { mealPlan, foodLogs, warnings, loading, error, setMealPlan };
+};
+
+// Components
+const Header: React.FC = () => {
+  const colors = useColors();
+  return (
+    <View style={styles.header}>
+      <Text style={styles.title}>Your Daily Meal Plan</Text>
+      <Text style={styles.subtitle}>Follow your daily nutrient targets.</Text>
+      <Ionicons name="fast-food" size={40} color={colors.primary} style={styles.headerIcon} />
+    </View>
+  );
+};
+
+interface WarningSectionProps {
+  warnings: string[];
+}
+
+const WarningSection: React.FC<WarningSectionProps> = memo(({ warnings }) => {
+  const colors = useColors();
+  return (
+    <View style={styles.warningContainer}>
+      <View style={styles.warningHeader}>
+        <Ionicons name="alert-circle" size={24} color={colors.danger} />
+        <Text style={styles.warningTitle}>Warnings</Text>
+      </View>
+      {warnings.map((warning, index) => (
+        <Text key={index} style={styles.warningText}>• {warning}</Text>
+      ))}
+    </View>
+  );
+});
+
+interface MealCardProps {
+  mealType: 'breakfast' | 'lunch' | 'dinner';
+  meal: Meal;
+  consumed: boolean;
+  onPress: (mealType: 'breakfast' | 'lunch' | 'dinner') => void;
+}
+
+const MealCard: React.FC<MealCardProps> = memo(({ mealType, meal, consumed, onPress }) => {
+  const colors = useColors();
+  return (
+    <TouchableOpacity style={styles.mealCard} onPress={() => onPress(mealType)}>
+      <View style={styles.mealCardHeader}>
+        <Text style={styles.mealCardTitle}>{mealType.charAt(0).toUpperCase() + mealType.slice(1)}</Text>
+        <Ionicons
+          name={consumed ? 'checkmark-circle' : 'close-circle'}
+          size={24}
+          color={consumed ? '#22c55e' : '#ef4444'}
+        />
+      </View>
+      <Text style={styles.mealCardText}>Carbs: {meal.carbohydrates}g</Text>
+      <Text style={styles.mealCardText}>Proteins: {meal.proteins}g</Text>
+      <Text style={styles.mealCardText}>Lipids: {meal.lipids}g</Text>
+    </TouchableOpacity>
+  );
+});
+
+interface LimitsCardProps {
+  limits: { potassium: number; phosphorus: number; sodium: number; fluid: number };
+}
+
+const LimitsCard: React.FC<LimitsCardProps> = ({ limits }) => {
+  const colors = useColors();
+  return (
+    <View style={styles.limitsCard}>
+      <Text style={styles.limitsTitle}>Hemodialysis Limits</Text>
+      <View style={styles.limitsRow}>
+        <Text style={styles.limitsText}>Potassium: {limits.potassium}mg</Text>
+        <Text style={styles.limitsText}>Phosphorus: {limits.phosphorus}mg</Text>
+      </View>
+      <View style={styles.limitsRow}>
+        <Text style={styles.limitsText}>Sodium: {limits.sodium}mg</Text>
+        <Text style={styles.limitsText}>Fluid: {limits.fluid}ml</Text>
+      </View>
+    </View>
+  );
+};
+
+interface ProgressBarProps {
+  label: string;
+  consumed: number;
+  target: number;
+}
+
+const ProgressBar: React.FC<ProgressBarProps> = ({ label, consumed, target }) => {
+  const colors = useColors();
+  const percentage = Math.min((consumed / (target || 1)) * 100, 100);
+  return (
+    <View style={styles.progressItem}>
+      <Text style={styles.progressLabel}>
+        {label}: {consumed.toFixed(1)} / {target}
+      </Text>
+      <View style={styles.progressBar}>
+        <View style={[styles.progressFill, { width: `${percentage}%` }]} />
+        <Text style={styles.progressText}>{Math.round(percentage)}%</Text>
+      </View>
+    </View>
+  );
+};
+
+interface MealModalProps {
+  visible: boolean;
+  mealType: 'breakfast' | 'lunch' | 'dinner' | null;
+  mealPlan: MealPlan | null;
+  tempConsumed: boolean | null;
+  setTempConsumed: (value: boolean) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}
+
+const MealModal: React.FC<MealModalProps> = ({
+  visible,
+  mealType,
+  mealPlan,
+  tempConsumed,
+  setTempConsumed,
+  onClose,
+  onSubmit,
+}) => {
+  const colors = useColors();
+  if (!visible || !mealType || !mealPlan) return null;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent={true}>
+      <View style={styles.modalOverlay}>
+        <ScrollView contentContainerStyle={styles.modalContent}>
+          <Text style={styles.modalTitle}>
+            {mealType.charAt(0).toUpperCase() + mealType.slice(1)} Details
+          </Text>
+          {['carbohydrates', 'proteins', 'lipids'].map((nutrientType) => {
+            const recommendedFoods = mealPlan.recommendedFoods[mealType] || [];
+            const groupedFoods = groupRecommendedFoods(recommendedFoods);
+            const nutrientValue = mealPlan[mealType][nutrientType as 'carbohydrates' | 'proteins' | 'lipids'];
+
+            return (
+              <View key={nutrientType} style={styles.nutrientSection}>
+                <Text style={styles.nutrientTitle}>
+                  {nutrientType.charAt(0).toUpperCase() + nutrientType.slice(1)} ({nutrientValue}g)
+                </Text>
+                {groupedFoods[nutrientType].length > 0 ? (
+                  <>
+                    <Text style={styles.recommendedLabel}>
+                      <Ionicons name="checkmark-circle" size={16} color="#22c55e" /> Recommended:
+                    </Text>
+                    {groupedFoods[nutrientType].map((food, index) => (
+                      <Text key={index} style={styles.recommendedFood}>
+                        • {food.name} - {food.quantity}g (Carbs: {food.carbohydrates}g, Proteins: {food.proteins}g, Lipids: {food.lipids}g)
+                      </Text>
+                    ))}
+                  </>
+                ) : (
+                  <Text style={styles.noRecommendations}>
+                    No {nutrientType} recommendations provided.
+                  </Text>
+                )}
+              </View>
+            );
+          })}
+          <View style={styles.consumptionSection}>
+            <Text style={styles.consumptionTitle}>Did you consume this meal?</Text>
+            <View style={styles.consumptionButtons}>
+              <TouchableOpacity
+                style={[styles.consumptionButton, tempConsumed ? { backgroundColor: '#d1fae5' } : null]}
+                onPress={() => setTempConsumed(true)}
+              >
+                <Ionicons
+                  name="checkmark-circle"
+                  size={20}
+                  color={tempConsumed ? '#22c55e' : colors.textSecondary}
+                />
+                <Text style={[styles.consumptionButtonText, { color: tempConsumed ? '#22c55e' : colors.textSecondary }]}>
+                  Yes
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.consumptionButton, tempConsumed === false ? { backgroundColor: '#fee2e2' } : null]}
+                onPress={() => setTempConsumed(false)}
+              >
+                <Ionicons
+                  name="close-circle"
+                  size={20}
+                  color={tempConsumed === false ? '#ef4444' : colors.textSecondary}
+                />
+                <Text style={[styles.consumptionButtonText, { color: tempConsumed === false ? '#ef4444' : colors.textSecondary }]}>
+                  No
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+          <View style={styles.modalButtons}>
+            <TouchableOpacity style={styles.cancelButton} onPress={onClose}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.submitButton} onPress={onSubmit}>
+              <Text style={styles.submitButtonText}>Submit</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </View>
+    </Modal>
+  );
+};
+
+// Main Component
+const MealPlansScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const colors = useColors();
+  const { mealPlan, foodLogs, warnings, loading, error, setMealPlan } = useMealPlanData();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedMeal, setSelectedMeal] = useState<'breakfast' | 'lunch' | 'dinner' | null>(null);
+  const [tempConsumed, setTempConsumed] = useState<boolean | null>(null);
 
   const openModal = (mealType: 'breakfast' | 'lunch' | 'dinner') => {
     setSelectedMeal(mealType);
@@ -167,20 +400,6 @@ const MealPlansScreen: React.FC = () => {
       }
     : { carbohydrates: 0, proteins: 0, lipids: 0, fluid: 0 };
 
-  const groupRecommendedFoods = (foods: any[]) => {
-    const grouped: { [key: string]: any[] } = { carbohydrates: [], proteins: [], lipids: [] };
-    foods.forEach((food) => {
-      const nutrients = [
-        { type: 'carbohydrates', value: Number(food.carbohydrates) },
-        { type: 'proteins', value: Number(food.proteins) },
-        { type: 'lipids', value: Number(food.lipids) },
-      ];
-      const dominant = nutrients.reduce((max, nutrient) => (nutrient.value > max.value ? nutrient : max), nutrients[0]);
-      grouped[dominant.type].push(food);
-    });
-    return grouped;
-  };
-
   if (loading) {
     return (
       <View style={styles.container}>
@@ -195,9 +414,7 @@ const MealPlansScreen: React.FC = () => {
   if (error || !mealPlan) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Your Daily Meal Plan</Text>
-        </View>
+        <Header />
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle" size={20} color={colors.danger} />
           <Text style={styles.errorText}>{error || 'No meal plan data available.'}</Text>
@@ -208,228 +425,43 @@ const MealPlansScreen: React.FC = () => {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Your Daily Meal Plan</Text>
-        <Text style={styles.subtitle}>Follow your daily nutrient targets.</Text>
-        <Ionicons name="fast-food" size={40} color={colors.primary} style={styles.headerIcon} />
-      </View>
-
-      {warnings.length > 0 && (
-        <View style={styles.warningContainer}>
-          <View style={styles.warningHeader}>
-            <Ionicons name="alert-circle" size={24} color={colors.danger} />
-            <Text style={styles.warningTitle}>Warnings</Text>
-          </View>
-          {warnings.map((warning, index) => (
-            <Text key={index} style={styles.warningText}>• {warning}</Text>
-          ))}
-        </View>
-      )}
-
+      <Header />
+      {warnings.length > 0 && <WarningSection warnings={warnings} />}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Your Daily Targets</Text>
           <Ionicons name="flag-outline" size={24} color={colors.primary} />
         </View>
-
-        <TouchableOpacity style={styles.mealCard} onPress={() => openModal('breakfast')}>
-          <View style={styles.mealCardHeader}>
-            <Text style={styles.mealCardTitle}>Breakfast</Text>
-            <Ionicons
-              name={mealPlan.consumed.breakfast ? 'checkmark-circle' : 'close-circle'}
-              size={24}
-              color={mealPlan.consumed.breakfast ? '#22c55e' : '#ef4444'}
-            />
-          </View>
-          <Text style={styles.mealCardText}>Carbs: {mealPlan.breakfast.carbohydrates}g</Text>
-          <Text style={styles.mealCardText}>Proteins: {mealPlan.breakfast.proteins}g</Text>
-          <Text style={styles.mealCardText}>Lipids: {mealPlan.breakfast.lipids}g</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.mealCard} onPress={() => openModal('lunch')}>
-          <View style={styles.mealCardHeader}>
-            <Text style={styles.mealCardTitle}>Lunch</Text>
-            <Ionicons
-              name={mealPlan.consumed.lunch ? 'checkmark-circle' : 'close-circle'}
-              size={24}
-              color={mealPlan.consumed.lunch ? '#22c55e' : '#ef4444'}
-            />
-          </View>
-          <Text style={styles.mealCardText}>Carbs: {mealPlan.lunch.carbohydrates}g</Text>
-          <Text style={styles.mealCardText}>Proteins: {mealPlan.lunch.proteins}g</Text>
-          <Text style={styles.mealCardText}>Lipids: {mealPlan.lunch.lipids}g</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.mealCard} onPress={() => openModal('dinner')}>
-          <View style={styles.mealCardHeader}>
-            <Text style={styles.mealCardTitle}>Dinner</Text>
-            <Ionicons
-              name={mealPlan.consumed.dinner ? 'checkmark-circle' : 'close-circle'}
-              size={24}
-              color={mealPlan.consumed.dinner ? '#22c55e' : '#ef4444'}
-            />
-          </View>
-          <Text style={styles.mealCardText}>Carbs: {mealPlan.dinner.carbohydrates}g</Text>
-          <Text style={styles.mealCardText}>Proteins: {mealPlan.dinner.proteins}g</Text>
-          <Text style={styles.mealCardText}>Lipids: {mealPlan.dinner.lipids}g</Text>
-        </TouchableOpacity>
-
-        <View style={styles.limitsCard}>
-          <Text style={styles.limitsTitle}>Hemodialysis Limits</Text>
-          <View style={styles.limitsRow}>
-            <Text style={styles.limitsText}>Potassium: {mealPlan.hemodialysisLimits.potassium}mg</Text>
-            <Text style={styles.limitsText}>Phosphorus: {mealPlan.hemodialysisLimits.phosphorus}mg</Text>
-          </View>
-          <View style={styles.limitsRow}>
-            <Text style={styles.limitsText}>Sodium: {mealPlan.hemodialysisLimits.sodium}mg</Text>
-            <Text style={styles.limitsText}>Fluid: {mealPlan.hemodialysisLimits.fluid}ml</Text>
-          </View>
-        </View>
-
+        {['breakfast', 'lunch', 'dinner'].map((mealType) => (
+          <MealCard
+            key={mealType}
+            mealType={mealType as 'breakfast' | 'lunch' | 'dinner'}
+            meal={mealPlan[mealType]}
+            consumed={mealPlan.consumed[mealType]}
+            onPress={openModal}
+          />
+        ))}
+        <LimitsCard limits={mealPlan.hemodialysisLimits} />
         <Text style={styles.progressTitle}>Your Progress</Text>
-        <View style={styles.progressItem}>
-          <Text style={styles.progressLabel}>
-            Carbohydrates: {totalConsumed.carbohydrates.toFixed(1)}g / {totalTargets.carbohydrates}g
-          </Text>
-          <View style={styles.progressBar}>
-            <View
-              style={[styles.progressFill, {
-                width: `${Math.min((totalConsumed.carbohydrates / (totalTargets.carbohydrates || 1)) * 100, 100)}%`,
-              }]}
-            />
-            <Text style={styles.progressText}>
-              {Math.round((totalConsumed.carbohydrates / (totalTargets.carbohydrates || 1)) * 100)}%
-            </Text>
-          </View>
-        </View>
-        <View style={styles.progressItem}>
-          <Text style={styles.progressLabel}>
-            Proteins: {totalConsumed.proteins.toFixed(1)}g / {totalTargets.proteins}g
-          </Text>
-          <View style={styles.progressBar}>
-            <View
-              style={[styles.progressFill, {
-                width: `${Math.min((totalConsumed.proteins / (totalTargets.proteins || 1)) * 100, 100)}%`,
-              }]}
-            />
-            <Text style={styles.progressText}>
-              {Math.round((totalConsumed.proteins / (totalTargets.proteins || 1)) * 100)}%
-            </Text>
-          </View>
-        </View>
-        <View style={styles.progressItem}>
-          <Text style={styles.progressLabel}>
-            Lipids: {totalConsumed.lipids.toFixed(1)}g / {totalTargets.lipids}g
-          </Text>
-          <View style={styles.progressBar}>
-            <View
-              style={[styles.progressFill, {
-                width: `${Math.min((totalConsumed.lipids / (totalTargets.lipids || 1)) * 100, 100)}%`,
-              }]}
-            />
-            <Text style={styles.progressText}>
-              {Math.round((totalConsumed.lipids / (totalTargets.lipids || 1)) * 100)}%
-            </Text>
-          </View>
-        </View>
-        <View style={styles.progressItem}>
-          <Text style={styles.progressLabel}>
-            Fluid Intake: {totalConsumed.fluid.toFixed(1)}ml / {totalTargets.fluid}ml
-          </Text>
-          <View style={styles.progressBar}>
-            <View
-              style={[styles.progressFill, {
-                width: `${Math.min((totalConsumed.fluid / (totalTargets.fluid || 1)) * 100, 100)}%`,
-              }]}
-            />
-            <Text style={styles.progressText}>
-              {Math.round((totalConsumed.fluid / (totalTargets.fluid || 1)) * 100)}%
-            </Text>
-          </View>
-        </View>
+        <ProgressBar label="Carbohydrates" consumed={totalConsumed.carbohydrates} target={totalTargets.carbohydrates} />
+        <ProgressBar label="Proteins" consumed={totalConsumed.proteins} target={totalTargets.proteins} />
+        <ProgressBar label="Lipids" consumed={totalConsumed.lipids} target={totalTargets.lipids} />
+        <ProgressBar label="Fluid Intake" consumed={totalConsumed.fluid} target={totalTargets.fluid} />
       </View>
-
-      <Modal visible={modalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            <Text style={styles.modalTitle}>
-              {selectedMeal ? selectedMeal.charAt(0).toUpperCase() + selectedMeal.slice(1) : ''} Details
-            </Text>
-            {selectedMeal && mealPlan && ['carbohydrates', 'proteins', 'lipids'].map((nutrientType) => {
-              const recommendedFoods = mealPlan.recommendedFoods[selectedMeal] || [];
-              const groupedFoods = groupRecommendedFoods(recommendedFoods);
-
-              const nutrientValue = mealPlan[selectedMeal][nutrientType as 'carbohydrates' | 'proteins' | 'lipids'];
-              return (
-                <View key={nutrientType} style={styles.nutrientSection}>
-                  <Text style={styles.nutrientTitle}>
-                    {nutrientType.charAt(0).toUpperCase() + nutrientType.slice(1)} ({nutrientValue}g)
-                  </Text>
-                  {groupedFoods[nutrientType].length > 0 ? (
-                    <>
-                      <Text style={styles.recommendedLabel}>
-                        <Ionicons name="checkmark-circle" size={16} color="#22c55e" /> Recommended:
-                      </Text>
-                      {groupedFoods[nutrientType].map((food, index) => (
-                        <Text key={index} style={styles.recommendedFood}>
-                          • {food.name} - {food.quantity}g (Carbs: {food.carbohydrates}g, Proteins: {food.proteins}g, Lipids: {food.lipids}g)
-                        </Text>
-                      ))}
-                    </>
-                  ) : (
-                    <Text style={styles.noRecommendations}>
-                      No {nutrientType} recommendations provided.
-                    </Text>
-                  )}
-                </View>
-              );
-            })}
-            <View style={styles.consumptionSection}>
-              <Text style={styles.consumptionTitle}>Did you consume this meal?</Text>
-              <View style={styles.consumptionButtons}>
-                <TouchableOpacity
-                  style={[styles.consumptionButton, tempConsumed ? { backgroundColor: '#d1fae5' } : null]}
-                  onPress={() => setTempConsumed(true)}
-                >
-                  <Ionicons
-                    name="checkmark-circle"
-                    size={20}
-                    color={tempConsumed ? '#22c55e' : colors.textSecondary}
-                  />
-                  <Text style={[styles.consumptionButtonText, { color: tempConsumed ? '#22c55e' : colors.textSecondary }]}>
-                    Yes
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.consumptionButton, tempConsumed === false ? { backgroundColor: '#fee2e2' } : null]}
-                  onPress={() => setTempConsumed(false)}
-                >
-                  <Ionicons
-                    name="close-circle"
-                    size={20}
-                    color={tempConsumed === false ? '#ef4444' : colors.textSecondary}
-                  />
-                  <Text style={[styles.consumptionButtonText, { color: tempConsumed === false ? '#ef4444' : colors.textSecondary }]}>
-                    No
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            <View style={styles.modalButtons}>
-              <TouchableOpacity style={styles.cancelButton} onPress={closeModal}>
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.submitButton} onPress={handleMealConsumption}>
-                <Text style={styles.submitButtonText}>Submit</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
-        </View>
-      </Modal>
+      <MealModal
+        visible={modalVisible}
+        mealType={selectedMeal}
+        mealPlan={mealPlan}
+        tempConsumed={tempConsumed}
+        setTempConsumed={setTempConsumed}
+        onClose={closeModal}
+        onSubmit={handleMealConsumption}
+      />
     </ScrollView>
   );
 };
 
+// Styles
 const styles = (colors: ReturnType<typeof useColors>) =>
   StyleSheet.create({
     container: {

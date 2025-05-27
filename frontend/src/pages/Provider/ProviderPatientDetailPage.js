@@ -1,55 +1,56 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useForm } from 'react-hook-form';
-import { Tabs, TabList, Tab} from 'react-tabs';
-import { User, Utensils, Droplet, Scale, Clipboard, AlertCircle, Calendar, Save } from 'lucide-react';
-import toast, { Toaster } from 'react-hot-toast';
-import localforage from 'localforage';
+import { useEffect, useState, useRef } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { Utensils, Scale, MessageSquare, Clipboard, Send, Clock, AlertCircle } from 'lucide-react';
 import api from '../../services/api';
 import Navbar from '../../components/Navbar';
 
 const ProviderPatientDetailPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
+  const location = useLocation();
   const [patient, setPatient] = useState(null);
   const [foodLogs, setFoodLogs] = useState([]);
   const [assessment, setAssessment] = useState(null);
-  const [mealPlan, setMealPlan] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState([]);
+  const [mealPlanForm, setMealPlanForm] = useState({
+    breakfast: { carbohydrates: '', proteins: '', lipids: '' },
+    lunch: { carbohydrates: '', proteins: '', lipids: '' },
+    dinner: { carbohydrates: '', proteins: '', lipids: '' },
+    hemodialysisLimits: { potassium: '', phosphorus: '', sodium: '', fluid: '' },
+    recommendedFoods: {
+      breakfast: [],
+      lunch: [],
+      dinner: [],
+    },
+  });
+  const [message, setMessage] = useState('');
+  const [replyContent, setReplyContent] = useState({});
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const providerId = localStorage.getItem('userId');
+  const messagesRef = useRef(null);
 
-  const { register: registerAssessment, handleSubmit: handleAssessmentSubmit, formState: { errors: assessmentErrors }, reset: resetAssessment } = useForm();
-  const { register: registerMealPlan, handleSubmit: handleMealPlanSubmit, formState: { errors: mealPlanErrors }, reset: resetMealPlan } = useForm();
-
+  // Sample food items with approximate nutrient content per 100g (adjust as needed)
   const foodOptions = {
     carbohydrates: [
-      { name: 'Injera', carbohydrates: 45, proteins: 5, lipids: 1, potassium: 100, phosphorus: 80, sodium: 10, lowSodium: true },
-      { name: 'Teff Porridge', carbohydrates: 30, proteins: 6, lipids: 2, potassium: 90, phosphorus: 70, sodium: 5, lowSodium: true },
-      { name: 'Boiled Yam', carbohydrates: 27, proteins: 1.5, lipids: 0.2, potassium: 670, phosphorus: 50, sodium: 8, lowSodium: true },
-      { name: 'Shiro (Chickpea Flour)', carbohydrates: 20, proteins: 7, lipids: 2, potassium: 300, phosphorus: 100, sodium: 15, lowSodium: true },
+      { name: 'White Rice', carbohydrates: 28, proteins: 2.7, lipids: 0.3 },
+      { name: 'Bread (White)', carbohydrates: 49, proteins: 9, lipids: 3.6 },
+      { name: 'Pasta (Cooked)', carbohydrates: 25, proteins: 5, lipids: 1.1 },
+      { name: 'Apple', carbohydrates: 14, proteins: 0.3, lipids: 0.2 },
     ],
     proteins: [
-      { name: 'Lentil Stew (Misir Wot)', carbohydrates: 20, proteins: 9, lipids: 3, potassium: 350, phosphorus: 120, sodium: 30, lowSodium: true },
-      { name: 'Fish Tibs', carbohydrates: 3, proteins: 20, lipids: 5, potassium: 400, phosphorus: 120, sodium: 50, lowSodium: true },
-      { name: 'Egg Whites', carbohydrates: 0.7, proteins: 11, lipids: 0.2, potassium: 160, phosphorus: 15, sodium: 160, lowSodium: false },
-      { name: 'Doro Wot (Chicken Stew)', carbohydrates: 5, proteins: 25, lipids: 10, potassium: 255, phosphorus: 180, sodium: 100, lowSodium: false },
+      { name: 'Chicken Breast (Skinless)', carbohydrates: 0, proteins: 31, lipids: 3.6 },
+      { name: 'Egg Whites', carbohydrates: 0.7, proteins: 11, lipids: 0.2 },
+      { name: 'Fish (Cod)', carbohydrates: 0, proteins: 18, lipids: 0.7 },
+      { name: 'Tofu', carbohydrates: 1.9, proteins: 8, lipids: 4.8 },
     ],
     lipids: [
-      { name: 'Niter Kibbeh (Butter)', carbohydrates: 0, proteins: 0, lipids: 90, potassium: 0, phosphorus: 0, sodium: 10, lowSodium: true },
-      { name: 'Avocado', carbohydrates: 9, proteins: 2, lipids: 15, potassium: 485, phosphorus: 52, sodium: 7, lowSodium: true },
-      { name: 'Sunflower Seeds', carbohydrates: 24, proteins: 21, lipids: 51, potassium: 645, phosphorus: 380, sodium: 9, lowSodium: true },
-      { name: 'Flaxseed Oil', carbohydrates: 0, proteins: 0, lipids: 100, potassium: 0, phosphorus: 0, sodium: 0, lowSodium: true },
+      { name: 'Olive Oil', carbohydrates: 0, proteins: 0, lipids: 100 },
+      { name: 'Avocado', carbohydrates: 9, proteins: 2, lipids: 15 },
+      { name: 'Almonds', carbohydrates: 22, proteins: 21, lipids: 50 },
+      { name: 'Butter (Unsalted)', carbohydrates: 0.1, proteins: 0.9, lipids: 81 },
     ],
   };
-
-  const fluidOptions = [
-    { name: 'Water', fluidPerUnit: 1000, potassium: 0, phosphorus: 0, sodium: 0 },
-    { name: 'Herbal Tea (Unsweetened)', fluidPerUnit: 240, potassium: 20, phosphorus: 5, sodium: 2 },
-    { name: 'Clear Broth', fluidPerUnit: 240, potassium: 50, phosphorus: 10, sodium: 50 },
-    { name: 'Coffee (Black, Unsweeten)', fluidPerUnit: 240, potassium: 116, phosphorus: 7, sodium: 5 },
-  ];
 
   useEffect(() => {
     const fetchPatientData = async () => {
@@ -57,197 +58,194 @@ const ProviderPatientDetailPage = () => {
         const token = localStorage.getItem('token');
         const role = localStorage.getItem('role');
         if (!token || role !== 'provider') {
-          navigate('/login', { state: { message: t('login_provider') } });
+          navigate('/login', { state: { message: 'Please log in as a provider.' } });
           return;
         }
-
-        const [cachedPatient, cachedLogs, cachedAssessment, cachedMealPlan] = await Promise.all([
-          localforage.getItem(`patient_${id}`),
-          localforage.getItem(`food_logs_${id}`),
-          localforage.getItem(`assessment_${id}`),
-          localforage.getItem(`meal_plan_${id}`),
+        console.log('Fetching data for patient ID:', id);
+        const [patientRes, logsRes, assessRes, messagesRes] = await Promise.all([
+          api.get(`/provider/patient/${id}`),
+          api.get(`/provider/patient/${id}/food-logs`),
+          api.get(`/provider/patient/${id}/assessment`),
+          api.get(`/provider/messages/${id}`),
         ]);
-        if (cachedPatient) setPatient(cachedPatient);
-        if (cachedLogs) setFoodLogs(cachedLogs);
-        if (cachedAssessment) setAssessment(cachedAssessment);
-        if (cachedMealPlan) setMealPlan(cachedMealPlan);
-
-        const [patientRes, logsRes, assessRes, mealPlanRes] = await Promise.all([
-          api.get(`provider/patient/${id}`).catch(err => ({ error: err.response?.data?.error || 'Patient not found' })),
-          api.get(`patient/${id}/food-logs`).catch(err => ({ error: err.response?.data?.error || 'Food logs not found', data: [] })),
-          api.get(`patient/${id}/assessment`).catch(err => ({ error: err.response?.data?.error || 'Assessment not found', data: null })),
-          api.get(`meal-plan/${id}`).catch(err => ({ error: err.response?.data?.error || 'Meal plan not found', data: null })),
-        ]);
-
-        if (patientRes.error) throw new Error(patientRes.error);
-        if (logsRes.error) console.warn(logsRes.error);
-        if (assessRes.error) console.warn(assessRes.error);
-        if (mealPlanRes.error) console.warn(mealPlanRes.error);
-
         setPatient(patientRes.data);
         setFoodLogs(Array.isArray(logsRes.data) ? logsRes.data : []);
-        setAssessment(assessRes.data || { weight: '', height: '', dietHabits: '' });
-        setMealPlan(mealPlanRes.data || null);
+        setAssessment(assessRes.data || { weight: 'N/A', height: 'N/A', dietHabits: 'N/A' });
+        setMessages(Array.isArray(messagesRes.data) ? messagesRes.data : []);
+        console.log('Fetched patient-specific messages:', messagesRes.data);
         setError('');
-
-        await Promise.all([
-          localforage.setItem(`patient_${id}`, patientRes.data),
-          localforage.setItem(`food_logs_${id}`, logsRes.data),
-          localforage.setItem(`assessment_${id}`, assessRes.data || { weight: '', height: '', dietHabits: '' }),
-          localforage.setItem(`meal_plan_${id}`, mealPlanRes.data),
-        ]);
       } catch (err) {
-        const errorMsg = err.message || t('failed_load_data');
-        setError(errorMsg);
-        toast.error(errorMsg);
-        if (err.message.includes('Token') || err.message.includes('Patient not found')) {
+        console.error('Fetch error:', err.response?.data || err.message);
+        setError(err.response?.data?.error || 'Failed to load patient data');
+        if (err.response?.data?.error.includes('Token expired') || err.response?.data?.error.includes('Token verification error')) {
           localStorage.clear();
-          navigate('/login', { state: { message: t('session_expired') } });
+          navigate('/login', { state: { message: 'Session expired. Please log in again.' } });
         }
       } finally {
         setLoading(false);
       }
     };
     fetchPatientData();
-  }, [navigate, id, t]);
+  }, [navigate, id]);
 
-  const onAssessmentSubmit = async (data) => {
-    try {
-      const updatedAssessment = {
-        weight: parseFloat(data.weight) || null,
-        height: parseFloat(data.height) || null,
-        dietHabits: data.dietHabits || null,
-      };
-      await api.put(`provider/patient/${id}/assessment`, updatedAssessment);
-      setAssessment(updatedAssessment);
-      await localforage.setItem(`assessment_${id}`, updatedAssessment);
-      toast.success(t('assessment_updated'));
-      resetAssessment();
-    } catch (err) {
-      toast.error(err.response?.data?.error || t('failed_update_assessment'));
+  useEffect(() => {
+    if (location.state?.focusSection === 'messages' && messagesRef.current) {
+      messagesRef.current.scrollIntoView({ behavior: 'smooth' });
+      // Clear the state to prevent re-scrolling on navigation
+      window.history.replaceState({}, document.title, location.pathname);
     }
+  }, [location.state]);
+
+  const handleMealPlanChange = (mealType, nutrient, value) => {
+    setMealPlanForm((prev) => ({
+      ...prev,
+      [mealType]: {
+        ...prev[mealType],
+        [nutrient]: value,
+      },
+    }));
   };
 
-  const recommendIntake = (targets, limits) => {
-    const { carbohydrates, proteins, lipids } = targets;
-    const { fluid, potassium = 2000, phosphorus = 800, sodium = 2000 } = limits;
-    const recommended = { foods: [], fluids: [] };
-    let remainingCarbs = parseFloat(carbohydrates) || 0;
-    let remainingProteins = parseFloat(proteins) || 0;
-    let remainingLipids = parseFloat(lipids) || 0;
-    let remainingFluid = parseFloat(fluid) || 0;
-    const isLowSodium = assessment?.dietHabits?.toLowerCase().includes('low-sodium');
-
-    const filterFoods = (foods) => isLowSodium ? foods.filter(food => food.lowSodium) : foods;
-
-    ['carbohydrates', 'proteins', 'lipids'].forEach((nutrient) => {
-      const options = filterFoods(foodOptions[nutrient]);
-      options.forEach((food) => {
-        let remainingNutrient = nutrient === 'carbohydrates' ? remainingCarbs : nutrient === 'proteins' ? remainingProteins : remainingLipids;
-        if (remainingNutrient <= 0) return;
-        const quantity = Math.min(remainingNutrient / (food[nutrient] / 100), 500);
-        if (quantity > 0 &&
-            (food.potassium * quantity / 100) <= potassium &&
-            (food.phosphorus * quantity / 100) <= phosphorus &&
-            (food.sodium * quantity / 100) <= sodium) {
-          recommended.foods.push({
-            name: food.name,
-            quantity: quantity.toFixed(1),
-            carbohydrates: (food.carbohydrates * quantity / 100).toFixed(1),
-            proteins: (food.proteins * quantity / 100).toFixed(1),
-            lipids: (food.lipids * quantity / 100).toFixed(1),
-            potassium: (food.potassium * quantity / 100).toFixed(1),
-            phosphorus: (food.phosphorus * quantity / 100).toFixed(1),
-            sodium: (food.sodium * quantity / 100).toFixed(1),
-          });
-          remainingCarbs -= (food.carbohydrates * quantity) / 100;
-          remainingProteins -= (food.proteins * quantity) / 100;
-          remainingLipids -= (food.lipids * quantity) / 100;
-        }
-      });
-    });
-
-    fluidOptions.forEach((fluid) => {
-      if (remainingFluid <= 0) return;
-      const units = Math.floor(remainingFluid / fluid.fluidPerUnit);
-      if (units > 0 &&
-          (fluid.potassium * units) <= potassium &&
-          (fluid.phosphorus * units) <= phosphorus &&
-          (fluid.sodium * units) <= sodium) {
-        recommended.fluids.push({
-          name: fluid.name,
-          units,
-          totalFluid: (units * fluid.fluidPerUnit).toFixed(1),
-          potassium: (fluid.potassium * units).toFixed(1),
-          phosphorus: (fluid.phosphorus * units).toFixed(1),
-          sodium: (fluid.sodium * units).toFixed(1),
-        });
-        remainingFluid -= units * fluid.fluidPerUnit;
-      }
-    });
-
-    return recommended;
+  const handleHemodialysisLimitsChange = (field, value) => {
+    setMealPlanForm((prev) => ({
+      ...prev,
+      hemodialysisLimits: {
+        ...prev.hemodialysisLimits,
+        [field]: value,
+      },
+    }));
   };
 
-  const onMealPlanSubmit = async (data) => {
+  const handleFoodSelection = (mealType, nutrientType, food, quantity) => {
+    const newFood = {
+      name: food.name,
+      quantity: parseFloat(quantity) || 100, // Default to 100g if no quantity
+      isFluid: false,
+      carbohydrates: (food.carbohydrates * (parseFloat(quantity) || 100) / 100).toFixed(1),
+      proteins: (food.proteins * (parseFloat(quantity) || 100) / 100).toFixed(1),
+      lipids: (food.lipids * (parseFloat(quantity) || 100) / 100).toFixed(1),
+    };
+    setMealPlanForm((prev) => ({
+      ...prev,
+      recommendedFoods: {
+        ...prev.recommendedFoods,
+        [mealType]: [...prev.recommendedFoods[mealType], newFood],
+      },
+    }));
+  };
+
+  const handleMealPlanSubmit = async (e) => {
+    e.preventDefault();
     try {
-      const daily = {
-        carbohydrates: parseFloat(data.carbohydrates),
-        proteins: parseFloat(data.proteins),
-        lipids: parseFloat(data.lipids),
+      const { breakfast, lunch, dinner, hemodialysisLimits, recommendedFoods } = mealPlanForm;
+      const validateMeal = (meal) => {
+        const carbs = parseFloat(meal.carbohydrates);
+        const proteins = parseFloat(meal.proteins);
+        const lipids = parseFloat(meal.lipids);
+        return (
+          !isNaN(carbs) && carbs >= 0 &&
+          !isNaN(proteins) && proteins >= 0 &&
+          !isNaN(lipids) && lipids >= 0
+        );
       };
-      const hemodialysisLimits = {
-        fluid: parseFloat(data.fluid),
-        potassium: parseFloat(data.potassium) || 2000,
-        phosphorus: parseFloat(data.phosphorus) || 800,
-        sodium: parseFloat(data.sodium) || 2000,
+      const validateLimits = (limits) => {
+        const potassium = parseFloat(limits.potassium);
+        const phosphorus = parseFloat(limits.phosphorus);
+        const sodium = parseFloat(limits.sodium);
+        const fluid = parseFloat(limits.fluid);
+        return (
+          !isNaN(potassium) && potassium >= 0 &&
+          !isNaN(phosphorus) && phosphorus >= 0 &&
+          !isNaN(sodium) && sodium >= 0 &&
+          !isNaN(fluid) && fluid >= 0
+        );
       };
-
-      if (Object.values(daily).some(val => isNaN(val) || val < 0) ||
-          Object.values(hemodialysisLimits).some(val => isNaN(val) || val < 0)) {
-        toast.error(t('invalid_inputs'));
+      if (!validateMeal(breakfast) || !validateMeal(lunch) || !validateMeal(dinner) || !validateLimits(hemodialysisLimits)) {
+        setError('Please enter valid non-negative numbers for all nutrient and hemodialysis limit fields');
         return;
       }
-
-      const recommended = recommendIntake(daily, hemodialysisLimits);
+  
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-
-      const mealPlanData = {
-        daily,
-        hemodialysisLimits,
+  
+      await api.post(`/provider/meal-plan/${id}`, {
+        breakfast: {
+          carbohydrates: parseFloat(breakfast.carbohydrates),
+          proteins: parseFloat(breakfast.proteins),
+          lipids: parseFloat(breakfast.lipids),
+        },
+        lunch: {
+          carbohydrates: parseFloat(lunch.carbohydrates),
+          proteins: parseFloat(lunch.proteins),
+          lipids: parseFloat(lunch.lipids),
+        },
+        dinner: {
+          carbohydrates: parseFloat(dinner.carbohydrates),
+          proteins: parseFloat(dinner.proteins),
+          lipids: parseFloat(dinner.lipids),
+        },
+        hemodialysisLimits: {
+          potassium: parseFloat(hemodialysisLimits.potassium),
+          phosphorus: parseFloat(hemodialysisLimits.phosphorus),
+          sodium: parseFloat(hemodialysisLimits.sodium),
+          fluid: parseFloat(hemodialysisLimits.fluid),
+        },
         date: today.toISOString(),
-        recommendedFoods: recommended.foods,
-        recommendedFluids: recommended.fluids,
-      };
-
-      await api.post(`provider/meal-plan/${id}`, mealPlanData);
-      setMealPlan(mealPlanData);
-      await localforage.setItem(`meal_plan_${id}`, mealPlanData);
-      toast.success(t('meal_plan_updated'));
-      resetMealPlan();
+        recommendedFoods,
+      });
+      alert('Meal plan updated successfully!');
+      setError('');
     } catch (err) {
-      toast.error(err.response?.data?.error || t('failed_save_meal_plan'));
+      console.error('Meal plan submit error:', err.response?.data || err.message);
+      setError(err.response?.data?.error || 'Failed to update meal plan');
     }
   };
 
-  const handleScheduleConsultation = () => {
-    toast.info(t('consultation_scheduled', { username: patient?.username || t('unknown') }));
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!message.trim()) return;
+    try {
+      const res = await api.post(`/provider/message/${id}`, { content: message });
+      console.log('Sent message:', res.data);
+      setMessages([res.data, ...messages]);
+      setMessage('');
+      setError('');
+      alert('Message sent successfully!');
+    } catch (err) {
+      console.error('Send error:', err.response?.data || err.message);
+      setError(err.response?.data?.error || 'Failed to send message');
+    }
+  };
+
+  const handleReply = async (msgId) => {
+    const content = replyContent[msgId]?.trim();
+    if (!content) return;
+    try {
+      const res = await api.post(`/provider/message/${id}`, { content });
+      console.log('Reply sent:', res.data);
+      setMessages([res.data, ...messages]);
+      setReplyContent((prev) => ({ ...prev, [msgId]: '' }));
+      setError('');
+      alert('Reply sent successfully!');
+    } catch (err) {
+      console.error('Reply error:', err.response?.data || err.message);
+      setError(err.response?.data?.error || 'Failed to send reply');
+    }
   };
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return isNaN(date.getTime()) ? t('date_unavailable') : date.toLocaleString('am-ET', { dateStyle: 'medium', timeStyle: 'short' });
+    return isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleString();
   };
 
   if (loading) {
     return (
-      <div className="flex flex-col min-h-screen font-sans bg-gray-100">
+      <div className="flex flex-col min-h-screen bg-gradient-to-br from-teal-50 via-white to-gray-100">
         <Navbar role="provider" />
         <div className="flex items-center justify-center flex-grow">
-          <div className="relative w-24 h-24 animate-fadeIn">
-            <lottie-player src="https://assets.lottiefiles.com/packages/lf20_jcikwtux.json" background="transparent" speed="1" loop autoplay></lottie-player>
-            <p className="mt-4 text-lg font-semibold text-blue-700">{t('loading')}</p>
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 border-4 border-teal-600 rounded-full border-t-transparent animate-spin"></div>
+            <p className="text-xl font-semibold text-teal-700 animate-pulse">Loading patient details...</p>
           </div>
         </div>
       </div>
@@ -256,13 +254,13 @@ const ProviderPatientDetailPage = () => {
 
   if (error && !patient) {
     return (
-      <div className="flex flex-col min-h-screen font-sans bg-gray-100">
+      <div className="flex flex-col min-h-screen bg-gradient-to-br from-teal-50 via-white to-gray-100">
         <Navbar role="provider" />
         <div className="flex items-center justify-center flex-grow">
-          <div className="max-w-md p-6 bg-white rounded-lg shadow-lg animate-card-enter">
+          <div className="max-w-md p-6 shadow-lg bg-red-50 rounded-xl animate-slide-down">
             <div className="flex items-center space-x-3">
-              <AlertCircle className="w-6 h-6 text-red-500" />
-              <p className="text-red-600">{error}</p>
+              <AlertCircle className="w-8 h-8 text-red-500" />
+              <p className="text-lg font-medium text-red-600">{error}</p>
             </div>
           </div>
         </div>
@@ -271,332 +269,305 @@ const ProviderPatientDetailPage = () => {
   }
 
   return (
-    <div className="flex flex-col min-h-screen font-sans bg-gray-100">
-      <Toaster position="top-right" />
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-teal-50 via-white to-gray-100">
       <Navbar role="provider" />
       <div className="flex-grow max-w-6xl p-6 mx-auto">
-        <div className="relative mb-12 text-center animate-fadeIn">
-          <div className="absolute inset-0 h-32 bg-gradient-to-r from-blue-200 to-blue-300 rounded-b-3xl -top-8 opacity-30 blur-2xl"></div>
-          <h1 className="relative text-4xl font-extrabold text-blue-800 md:text-5xl">
-            {t('patient_details', { username: patient?.username || t('unknown') })}
+        <div className="relative mb-12 text-center">
+          <div className="absolute inset-0 h-40 bg-teal-600 rounded-b-full -top-12 opacity-10 blur-3xl"></div>
+          <h1 className="relative text-4xl font-extrabold text-teal-700 md:text-5xl animate-fade-in">
+            Patient Details: {patient?.username || 'Unknown'}
           </h1>
-          <p className="relative max-w-2xl mx-auto mt-2 text-lg text-gray-700">{t('manage_patient')}</p>
-          <button
-            onClick={() => navigate('/provider/patients')}
-            className="px-6 py-2 mt-4 text-white transition-all bg-blue-700 rounded-lg hover:bg-blue-900"
-            aria-label={t('back_to_patients')}
-          >
-            {t('back_to_patients')}
-          </button>
+          <p className="relative max-w-2xl mx-auto mt-3 text-lg text-gray-600">
+            Manage your patient’s nutrition and communication.
+          </p>
+          <Clipboard className="relative mx-auto mt-4 text-teal-500 w-14 h-14 animate-bounce-slow" />
         </div>
 
-        <Tabs className="space-y-8">
-          <TabList className="flex space-x-4 border-b-2 border-blue-200 animate-slide-down">
-            <Tab className="px-4 py-2 font-semibold text-blue-700 rounded-t-lg cursor-pointer hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500" selectedClassName="bg-blue-100 text-blue-900 border-b-4 border-blue-800">
-              {t('profile')}
-            </Tab>
-            <Tab className="px-4 py-2 font-semibold text-blue-700 rounded-t-lg cursor-pointer hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500" selectedClassName="bg-blue-100 text-blue-900 border-b-4 border-blue-800">
-              {t('food_logs')}
-            </Tab>
-            <Tab className="px-4 py-2 font-semibold text-blue-700 rounded-t-lg cursor-pointer hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500" selectedClassName="bg-blue-100 text-blue-900 border-b-4 border-blue-800">
-              {t('assessment')}
-            </Tab>
-            <Tab className="px-4 py-2 font-semibold text-blue-700 rounded-t-lg cursor-pointer hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500" selectedClassName="bg-blue-100 text-blue-900 border-b-4 border-blue-800">
-              {t('meal_plan')}
-            </Tab>
-          </TabList>
+        {error && (
+          <div className="p-4 mb-8 text-center text-red-600 rounded-lg shadow-md bg-red-50 animate-slide-down">
+            <div className="flex items-center justify-center space-x-2">
+              <AlertCircle className="w-6 h-6" />
+              <p className="text-lg font-medium">{error}</p>
+            </div>
+          </div>
+        )}
 
-          <TabPanel>
-            <section className="p-6 bg-white rounded-lg shadow-lg animate-card-enter">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-extrabold text-blue-800">{t('profile')}</h2>
-                <User className="w-6 h-6 text-blue-600" />
-              </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="font-semibold text-gray-700">{t('name')}:</p>
-                  <p className="text-gray-800">{patient?.username || t('unknown')}</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-700">{t('email')}:</p>
-                  <p className="text-gray-800">{patient?.email || t('unknown')}</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-gray-700">{t('medical_history')}:</p>
-                  <p className="text-gray-800">{patient?.medicalHistory || t('no_data')}</p>
-                </div>
-                <div>
-                  <button
-                    onClick={handleScheduleConsultation}
-                    className="flex items-center px-6 py-2 text-white transition-all bg-blue-700 rounded-lg hover:bg-blue-900"
-                    aria-label={t('schedule_consultation')}
+        <section className="mb-12">
+          <div className="p-6 transition-all duration-300 transform bg-white shadow-xl rounded-xl hover:shadow-2xl">
+            <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
+              <h2 className="text-2xl font-bold tracking-tight text-teal-700 animate-fade-in">Food Logs</h2>
+              <Utensils className="text-teal-500 w-7 h-7 animate-pulse" />
+            </div>
+            {foodLogs.length === 0 ? (
+              <p className="flex items-center justify-center text-lg text-center text-gray-600">
+                <Utensils className="w-6 h-6 mr-2" /> No logs available
+              </p>
+            ) : (
+              <ul className="space-y-6">
+                {foodLogs.map((log) => (
+                  <li
+                    key={log._id}
+                    className="p-4 transition-all duration-300 border border-teal-200 rounded-lg shadow-md bg-teal-50 hover:bg-teal-100"
                   >
-                    <Calendar className="w-5 h-5 mr-2" />
-                    {t('schedule_consultation')}
-                  </button>
-                </div>
-              </div>
-            </section>
-          </TabPanel>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-700">
+                        {log.foodItem} - {log.quantity} {log.isFluid ? 'ml' : 'g'} (
+                        Carbs: {log.carbohydrates}g, Proteins: {log.proteins}g, Lipids: {log.lipids}g,
+                        K: {log.potassium}mg, P: {log.phosphorus}mg, Na: {log.sodium}mg)
+                      </span>
+                      <span className="flex items-center text-sm text-gray-500">
+                        <Clock className="w-4 h-4 mr-1" />
+                        {formatDate(log.date)}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
 
-          <TabPanel>
-            <section className="p-6 bg-white rounded-lg shadow-lg animate-card-enter">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-extrabold text-blue-800">{t('food_logs')}</h2>
-                <Utensils className="w-6 h-6 text-blue-600" />
-              </div>
-              {foodLogs.length === 0 ? (
-                <p className="flex items-center text-lg text-gray-600">
-                  <Utensils className="w-6 h-6 mr-2" /> {t('no_logs')}
-                </p>
-              ) : (
-                <ul className="space-y-4">
-                  {foodLogs.map((log) => (
-                    <li key={log._id} className="p-4 transition-all rounded-lg bg-blue-50 hover:bg-blue-100">
-                      <div className="flex items-center justify-between">
-                        <span className="text-gray-800">
-                          {log.foodItem} - {log.quantity} {log.isFluid ? 'ml' : 'g'} (
-                          {t('carbs')}: {log.carbohydrates ?? 0}g, {t('proteins')}: {log.proteins ?? 0}g, {t('lipids')}: {log.lipids ?? 0}g,
-                          K: {log.potassium ?? 0}mg, P: {log.phosphorus ?? 0}mg, Na: {log.sodium ?? 0}mg)
-                        </span>
-                        <span className="flex items-center text-sm text-gray-600">
-                          <Clipboard className="w-4 h-4 mr-1" />
-                          {formatDate(log.date)}
-                        </span>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          </TabPanel>
+        <section className="mb-12">
+          <div className="p-6 transition-all duration-300 transform bg-white shadow-xl rounded-xl hover:shadow-2xl">
+            <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
+              <h2 className="text-2xl font-bold tracking-tight text-teal-700 animate-fade-in">Nutritional Assessment</h2>
+              <Scale className="text-teal-500 w-7 h-7 animate-pulse" />
+            </div>
+            <div className="grid grid-cols-1 gap-4 text-gray-700 sm:grid-cols-3">
+              <p><span className="font-medium">Weight:</span> {assessment?.weight || 'N/A'} kg</p>
+              <p><span className="font-medium">Height:</span> {assessment?.height || 'N/A'} cm</p>
+              <p><span className="font-medium">Diet Habits:</span> {assessment?.dietHabits || 'N/A'}</p>
+            </div>
+          </div>
+        </section>
 
-          <TabPanel>
-            <section className="p-6 bg-white rounded-lg shadow-lg animate-card-enter">
-              <div class="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-extrabold text-blue-800">{t('assessment')}</h2>
-                <Scale className="w-6 h-6 text-blue-600" />
-              </div>
-              <form onSubmit={handleAssessmentSubmit(onAssessmentSubmit)} className="space-y-6">
-                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <div>
-                    <label class="block mb-1 text-sm font-medium text-gray-700">{t('weight')} (kg)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      {...registerAssessment('weight', { required: t('required_field'), min: { value: 0, message: t('negative_value') }})}
-                      placeholder={t('weight')}
-                      className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none focus:ring-offset-2 focus:ring-offset-gray-100"
-                      aria-describedby="weight-error"
-                    />
-                    <span className="sr-only" id="weight-error">{t('weight')}</span>
-                    {assessmentErrors.weight && <p className="mt-1 text-sm text-red-500">{assessmentErrors.weight.message}</p>}
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">{t('height')} (cm)</label>
-                    <input
-                      type="number"
-                      step="0.1"
-                      {...registerAssessment('height', { required: t('required_field'), min: { value: 0, message: t('negative_value') } })}
-                      placeholder={t('height')}
-                      className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      aria-describedby="height-error"
-                    />
-                    <span className="sr-only" id="height-error">{t('height')}</span>
-                    {assessmentErrors.height && <p className="mt-1 text-sm text-red-500">{assessmentErrors.height.message}</p>}
-                  </div>
-                  <div>
-                    <label className="block mb-1 text-sm font-medium text-gray-700">{t('diet_habits')}</label>
-                    <input
-                      type="text"
-                      {...registerAssessment('dietHabits')}
-                      placeholder={t('diet_habits')}
-                      className="w-full p-2 rounded-lg border-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      aria-describedby="diet-habits-error"
-                    />
-                    <span id="diet-habits-error" className="sr-only">{t('diet_habits')}</span>
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  className="flex items-center justify-center w-full p-4 text-white bg-blue-600 rounded-lg hover:bg-blue-800"
-                  aria-label={t('save_assessment')}
-                >
-                  <Save className="w-5 h-5 mr-2" />
-                  {t('save_assessment')}
-                </button>
-              </form>
-            </section>
-          </TabPanel>
-
-          <TabPanel>
-            <section className="p-6 bg-white rounded-lg animate-card-enter">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="font-extrabold text-blue-800 text-2">{t('meal_plan')}</h2>
-                <Utensils className="w-6 h-6 text-blue-600" />
-              </div>
-              <form onSubmit={handleMealPlanSubmit(onMealPlanSubmit)} className="space-y-6">
-                <div>
-                  <h3 className="mb-4 text-xl font-semibold text-blue-700">{t('daily_targets')}</h3>
+        <section className="mb-12">
+          <div className="p-6 transition-all duration-300 transform bg-white shadow-xl rounded-xl hover:shadow-2xl">
+            <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
+              <h2 className="text-2xl font-bold tracking-tight text-teal-700 animate-fade-in">Set Meal Plan (Nutrient Targets)</h2>
+              <Utensils className="text-teal-500 w-7 h-7 animate-pulse" />
+            </div>
+            <form onSubmit={handleMealPlanSubmit} className="space-y-6">
+              {['breakfast', 'lunch', 'dinner'].map((mealType) => (
+                <div key={mealType}>
+                  <h3 className="mb-3 text-lg font-medium text-teal-700 capitalize">{mealType}</h3>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div>
-                      <label className="block mb-1 text-sm font-medium text-blue-700">{t('carbs')} (g)</label>
+                      <label className="block mb-1 text-sm font-medium text-gray-700">Carbohydrates (g)</label>
                       <input
                         type="number"
-                        step="0.1"
-                        {...registerMealPlan('carbohydrates', { required: t('required_field'), min: { value: 0, message: t('negative_value') } })}
-                        placeholder={t('carbs')}
-                        className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        aria-describedby="carbs-error"
+                        min="0"
+                        value={mealPlanForm[mealType].carbohydrates}
+                        onChange={(e) => handleMealPlanChange(mealType, 'carbohydrates', e.target.value)}
+                        placeholder="e.g., 50"
+                        className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
                       />
-                      <span className="sr-only" id="carbs-error">{t('carbs')}</span>
-                      {mealPlanErrors.carbohydrates && <p className="mt-1 text-sm text-red-500">{mealPlanErrors.carbohydrates.message}</p>}
                     </div>
                     <div>
-                      <label className="block mb-1 text-sm font-medium text-blue-700">{t('proteins')} (g)</label>
+                      <label className="block mb-1 text-sm font-medium text-gray-700">Proteins (g)</label>
                       <input
                         type="number"
-                        step="0.1"
-                        {...registerMealPlan('proteins', { required: t('required_field'), min: { value: 0, message: t('negative_value') } })}
-                        placeholder={t('proteins')}
-                        className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        aria-describedby="proteins-error"
+                        min="0"
+                        value={mealPlanForm[mealType].proteins}
+                        onChange={(e) => handleMealPlanChange(mealType, 'proteins', e.target.value)}
+                        placeholder="e.g., 20"
+                        className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
                       />
-                      <span className="sr-only" id="proteins-error">{t('proteins')}</span>
-                      {mealPlanErrors.proteins && <p className="mt-1 text-sm text-red-500">{mealPlanErrors.proteins.message}</p>}
                     </div>
                     <div>
-                      <label className="block mb-1 text-sm font-medium text-blue-700">{t('lipids')} (g)</label>
+                      <label className="block mb-1 text-sm font-medium text-gray-700">Lipids (g)</label>
                       <input
                         type="number"
-                        step="0.1"
-                        {...registerMealType('lipids', { required: t('required_field'), min: { value: 0, message: t('negative_value') } })}
-                        placeholder={t('lipids')}
-                        className="w-full p-3 border rounded-lg border-gray-200 bg-gray-50 focus:ring.street2 focus:ring-blue-500 focus:outline-none"
-                        aria-describedby="lipids-error"
+                        min="0"
+                        value={mealPlanForm[mealType].lipids}
+                        onChange={(e) => handleMealPlanChange(mealType, 'lipids', e.target.value)}
+                        placeholder="e.g., 15"
+                        className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
                       />
-                      <span className="sr-only" id="lipids-error">{t('lipids')}</span>
-                      {mealPlanErrors.lipids && <p className="mt-1 text-sm text-red-500">{mealPlanErrors.lipids.message}</p>}
                     </div>
                   </div>
-                </div>
-                <div>
-                  <h3 className="mb-4 text-xl font-semibold text-blue-700">{t('hemo_limits')}</h3>
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="block mb-1 text-sm font-medium text-blue-700">{t('fluid')} (ml)</label>
-                      <input
-                        type="number"
-                        step="1"
-                        {...registerMealPlan('fluid', { required: t('required_field'), min: { value: 0, message: t('negative_value') } })}
-                        placeholder={t('fluid')}
-                        className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        aria-describedby="fluid-error"
-                      />
-                      <span className="sr-only" id="fluid-error">{t('fluid')}</span>
-                      {mealPlanErrors.fluid && <p className="mt-1 text-sm text-red-500">{mealPlanErrors.fluid.message}</p>}
-                    </div>
-                    <div>
-                      <label className="block mb-1 text-sm font-medium text-blue-700">{t('potassium')} (mg)</label>
-                      <input
-                        type="number"
-                        step="1"
-                        {...registerMealPlan('potassium', { min: { value: 0, message: t('negative_value') } })}
-                        placeholder={t('potassium')}
-                        className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        aria-describedby="potassium-error"
-                      />
-                      <span className="sr-only" id="potassium-error">{t('potassium')}</span>
-                      {mealPlanErrors.potassium && <p className="mt-1 text-sm text-red-500">{mealPlanErrors.potassium.message}</p>}
-                    </div>
-                    <div>
-                      <label className="block mb-1 text-sm font-medium text-blue-700">{t('phosphorus')} (mg)</label>
-                      <input
-                        type="number"
-                        step="1"
-                        {...registerMealPlan('phosphorus', { min: { value: 0, message: t('negative_value') } })}
-                        placeholder={t('phosphorus')}
-                        className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        aria-describedby="phosphorus-error"
-                      />
-                      <span className="sr-only" id="phosphorus-error">{t('phosphorus')}</span>
-                      {mealPlanErrors.phosphorus && <p className="mt-1 text-sm text-red-500">{mealPlanErrors.phosphorus.message}</p>}
-                    </div>
-                    <div>
-                      <label className="block mb-1 text-sm font-medium text-blue-700">{t('sodium')} (mg)</label>
-                      <input
-                        type="number"
-                        step="1"
-                        {...registerMealPlan('sodium', { min: { value: 0, message: t('negative_value') } })}
-                        placeholder={t('sodium')}
-                        className="w-full p-3 border border-gray-200 rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        aria-describedby="sodium-error"
-                      />
-                      <span className="sr-only" id="sodium-error">{t('sodium')}</span>
-                      {mealPlanErrors.sodium && <p className="mt-1 text-sm text-red-500">{mealPlanErrors.sodium.message}</p>}
-                    </div>
-                  </div>
-                </div>
-                <button
-                  type="submit"
-                  className="flex items-center justify-center w-full p-3 text-white transition-all bg-blue-700 rounded-lg hover:bg-blue-900"
-                  aria-label={t('save_meal_plan')}
-                >
-                  <Save className="w-5 h-5 mr-2" />
-                  {t('save_meal_plan')}
-                </button>
-              </form>
-              {mealPlan && (
-                <div className="mt-8">
-                  <h3 className="mb-4 text-xl font-semibold text-blue-700">{t('recommended')}</h3>
-                  <div className="grid grid-cols-2 gap-6 sm:grid sm:grid-cols-2">
-                    <div>
-                      <h4 className="flex items-center mb-2 text-lg font-medium text-gray-600">
-                        <Utensils className="w-5 h-5 mr-2 text-blue-600" /> {t('foods')}
-                      </h4>
-                      {Array.isArray(mealPlan.recommendedFoods) && mealPlan.recommendedFoods.length > 0 ? (
-                        <ul className="space-y-2">
-                          {mealPlan.recommendedFoods.map((food, index) => (
-                            <li key={index} className="p-3 bg-white border border-blue-200 rounded-lg">
-                              <span className="text-gray-800">
-                                {food.name} - {food.quantity}g (
-                                {t('carbs')}: {food.carbohydrates}g, {t('proteins')}: {food.proteins}g,
-                                {t('lipids')}: {food.lipids}g, K: {food.potassium}mg,
-                                P: {food.phosphorus}mg, Na: {food.sodium}mg)
-                              </span>
+                  <div className="mt-4 space-y-3">
+                    <label className="block text-sm font-medium text-teal-700">Recommended Foods</label>
+                    {['carbohydrates', 'proteins', 'lipids'].map((nutrientType) => (
+                      <div key={nutrientType} className="p-3 rounded-lg bg-teal-50">
+                        <h4 className="mb-2 text-sm font-medium text-gray-800 capitalize">{nutrientType}</h4>
+                        <select
+                          onChange={(e) => {
+                            const [foodName, quantity] = e.target.value.split('|');
+                            const food = foodOptions[nutrientType].find(f => f.name === foodName);
+                            if (food) handleFoodSelection(mealType, nutrientType, food, quantity || 100);
+                          }}
+                          className="w-full p-2 mb-2 bg-white border border-teal-200 rounded focus:outline-none focus:ring-2 focus:ring-teal-500"
+                        >
+                          <option value="">Select a food...</option>
+                          {foodOptions[nutrientType].map((food) => (
+                            <option key={food.name} value={`${food.name}|100`}>{food.name} (~{food[nutrientType]}g/100g)</option>
+                          ))}
+                        </select>
+                        <ul className="text-sm text-gray-600">
+                          {mealPlanForm.recommendedFoods[mealType].map((food, index) => (
+                            <li key={index} className="flex items-center justify-between">
+                              <span>{food.name} - {food.quantity}g ({food[nutrientType]}g {nutrientType})</span>
+                              <button
+                                onClick={() => {
+                                  setMealPlanForm((prev) => ({
+                                    ...prev,
+                                    recommendedFoods: {
+                                      ...prev.recommendedFoods,
+                                      [mealType]: prev.recommendedFoods[mealType].filter((_, i) => i !== index),
+                                    },
+                                  }));
+                                }}
+                                className="ml-2 text-red-500 hover:text-red-700"
+                              >
+                                Remove
+                              </button>
                             </li>
                           ))}
                         </ul>
-                      ) : (
-                        <p className="text-gray-600">{t('no_recommendations')}</p>
-                      )}
-                    </div>
-                    <div>
-                      <h4 className="flex items-center mb-2 text-lg font-medium text-gray-600">
-                        <Droplet className="w-5 h-5 mr-2 text-blue-600" /> {t('fluids')}
-                      </h4>
-                      {Array.isArray(mealPlan.recommendedFluids) && mealPlan.recommendedFluids.length > 0 ? (
-                        <ul className="space-y-2">
-                          {mealPlan.recommendedFluids.map((fluid, index) => (
-                            <li key={index} className="p-3 bg-white border border-blue-200 rounded-lg">
-                              <span className="text-gray-800">
-                                {fluid.name} - {fluid.units} {fluid.name === 'Water' ? 'liters' : 'cups'} (
-                                {fluid.totalFluid}ml, K: {fluid.potassium}mg,
-                                P: {fluid.phosphorus}mg, Na: {fluid.sodium}mg)
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p className="text-gray-600">{t('no_recommendations')}</p>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              )}
-            </section>
-          </TabPanel>
-        </Tabs>
+              ))}
+              <div>
+                <h3 className="mb-3 text-lg font-medium text-teal-700">Hemodialysis Limits (Daily Targets)</h3>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Potassium (mg)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={mealPlanForm.hemodialysisLimits.potassium}
+                      onChange={(e) => handleHemodialysisLimitsChange('potassium', e.target.value)}
+                      placeholder="e.g., 2000"
+                      className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Phosphorus (mg)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={mealPlanForm.hemodialysisLimits.phosphorus}
+                      onChange={(e) => handleHemodialysisLimitsChange('phosphorus', e.target.value)}
+                      placeholder="e.g., 800"
+                      className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Sodium (mg)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={mealPlanForm.hemodialysisLimits.sodium}
+                      onChange={(e) => handleHemodialysisLimitsChange('sodium', e.target.value)}
+                      placeholder="e.g., 2000"
+                      className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block mb-1 text-sm font-medium text-gray-700">Fluid (ml)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={mealPlanForm.hemodialysisLimits.fluid}
+                      onChange={(e) => handleHemodialysisLimitsChange('fluid', e.target.value)}
+                      placeholder="e.g., 1000"
+                      className="w-full p-3 border border-teal-200 rounded-lg bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    />
+                  </div>
+                </div>
+              </div>
+              <button
+                type="submit"
+                className="w-full p-3 text-white transition-all duration-300 transform bg-teal-600 rounded-lg shadow-md hover:bg-teal-700 hover:scale-105 active:scale-95"
+              >
+                Save Meal Plan
+              </button>
+            </form>
+          </div>
+        </section>
+
+        <section ref={messagesRef} className="mb-12">
+          <div className="p-6 transition-all duration-300 transform bg-white shadow-xl rounded-xl hover:shadow-2xl">
+            <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-teal-100">
+              <h2 className="text-2xl font-bold tracking-tight text-teal-700 animate-fade-in">Messages</h2>
+              <MessageSquare className="text-teal-500 w-7 h-7 animate-pulse" />
+            </div>
+            <form onSubmit={handleSendMessage} className="mb-6 space-y-4">
+              <textarea
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Type your message here..."
+                className="w-full p-4 transition-all duration-200 border border-teal-200 rounded-lg resize-none bg-teal-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                rows="4"
+                required
+              />
+              <button
+                type="submit"
+                className="flex items-center justify-center w-full p-3 space-x-2 text-white transition-all duration-300 transform bg-teal-600 rounded-lg shadow-md hover:bg-teal-700 hover:scale-105 active:scale-95"
+              >
+                <Send className="w-5 h-5" />
+                <span className="font-semibold">Send Message</span>
+              </button>
+            </form>
+            <h3 className="mb-4 text-lg font-semibold text-teal-600">Conversation</h3>
+            {messages.length === 0 ? (
+              <p className="flex items-center justify-center text-lg text-center text-gray-600">
+                <MessageSquare className="w-6 h-6 mr-2" /> No messages yet
+              </p>
+            ) : (
+              <ul className="space-y-6">
+                {messages.map((msg) => (
+                  <li
+                    key={msg._id}
+                    className={`p-4 bg-teal-50 border ${msg.isEmergency ? 'border-red-300' : 'border-teal-200'} rounded-lg shadow-md hover:bg-teal-100 transition-all duration-300`}
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="font-semibold text-gray-800">
+                          {String(msg.sender?._id || msg.sender) === String(providerId)
+                            ? `You: ${msg.providerUsername}`
+                            : `Patient: ${msg.patientUsername}`}
+                          {msg.isEmergency && <span className="ml-2 font-bold text-red-500">🚨 Emergency</span>}
+                        </p>
+                        <span className="flex items-center text-sm text-gray-500">
+                          <Clock className="w-4 h-4 mr-1" />
+                          {formatDate(msg.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-gray-700">{msg.content}</p>
+                      {String(msg.recipient?._id || msg.recipient) === String(providerId) && (
+                        <form
+                          onSubmit={(e) => {
+                            e.preventDefault();
+                            handleReply(msg._id);
+                          }}
+                          className="flex mt-3 space-x-3"
+                        >
+                          <input
+                            type="text"
+                            value={replyContent[msg._id] || ''}
+                            onChange={(e) => setReplyContent({ ...replyContent, [msg._id]: e.target.value })}
+                            placeholder="Reply to this message..."
+                            className="flex-1 p-3 transition-all duration-200 bg-white border border-teal-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                          />
+                          <button
+                            type="submit"
+                            className="p-3 text-white transition-all duration-300 bg-teal-600 rounded-lg shadow-md hover:bg-teal-700 hover:scale-105"
+                          >
+                            <Send className="w-5 h-5" />
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
       </div>
     </div>
   );

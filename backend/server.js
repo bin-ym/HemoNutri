@@ -7,7 +7,7 @@ const patientRoutes = require("./routes/patientRoutes");
 const providerRoutes = require("./routes/providerRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
-const contactRoutes = require("./routes/contactRoutes"); // Add this
+const contactRoutes = require("./routes/contactRoutes");
 const dotenv = require("dotenv");
 
 // Load environment variables
@@ -28,7 +28,7 @@ const app = express();
 // CORS configuration
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: ["http://localhost:3000", "http://localhost:3001"], // Added support for multiple origins
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
@@ -52,12 +52,14 @@ app.use((req, res, next) => {
 app.use(express.json());
 
 // Mount routes
+console.log("Mounting routes...");
 app.use("/api/auth", authRoutes);
 app.use("/api/patient", patientRoutes);
 app.use("/api/provider", providerRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/api", contactRoutes); // Add this
+app.use("/api", contactRoutes);
+console.log("Routes mounted successfully");
 
 // Handle 404 errors
 app.use((req, res) => {
@@ -76,7 +78,9 @@ app.use((err, req, res, next) => {
 // Database connection
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI, {});
+    await mongoose.connect(process.env.MONGO_URI, {
+      maxPoolSize: 10, // Limit connection pool size
+    });
     console.log("MongoDB connected");
   } catch (err) {
     console.error("MongoDB connection error:", err.message);

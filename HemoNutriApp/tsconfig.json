@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2015",
     "lib": [
-      "ES2016",
+      "ES2017",  // Change this to ES2017 or later
       "DOM"
     ],
     "jsx": "react-native",
