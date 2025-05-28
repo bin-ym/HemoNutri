@@ -1,8 +1,10 @@
+// frontend/src/pages/PatientMessagesPage.js
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { MessageSquare, Clock, AlertCircle, Send, Inbox } from "lucide-react";
 import api from "../../services/api";
 import Navbar from "../../components/Navbar";
+import Notifications from "../../components/Notifications";
 import { useAuth } from "../../context/AuthContext";
 
 const PatientMessagesPage = () => {
@@ -13,6 +15,7 @@ const PatientMessagesPage = () => {
   const [newMessage, setNewMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState("messages");
   const patientId = localStorage.getItem("userId");
   const chatContainerRef = useRef(null);
 
@@ -30,15 +33,15 @@ const PatientMessagesPage = () => {
       console.log("Fetched patient messages:", res.data);
       const fetchedMessages = Array.isArray(res.data) ? res.data : [];
 
-      const groupedConversations = fetchedMessages.reduce((acc, msg) => {
+      const groupedConversations = fetchedMessages.reduce((acc, curr) => {
         const otherPartyId =
-          String(msg.sender._id || msg.sender) === String(patientId)
-            ? String(msg.recipient._id || msg.recipient)
-            : String(msg.sender._id || msg.sender);
+          String(curr.sender._id || curr.sender) === String(patientId)
+            ? String(curr.recipient._id || curr.recipient)
+            : String(curr.sender._id || curr.sender);
         const otherPartyName =
-          String(msg.sender._id || msg.sender) === String(patientId)
-            ? msg.providerUsername
-            : msg.patientUsername;
+          String(curr.sender._id || curr.sender) === String(patientId)
+            ? curr.providerUsername || "Provider"
+            : curr.providerUsername || "Provider";
 
         if (!acc[otherPartyId]) {
           acc[otherPartyId] = {
@@ -46,15 +49,15 @@ const PatientMessagesPage = () => {
             otherPartyName,
             messages: [],
             unreadCount: 0,
-            lastMessage: msg,
+            lastMessage: curr,
           };
         }
-        acc[otherPartyId].messages.push(msg);
-        if (!msg.read && String(msg.recipient._id || msg.recipient) === String(patientId)) {
+        acc[otherPartyId].messages.push(curr);
+        if (!curr.read && String(curr.recipient._id || curr.recipient) === String(patientId)) {
           acc[otherPartyId].unreadCount += 1;
         }
-        if (new Date(msg.createdAt) > new Date(acc[otherPartyId].lastMessage.createdAt)) {
-          acc[otherPartyId].lastMessage = msg;
+        if (new Date(curr.createdAt) > new Date(acc[otherPartyId].lastMessage.createdAt)) {
+          acc[otherPartyId].lastMessage = curr;
         }
         return acc;
       }, {});
@@ -69,11 +72,11 @@ const PatientMessagesPage = () => {
       if (selectedConversation) {
         const selectedMessages = groupedConversations[selectedConversation]?.messages || [];
         const unreadMessages = selectedMessages.filter(
-          (msg) => !msg.read && String(msg.recipient._id || msg.recipient) === String(patientId)
+          (curr) => !curr.read && String(curr.recipient._id || curr.recipient) === String(patientId)
         );
         if (unreadMessages.length > 0) {
           await api.put("/patient/messages/read");
-          fetchMessages();
+          await fetchMessages();
         }
       }
     } catch (err) {
@@ -104,6 +107,11 @@ const PatientMessagesPage = () => {
     return isNaN(date.getTime()) ? t("date_unavailable") : date.toLocaleString();
   };
 
+  const truncateMessage = (content, maxLength = 30) => {
+    if (content.length <= maxLength) return content;
+    return content.substring(0, maxLength - 3) + "...";
+  };
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedConversation) return;
@@ -124,7 +132,7 @@ const PatientMessagesPage = () => {
     setSelectedConversation(otherPartyId);
   };
 
-  if (authLoading) {
+  if (authLoading || loading) {
     return (
       <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-100">
         <Navbar role="patient" />
@@ -154,22 +162,6 @@ const PatientMessagesPage = () => {
     );
   }
 
-  if (error && Object.keys(conversations).length === 0) {
-    return (
-      <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-100">
-        <Navbar role="patient" />
-        <div className="flex items-center justify-center flex-grow">
-          <div className="max-w-md p-6 shadow-lg bg-red-50 rounded-xl animate-slide-down">
-            <div className="flex items-center space-x-3">
-              <AlertCircle className="w-8 h-8 text-red-500" />
-              <p className="text-lg font-medium text-red-600">{error}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-br from-blue-50 via-white to-gray-100">
       <Navbar
@@ -189,7 +181,7 @@ const PatientMessagesPage = () => {
           <Inbox className="relative w-12 h-12 mx-auto mt-4 text-blue-500 sm:w-14 sm:h-14 animate-bounce-slow" />
         </div>
 
-        {error && Object.keys(conversations).length > 0 && (
+        {error && (
           <div className="p-4 mb-8 text-center text-red-600 rounded-lg shadow-md bg-red-50 animate-fade-in">
             <div className="flex items-center justify-center space-x-2">
               <AlertCircle className="w-6 h-6" />
@@ -198,114 +190,147 @@ const PatientMessagesPage = () => {
           </div>
         )}
 
-        <div className="flex flex-col space-y-6 lg:flex-row lg:space-y-0 lg:space-x-6">
-          <section className="w-full lg:w-1/3">
-            <div className="p-4 bg-white shadow-xl sm:p-6 rounded-xl">
-              <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-blue-100">
-                <h2 className="text-xl font-bold tracking-tight text-blue-700 sm:text-2xl animate-fade-in">
-                  {t("conversations")}
-                </h2>
-                <MessageSquare className="w-6 h-6 text-blue-500 sm:w-7 sm:h-7 animate-pulse" />
-              </div>
-              {Object.keys(conversations).length === 0 ? (
-                <div className="py-12 text-center">
-                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <p className="text-lg text-gray-500">{t("no_conversations")}</p>
-                </div>
-              ) : (
-                <ul className="space-y-4">
-                  {Object.values(conversations).map((conv) => (
-                    <li
-                      key={conv.otherPartyId}
-                      onClick={() => handleSelectConversation(conv.otherPartyId)}
-                      className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
-                        selectedConversation === conv.otherPartyId
-                          ? "bg-blue-100 border-blue-300"
-                          : "bg-blue-50 border-blue-200 hover:bg-blue-100"
-                      } border shadow-md`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-semibold text-gray-800">{conv.otherPartyName}</p>
-                          <p className="text-sm text-gray-600 truncate">{conv.lastMessage.content}</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-sm text-gray-500">{formatDate(conv.lastMessage.createdAt)}</p>
-                          {conv.unreadCount > 0 && (
-                            <span className="inline-block px-2 py-1 mt-1 text-xs font-semibold text-white bg-red-500 rounded-full">
-                              {conv.unreadCount}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </section>
-
-          <section className="w-full lg:w-2/3">
-            <div className="p-4 bg-white shadow-xl sm:p-6 rounded-xl">
-              <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-blue-100">
-                <h2 className="text-xl font-bold tracking-tight text-blue-700 sm:text-2xl animate-fade-in">
-                  {selectedConversation
-                    ? t("chat_with", { name: conversations[selectedConversation]?.otherPartyName })
-                    : t("select_conversation")}
-                </h2>
-                <Inbox className="w-6 h-6 text-blue-500 sm:w-7 sm:h-7 animate-pulse" />
-              </div>
-              {selectedConversation ? (
-                <>
-                  <div ref={chatContainerRef} className="flex flex-col p-4 mb-6 overflow-y-auto rounded h-96 bg-blue-50">
-                    {conversations[selectedConversation].messages.map((msg) => (
-                      <div
-                        key={msg._id}
-                        className={`mb-4 flex ${
-                          String(msg.sender._id || msg.sender) === String(patientId) ? "justify-end" : "justify-start"
-                        }`}
-                      >
-                        <div
-                          className={`max-w-xs p-3 rounded-lg shadow-md ${
-                            String(msg.sender._id || msg.sender) === String(patientId)
-                              ? "bg-blue-200 text-gray-800"
-                              : "bg-white text-gray-700"
-                          } ${msg.isEmergency ? "border border-red-300" : ""}`}
-                        >
-                          <p>{msg.content}</p>
-                          <p className="mt-1 text-xs text-gray-500">{formatDate(msg.createdAt)}</p>
-                          {msg.isEmergency && <p className="mt-1 text-xs font-semibold text-red-500">{t("emergency")}</p>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <form onSubmit={handleSendMessage} className="space-y-4">
-                    <textarea
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder={t("write_message")}
-                      className="w-full p-4 text-gray-700 transition-all duration-300 border border-blue-200 resize-none bg-blue-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      rows="3"
-                      required
-                    />
-                    <button
-                      type="submit"
-                      className="flex items-center justify-center w-full px-6 py-3 space-x-2 text-white transition-all duration-300 bg-blue-700 shadow-md rounded-xl hover:bg-blue-900 hover:scale-105"
-                    >
-                      <Send className="w-5 h-5" />
-                      <span className="font-semibold">{t("send_message")}</span>
-                    </button>
-                  </form>
-                </>
-              ) : (
-                <div className="py-12 text-center">
-                  <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <p className="text-lg text-gray-500">{t("select_conversation_start")}</p>
-                </div>
-              )}
-            </div>
-          </section>
+        <div className="mb-6">
+          <div className="flex space-x-4 border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab("messages")}
+              className={`pb-2 px-4 text-sm font-medium ${
+                activeTab === "messages"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-600 hover:text-blue-600"
+              }`}
+            >
+              {t("messages")}
+            </button>
+            <button
+              onClick={() => setActiveTab("notifications")}
+              className={`pb-2 px-4 text-sm font-medium ${
+                activeTab === "notifications"
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-600 hover:text-blue-600"
+              }`}
+            >
+              {t("notifications")}
+            </button>
+          </div>
         </div>
+
+        {activeTab === "messages" ? (
+          <div className="flex flex-col space-y-6 lg:flex-row lg:space-y-0 lg:space-x-6">
+            <section className="w-full lg:w-1/3">
+              <div className="p-4 bg-white shadow-xl sm:p-6 rounded-xl">
+                <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-blue-100">
+                  <h2 className="text-xl font-semibold tracking-tight text-blue-700 sm:text-2xl animate-pulse">
+                    {t("Conversations")}
+                  </h2>
+                      <MessageSquare className="w-6 h-6 text-blue-500 sm:w-7 sm:h-7 animate-pulse" />
+                </div>
+                {Object.keys(conversations).length === 0 ? (
+                  <div class="py-12 text-center">
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                    <p className="text-lg text-gray-500">{t("no_conversations")}</p>
+                  </div>
+                ) : (
+                  <ul className="space-y-4 overflow-y-auto max-h-96">
+                    {Object.values(conversations)
+                      .sort((a, b) => new Date(b.lastMessage.createdAt) - new Date(a.lastMessage.createdAt))
+                      .map((conv) => (
+                        <li
+                          key={conv.otherPartyId}
+                          onClick={() => handleSelectConversation(conv.otherPartyId)}
+                          className={`p-4 rounded-xl cursor-pointer transition-all duration-300 ${
+                            selectedConversation === conv.otherPartyId
+                              ? "bg-blue-100 border-blue-300"
+                              : "bg-blue-50 border-blue-200 hover:bg-blue-100"
+                          } border shadow-md`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-800 truncate">{conv.otherPartyName}</p>
+                              <p className="text-sm text-gray-600 truncate">{truncateMessage(conv.lastMessage.content)}</p>
+                            </div>
+                            <div className="ml-4 text-right">
+                              <p className="text-sm text-gray-500">{formatDate(conv.lastMessage.createdAt)}</p>
+                              {conv.unreadCount > 0 && (
+                                <span className="inline-block px-2 py-1 mt-1 text-xs font-semibold text-white bg-red-500 rounded-full">
+                                  {conv.unreadCount}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+
+            <section className="w-full lg:w-2/3">
+              <div className="p-4 bg-white shadow-xl sm:p-6 rounded-xl">
+                <div className="flex items-center justify-between pb-4 mb-6 border-b-2 border-blue-100">
+                  <h2 className="text-xl font-bold tracking-tight text-blue-700 sm:text-2xl animate-fade-in">
+                    {selectedConversation
+                      ? t("chat_with", { name: conversations[selectedConversation]?.otherPartyName })
+                      : t("select_conversation")}
+                  </h2>
+                  <Inbox className="w-6 h-6 text-blue-500 sm:w-7 sm:h-7 animate-pulse" />
+                </div>
+                {selectedConversation ? (
+                  <>
+                    <div ref={chatContainerRef} className="flex flex-col p-4 mb-6 overflow-y-auto rounded h-96 bg-blue-50">
+                      {conversations[selectedConversation].messages.map((msg) => (
+                        <div
+                          key={msg._id}
+                          className={`mb-4 flex ${
+                            String(msg.sender._id || msg.sender) === String(patientId) ? "justify-end" : "justify-start"
+                          }`}
+                        >
+                          <div
+                            className={`max-w-xs p-3 rounded-lg shadow-md ${
+                              String(msg.sender._id || msg.sender) === String(patientId)
+                                ? "bg-blue-200 text-gray-800"
+                                : "bg-white text-gray-700"
+                            } ${msg.isEmergency ? "border border-red-300" : ""}`}
+                          >
+                            <p>{msg.content}</p>
+                            <p className="mt-1 text-xs text-gray-500">{formatDate(msg.createdAt)}</p>
+                            {msg.isEmergency && <p className="mt-1 text-xs font-semibold text-red-500">{t("emergency")}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <form onSubmit={handleSendMessage} className="space-y-4">
+                      <textarea
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        placeholder={t("write_message")}
+                        className="w-full p-4 text-gray-700 transition-all duration-300 border border-blue-200 resize-none bg-blue-50 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        rows="3"
+                        required
+                      />
+                      <button
+                        type="submit"
+                        className="flex items-center justify-center w-full px-6 py-3 space-x-2 text-white transition-all duration-300 bg-blue-700 shadow-md rounded-xl hover:bg-blue-900 hover:scale-105"
+                      >
+                        <Send className="w-5 h-5" />
+                        <span className="font-semibold">{t("send_message")}</span>
+                      </button>
+                    </form>
+                  </>
+                ) : (
+                  <div className="py-12 text-center">
+                    <MessageSquare className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                    <p className="text-lg text-gray-500">{t("select_conversation_start")}</p>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        ) : (
+          <div className="p-6 bg-white shadow-xl rounded-xl">
+            <Notifications role="patient" />
+          </div>
+        )}
       </div>
     </div>
   );

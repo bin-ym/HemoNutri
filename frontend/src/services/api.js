@@ -50,29 +50,30 @@ api.interceptors.response.use(
       data: error.response?.data,
     });
     if (error.response?.status === 401) {
-      const errorMessage = error.response.data?.error || "Unauthorized";
-      const originalRequest = error.config;
-      if ((errorMessage === "token_expired" || errorMessage === "invalid_token") && !originalRequest._retry) {
-        originalRequest._retry = true;
-        try {
-          const refreshResponse = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {}, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-          });
-          const { token } = refreshResponse.data;
-          localStorage.setItem("token", token);
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return api(originalRequest);
-        } catch (refreshError) {
-          console.error("Token refresh failed:", refreshError);
-          localStorage.clear();
-          window.location.href = "/login";
-          alert("Your session has expired. Please log in again.");
-          return Promise.reject(refreshError);
-        }
-      } else {
-        return Promise.reject(new Error("Access denied"));
-      }
+  const errorMessage = error.response.data?.error || "Unauthorized";
+  const originalRequest = error.config;
+  if ((errorMessage === "token_expired" || errorMessage === "invalid_token") && !originalRequest._retry) {
+    originalRequest._retry = true;
+    try {
+      const refreshResponse = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {}, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+      });
+      const { token } = refreshResponse.data;
+      localStorage.setItem("token", token);
+      originalRequest.headers.Authorization = `Bearer ${token}`;
+      return api(originalRequest);
+    } catch (refreshError) {
+      console.error("Token refresh failed:", refreshError);
+      localStorage.clear();
+      const currentPath = window.location.pathname;
+      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+      alert("Your session has expired. Please log in again.");
+      return Promise.reject(refreshError);
     }
+  } else {
+    return Promise.reject(new Error("Access denied"));
+  }
+}
     return Promise.reject(error);
   }
 );

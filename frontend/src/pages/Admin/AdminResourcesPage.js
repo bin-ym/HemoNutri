@@ -1,3 +1,4 @@
+// frontend/src/pages/AdminResourcesPage.js
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Navbar from "../../components/Navbar";
@@ -12,6 +13,7 @@ const AdminResourcesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchResources = async () => {
     setLoading(true);
@@ -36,17 +38,32 @@ const AdminResourcesPage = () => {
   }, []);
 
   const handleEditResource = (resource) => {
-    setEditingResource({ ...resource });
+    setEditingResource({
+      _id: resource._id,
+      title: resource.title,
+      description: resource.description,
+      url: resource.url || "",
+      providerId: resource.providerId?._id || resource.providerId,
+    });
+    console.log("Editing resource:", resource);
   };
 
   const handleSaveResource = async (e) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
     try {
       const token = localStorage.getItem("token");
+      const payload = {
+        title: editingResource.title,
+        description: editingResource.description,
+        url: editingResource.url || undefined,
+        providerId: editingResource.providerId,
+      };
+      console.log("Saving resource payload:", payload);
       const res = await api.put(
         `/admin/resources/${editingResource._id}`,
-        editingResource,
+        payload,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setResources(
@@ -56,6 +73,8 @@ const AdminResourcesPage = () => {
     } catch (err) {
       console.error("Save resource error:", err.response?.data || err.message);
       setError(t(err.response?.data?.error || "failed_save_resource"));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -77,16 +96,16 @@ const AdminResourcesPage = () => {
   const handleCreateResource = async (e) => {
     e.preventDefault();
     setError("");
+    setIsSubmitting(true);
     try {
       const token = localStorage.getItem("token");
       const payload = {
         title: newResource.title,
         description: newResource.description,
         providerId: localStorage.getItem("userId"),
+        url: newResource.url ? newResource.url : undefined,
       };
-      if (newResource.url) {
-        payload.url = newResource.url;
-      }
+      console.log("Creating resource payload:", payload);
       const res = await api.post(
         "/admin/resources",
         payload,
@@ -98,28 +117,29 @@ const AdminResourcesPage = () => {
     } catch (err) {
       console.error("Create resource error:", err.response?.data || err.message);
       setError(t(err.response?.data?.error || "failed_create_resource"));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-white">
+    <div className="flex flex-col min-h-screen bg-gray-50">
       <Navbar role="admin" />
-      <div className="flex-grow max-w-6xl p-6 mx-auto">
-        <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-black sm:text-4xl animate-fade-in">
+      <div className="flex-grow max-w-4xl p-6 mx-auto">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-gray-900 sm:text-4xl animate-fade-in">
             {t("manage_educational_resources")}
           </h1>
-          <p className="mt-2 text-lg text-gray-700">
+          <p className="mt-2 text-lg text-gray-600">
             {t("edit_remove_add_resources")}
           </p>
         </div>
 
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-end mb-6">
           <button
             onClick={() => setShowCreateForm(!showCreateForm)}
-            className={`flex items-center px-4 py-2 text-white bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105 transition-all duration-200 ${
-              showCreateForm ? "bg-blue-800" : ""
-            }`}
+            className="flex items-center px-4 py-2 text-white transition-all duration-300 rounded-lg shadow-md bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:scale-105"
+            disabled={isSubmitting}
           >
             <Plus className="w-5 h-5 mr-2" />
             {showCreateForm ? t("close_form") : t("add_resource")}
@@ -127,13 +147,13 @@ const AdminResourcesPage = () => {
         </div>
 
         {showCreateForm && (
-          <div className="p-6 mb-6 bg-white shadow-lg rounded-xl animate-slide-down">
-            <h2 className="mb-4 text-2xl font-semibold text-black">
+          <div className="p-6 mb-8 bg-white border border-gray-100 shadow-lg rounded-xl animate-slide-down">
+            <h2 className="mb-6 text-2xl font-semibold text-gray-900">
               {t("create_new_resource")}
             </h2>
-            <form onSubmit={handleCreateResource} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-black">
+            <form onSubmit={handleCreateResource} className="space-y-6">
+              <div className="relative">
+                <label className="block mb-1 text-sm font-medium text-gray-700">
                   {t("resource_title")}
                 </label>
                 <input
@@ -143,12 +163,12 @@ const AdminResourcesPage = () => {
                     setNewResource({ ...newResource, title: e.target.value })
                   }
                   placeholder={t("resource_title")}
-                  className="w-full p-3 bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900"
+                  className="w-full p-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-black">
+              <div className="relative">
+                <label className="block mb-1 text-sm font-medium text-gray-700">
                   {t("resource_description")}
                 </label>
                 <textarea
@@ -157,37 +177,46 @@ const AdminResourcesPage = () => {
                     setNewResource({ ...newResource, description: e.target.value })
                   }
                   placeholder={t("resource_description")}
-                  className="w-full p-3 bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900"
-                  rows="4"
+                  className="w-full p-3 transition-all duration-200 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  rows="5"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-black">
+              <div className="relative">
+                <label className="block mb-1 text-sm font-medium text-gray-700">
                   {t("resource_url")} <span className="text-gray-500">({t("optional")})</span>
                 </label>
                 <input
-                  type="text"
+                  type="url"
                   value={newResource.url}
                   onChange={(e) =>
                     setNewResource({ ...newResource, url: e.target.value })
                   }
                   placeholder={t("resource_url")}
-                  className="w-full p-3 bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900"
+                  className="w-full p-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div className="flex space-x-4">
                 <button
                   type="submit"
-                  className="flex items-center justify-center flex-1 p-3 text-white transition-all duration-200 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+                  className="flex items-center justify-center flex-1 px-4 py-2 text-white transition-all duration-300 rounded-lg shadow-md bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:scale-105 disabled:opacity-50"
+                  disabled={isSubmitting}
                 >
-                  <Save className="w-5 h-5 mr-2" />
+                  {isSubmitting ? (
+                    <svg className="w-5 h-5 mr-2 text-white animate-spin" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                  ) : (
+                    <Save className="w-5 h-5 mr-2" />
+                  )}
                   {t("create_resource")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowCreateForm(false)}
-                  className="flex items-center justify-center flex-1 p-3 text-white transition-all duration-200 bg-gray-500 rounded-lg shadow-md hover:bg-gray-600 hover:scale-105"
+                  className="flex items-center justify-center flex-1 px-4 py-2 text-gray-700 transition-all duration-300 bg-gray-200 rounded-lg shadow-md hover:bg-gray-300 hover:scale-105"
+                  disabled={isSubmitting}
                 >
                   <X className="w-5 h-5 mr-2" />
                   {t("cancel")}
@@ -198,13 +227,13 @@ const AdminResourcesPage = () => {
         )}
 
         {editingResource && (
-          <div className="p-6 mb-6 bg-white shadow-lg rounded-xl animate-slide-down">
-            <h2 className="mb-4 text-2xl font-semibold text-black">
+          <div className="p-6 mb-8 bg-white border border-gray-100 shadow-lg rounded-xl animate-slide-down">
+            <h2 className="mb-6 text-2xl font-semibold text-gray-900">
               {t("edit_resource")}
             </h2>
-            <form onSubmit={handleSaveResource} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-black">
+            <form onSubmit={handleSaveResource} className="space-y-6">
+              <div className="relative">
+                <label className="block mb-1 text-sm font-medium text-gray-700">
                   {t("resource_title")}
                 </label>
                 <input
@@ -214,12 +243,12 @@ const AdminResourcesPage = () => {
                     setEditingResource({ ...editingResource, title: e.target.value })
                   }
                   placeholder={t("resource_title")}
-                  className="w-full p-3 bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900"
+                  className="w-full p-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-black">
+              <div className="relative">
+                <label className="block mb-1 text-sm font-medium text-gray-700">
                   {t("resource_description")}
                 </label>
                 <textarea
@@ -228,37 +257,46 @@ const AdminResourcesPage = () => {
                     setEditingResource({ ...editingResource, description: e.target.value })
                   }
                   placeholder={t("resource_description")}
-                  className="w-full p-3 bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900"
-                  rows="4"
+                  className="w-full p-3 transition-all duration-200 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  rows="5"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-black">
+              <div className="relative">
+                <label className="block mb-1 text-sm font-medium text-gray-700">
                   {t("resource_url")} <span className="text-gray-500">({t("optional")})</span>
                 </label>
                 <input
-                  type="text"
+                  type="url"
                   value={editingResource.url}
                   onChange={(e) =>
                     setEditingResource({ ...editingResource, url: e.target.value })
                   }
                   placeholder={t("resource_url")}
-                  className="w-full p-3 bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900"
+                  className="w-full p-3 transition-all duration-200 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
               <div className="flex space-x-4">
                 <button
                   type="submit"
-                  className="flex items-center justify-center flex-1 p-3 text-white transition-all duration-200 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+                  className="flex items-center justify-center flex-1 px-4 py-2 text-white transition-all duration-300 rounded-lg shadow-md bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 hover:scale-105 disabled:opacity-50"
+                  disabled={isSubmitting}
                 >
-                  <Save className="w-5 h-5 mr-2" />
+                  {isSubmitting ? (
+                    <svg className="w-5 h-5 mr-2 text-white animate-spin" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                    </svg>
+                  ) : (
+                    <Save className="w-5 h-5 mr-2" />
+                  )}
                   {t("save_resource")}
                 </button>
                 <button
                   type="button"
                   onClick={() => setEditingResource(null)}
-                  className="flex items-center justify-center flex-1 p-3 text-white transition-all duration-200 bg-gray-500 rounded-lg shadow-md hover:bg-gray-600 hover:scale-105"
+                  className="flex items-center justify-center flex-1 px-4 py-2 text-gray-700 transition-all duration-300 bg-gray-200 rounded-lg shadow-md hover:bg-gray-300 hover:scale-105"
+                  disabled={isSubmitting}
                 >
                   <X className="w-5 h-5 mr-2" />
                   {t("cancel")}
@@ -268,22 +306,25 @@ const AdminResourcesPage = () => {
           </div>
         )}
 
+        {error && (
+          <div className="flex items-center p-4 mb-6 space-x-2 border border-red-200 rounded-lg bg-red-50 animate-fade-in">
+            <AlertCircle className="w-5 h-5 text-red-600" />
+            <p className="text-red-700">{error}</p>
+          </div>
+        )}
+
         {loading ? (
-          <div className="flex items-center justify-center">
-            <div className="w-12 h-12 border-4 border-blue-900 rounded-full border-t-transparent animate-spin"></div>
-            <p className="ml-4 text-xl font-semibold text-black animate-pulse">
+          <div className="flex items-center justify-center py-12">
+            <svg className="w-12 h-12 text-blue-600 animate-spin" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+            </svg>
+            <p className="ml-4 text-xl font-medium text-gray-900">
               {t("loading_resources")}
             </p>
           </div>
-        ) : error ? (
-          <div className="p-4 mb-4 bg-red-100 border border-red-300 rounded-lg shadow-md">
-            <div className="flex items-center space-x-2">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              <p className="text-black">{error}</p>
-            </div>
-          </div>
         ) : resources.length === 0 ? (
-          <p className="text-center text-gray-700">
+          <p className="text-lg text-center text-gray-600">
             {t("no_resources_available")}
           </p>
         ) : (
@@ -291,22 +332,22 @@ const AdminResourcesPage = () => {
             {resources.map((res) => (
               <li
                 key={res._id}
-                className="flex items-center justify-between p-4 transition-all duration-200 rounded-lg shadow-md bg-blue-50 hover:bg-blue-100"
+                className="flex items-center justify-between p-4 transition-all duration-300 bg-white border border-gray-100 rounded-lg shadow-md hover:shadow-lg"
               >
-                <span className="text-black">
-                  <strong>{res.title}:</strong> {res.description} ({t("provider")}:{" "}
+                <span className="text-gray-900">
+                  <strong className="font-semibold">{res.title}:</strong> {res.description} ({t("provider")}:{" "}
                   {res.providerId?.username || "Unknown"})
                 </span>
                 <div className="flex space-x-2">
                   <button
                     onClick={() => handleEditResource(res)}
-                    className="p-2 text-white transition-all duration-200 bg-blue-700 rounded-lg shadow-md hover:bg-blue-900 hover:scale-105"
+                    className="p-2 text-white transition-all duration-200 bg-blue-600 rounded-lg hover:bg-blue-700 hover:scale-105"
                   >
                     <Edit className="w-5 h-5" />
                   </button>
                   <button
                     onClick={() => handleDeleteResource(res._id)}
-                    className="p-2 text-white transition-all duration-200 bg-red-600 rounded-lg shadow-md hover:bg-red-700 hover:scale-105"
+                    className="p-2 text-white transition-all duration-200 bg-red-600 rounded-lg hover:bg-red-700 hover:scale-105"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>

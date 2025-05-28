@@ -6,11 +6,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   const token = localStorage.getItem("token");
 
   console.log("ProtectedRoute: Checking access", {
-    user: user ? { role: user.role, email: user.email } : null,
+    user: user ? { role: user.role, email: user.email, userId: user.userId } : null,
     isAuthenticated,
     allowedRoles,
     loading,
-    token: token?.slice(0, 10) + "...",
+    token: token ? token.slice(0, 10) + "..." : "No token",
   });
 
   if (loading) {
@@ -24,16 +24,20 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     );
   }
 
-  if (!token || !isAuthenticated) {
-    console.log("ProtectedRoute: No token or not authenticated, redirecting to /login");
-    return <Navigate to="/login" replace />;
+  if (!isAuthenticated || !token) {
+    console.log("ProtectedRoute: Not authenticated or no token, redirecting to /login");
+    return <Navigate to="/login?sessionExpired=true" replace />;
   }
 
-  if (allowedRoles && user?.role && !allowedRoles.includes(user.role)) {
-    console.log("ProtectedRoute: Role not allowed, redirecting to /", { userRole: user.role, allowedRoles });
+  if (allowedRoles && (!user || !user.role || !allowedRoles.includes(user.role))) {
+    console.log("ProtectedRoute: Role not allowed, redirecting to /", {
+      userRole: user?.role || "none",
+      allowedRoles,
+    });
     return <Navigate to="/" replace />;
   }
 
+  console.log("ProtectedRoute: Access granted", { userRole: user.role });
   return children;
 };
 

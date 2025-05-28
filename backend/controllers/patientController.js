@@ -359,19 +359,39 @@ const getResources = async (req, res) => {
   try {
     const patient = await User.findById(req.user.id);
     if (!patient) return res.status(404).json({ error: "User not found" });
-    const providerId =
-      req.user.role === "patient" ? patient.provider : req.user.id;
-    const resources = await EducationResource.find({ providerId });
-    res.json(
-      resources.map((r) => ({
-        _id: r._id,
-        title: r.title,
-        content: r.description,
-      }))
-    );
+
+    // Get patient's provider ID (null for non-patients)
+    const providerId = req.user.role === "patient" ? patient.provider : req.user.id;
+
+    // Fetch resources from admin or patient's provider
+    const resources = await EducationResource.find({
+      $or: [
+        { createdBy: { $in: await User.find({ role: "admin" }).distinct("_id") } },
+        { createdBy: providerId },
+      ],
+    })
+      .populate("createdBy", "username role")
+      .lean();
+
+    // Map resources to include source and creator's name
+    const formattedResources = resources.map((r) => ({
+      _id: r._id,
+      title: r.title,
+      content: r.description,
+      url: r.url || "", // Include url, default to empty string
+      source: r.createdBy.role === "admin" ? "Admin" : "Provider",
+      createdByName: r.createdBy.username || "Unknown",
+    }));
+
+    console.log("Fetched resources:", {
+      userId: req.user.id,
+      count: formattedResources.length,
+      resources: formattedResources,
+    });
+    res.json(formattedResources);
   } catch (err) {
     console.error("Resources fetch error:", err.stack);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
@@ -403,7 +423,20 @@ const sendEmergency = async (req, res) => {
 };
 
 const getNotifications = async (req, res) => {
-  res.json([]); // Placeholder implementation
+  try {
+    const notifications = await Notification.find({ recipients: req.user.id })
+      .populate("sender", "username")
+      .sort({ createdAt: -1 })
+      .lean();
+    console.log("patientController: Fetched notifications", {
+      userId: req.user.id,
+      count: notifications.length,
+    });
+    res.json(notifications);
+  } catch (err) {
+    console.error("patientController: Get notifications error:", err.stack);
+    res.status(500).json({ error: "Server error" });
+  }
 };
 const getConversation = async (req, res) => {
   try {

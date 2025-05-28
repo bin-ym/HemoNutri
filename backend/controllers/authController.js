@@ -117,7 +117,7 @@ const login = async (req, res) => {
       return res.json({
         token,
         userId: user._id.toString(),
-        role: user.role, // Add role
+        role: user.role,
         isTempPassword: true,
         resetToken: user.resetPasswordToken,
         user: userData,
@@ -223,20 +223,10 @@ const selectProvider = async (req, res) => {
 
 const register = async (req, res) => {
   const { firstName, lastName, email, password, role } = req.body;
-  console.log("authController: Register request", {
-    firstName,
-    lastName,
-    email,
-    role,
-  });
+  console.log("authController: Register request", { firstName, lastName, email, role });
   try {
     if (!firstName || !lastName || !email || !password || !role) {
-      console.log("authController: Missing fields", {
-        firstName,
-        lastName,
-        email,
-        role,
-      });
+      console.log("authController: Missing fields", { firstName, lastName, email, role });
       return res.status(400).json({ error: "All fields are required" });
     }
 
@@ -249,20 +239,19 @@ const register = async (req, res) => {
       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(password)) {
       console.log("authController: Password does not meet requirements");
-      return res.status(400).json({
-        error: "password_requirements",
-      });
+      return res.status(400).json({ error: "password_requirements" });
     }
 
     const username = `${firstName} ${lastName}`;
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }],
-    });
-    if (existingUser) {
-      console.log("authController: User already exists", { email, username });
-      return res
-        .status(400)
-        .json({ error: "Email or username already exists" });
+    const existingEmail = await User.findOne({ email });
+    const existingUsername = await User.findOne({ username });
+    if (existingEmail) {
+      console.log("authController: Email already exists", { email });
+      return res.status(400).json({ error: "Email already exists" });
+    }
+    if (existingUsername) {
+      console.log("authController: Username already exists", { username });
+      return res.status(400).json({ error: "Username already exists" });
     }
 
     const activationCode = generateActivationCode();
@@ -301,8 +290,7 @@ const register = async (req, res) => {
     }
 
     res.status(201).json({
-      message:
-        "Registration successful. Please check your email for the activation code.",
+      message: "Registration successful. Please check your email for the activation code.",
     });
   } catch (err) {
     console.error("authController: Register error:", err.stack);

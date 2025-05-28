@@ -2,7 +2,7 @@ const User = require('../models/User');
 const FoodLog = require('../models/FoodLog');
 const MealPlan = require('../models/MealPlan');
 const Message = require('../models/Message');
-const EducationResource = require('../models/EducationResource');
+const EducationResource = require("../models/EducationResource");
 const mongoose = require('mongoose');
 
 const getPatients = async (req, res) => {
@@ -401,7 +401,7 @@ const updateMealPlan = async (req, res) => {
         !isNaN(meal.proteins) &&
         meal.proteins >= 0 &&
         typeof meal.lipids === 'number' &&
-        !isNaN(meal.lipids) &&
+        !isNaN(limits.lipids) &&
         meal.lipids >= 0
       );
     };
@@ -495,44 +495,89 @@ const deleteMealPlan = async (req, res) => {
   }
 };
 
-const getEducationResources = async (req, res) => {
+const createEducationResource = async (req, res) => {
   try {
-    const resources = await EducationResource.find({ providerId: req.user.id })
-      .sort({ createdAt: -1 })
-      .lean();
-    console.log('providerController: Fetched education resources', {
-      providerId: req.user.id,
-      resourceCount: resources.length,
+    const { title, description, url } = req.body;
+    if (!title || !description) {
+      return res.status(400).json({ error: "Title and description are required" });
+    }
+
+    const resource = new EducationResource({
+      title: title.trim(),
+      description: description.trim(),
+      url: url || undefined,
+      providerId: req.user.id, // Set providerId for compatibility
+      createdBy: req.user.id, // Set createdBy to authenticated provider
     });
-    res.json(resources);
+
+    await resource.save();
+    console.log("Education resource created:", resource.toObject());
+    res.status(201).json(resource);
   } catch (err) {
-    console.error('providerController: Get education resources error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("Create education resource error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
-const addEducationResource = async (req, res) => {
-  const { title, description, url } = req.body;
+const getEducationResources = async (req, res) => {
   try {
-    if (!title?.trim() || !description?.trim()) {
-      console.log('providerController: Missing title or description', { title, description });
-      return res.status(400).json({ error: 'Title and description are required' });
+    const resources = await EducationResource.find({ createdBy: req.user.id })
+      .populate("createdBy", "username")
+      .lean();
+    console.log("Fetched provider resources:", { userId: req.user.id, count: resources.length });
+    res.json(resources);
+  } catch (err) {
+    console.error("Fetch resources error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+};
+
+const updateEducationResource = async (req, res) => {
+  try {
+    const { title, description, url } = req.body;
+    if (!title || !description) {
+      return res.status(400).json({ error: "Title and description are required" });
     }
-    const resource = new EducationResource({
-      title,
-      description,
-      url,
-      providerId: req.user.id,
-    });
-    await resource.save();
-    console.log('providerController: Education resource added', {
-      resourceId: resource._id,
-      providerId: req.user.id,
-    });
+
+    const resource = await EducationResource.findOneAndUpdate(
+      { _id: req.params.id, createdBy: req.user.id },
+      {
+        title: title.trim(),
+        description: description.trim(),
+        url: url || undefined,
+        updatedAt: new Date(),
+      },
+      { new: true }
+    );
+
+    if (!resource) {
+      return res.status(404).json({ error: "Resource not found or unauthorized" });
+    }
+
+    console.log("Resource updated:", resource.toObject());
     res.json(resource);
   } catch (err) {
-    console.error('providerController: Add education resource error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("Update resource error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+};
+
+const deleteEducationResource = async (req, res) => {
+  try {
+    const resource = await EducationResource.findOneAndDelete({
+      _id: req.params.id,
+      createdBy: req.user.id,
+    });
+
+    if (!resource) {
+      return res.status(404).json({ error: "Resource not found or unauthorized" });
+    }
+
+    console.log("Resource deleted:", resource._id);
+    res.json({ message: "Resource deleted successfully" });
+  } catch (err) {
+    console.error("Delete resource error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
@@ -639,7 +684,9 @@ module.exports = {
   updateMealPlan,
   deleteMealPlan,
   getEducationResources,
-  addEducationResource,
+  createEducationResource,
+  updateEducationResource,
+  deleteEducationResource,
   updatePatient,
   deletePatient,
 };

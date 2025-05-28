@@ -1,3 +1,4 @@
+// backend/controllers/adminController.js
 const User = require("../models/User");
 const FoodLog = require("../models/FoodLog");
 const EducationalResource = require("../models/EducationResource");
@@ -8,10 +9,9 @@ const Contact = require("../models/Contact");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
-const { generateTempPassword } = require("./authController"); // Import from authController
-const crypto = require("crypto"); // Ensure crypto is imported
+const { generateTempPassword } = require("./authController");
+const crypto = require("crypto");
 
-// Email setup
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -20,7 +20,6 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Backup History Model
 const BackupSchema = new mongoose.Schema({
   filename: String,
   timestamp: { type: Date, default: Date.now },
@@ -87,6 +86,41 @@ const adminController = {
     }
   },
 
+  updateResource: async (req, res) => {
+    try {
+      const { title, description, url, providerId } = req.body;
+      if (!title?.trim() || !description?.trim()) {
+        return res.status(400).json({ error: "Title and description are required" });
+      }
+      const updatedResource = await EducationalResource.findById(req.params.id);
+      if (!updatedResource) {
+        return res.status(404).json({ error: "Resource not found" });
+      }
+
+      updatedResource.title = title;
+      updatedResource.description = description;
+      updatedResource.url = url || undefined; // Optional
+      if (providerId && mongoose.Types.ObjectId.isValid(providerId)) {
+        const providerExists = await User.findById(providerId);
+        if (!providerExists) {
+          return res.status(400).json({ error: "Invalid providerId" });
+        }
+        updatedResource.providerId = providerId;
+      }
+
+      await updatedResource.save();
+      const populatedResource = await EducationalResource.findById(updatedResource._id).populate(
+        "providerId",
+        "username"
+      );
+      console.log(`[${new Date().toISOString()}] Updated resource:`, populatedResource._id);
+      res.json(populatedResource);
+    } catch (err) {
+      console.error(`[${new Date().toISOString()}] Resource update error:`, err.stack);
+      res.status(500).json({ error: "Server error" });
+    }
+  },
+
   getUsageReport: async (req, res) => {
     try {
       const filter = req.query.filter || "all";
@@ -122,7 +156,7 @@ const adminController = {
   sendNotification: async (req, res) => {
     const { title, message, recipientType, recipientIds } = req.body;
     try {
-      if (!title || !message) {
+      if (!title?.trim() || !message?.trim()) {
         return res.status(400).json({ error: "Title and message are required" });
       }
       let recipients = [];
@@ -132,20 +166,22 @@ const adminController = {
         recipients = await User.find({ role: "patient" }).distinct("_id");
       } else if (recipientType === "providers") {
         recipients = await User.find({ role: "provider" }).distinct("_id");
-      } else if (recipientType === "specific" && recipientIds) {
+      } else if (recipientType === "specific" && recipientIds?.length) {
         recipients = recipientIds;
+      } else {
+        return res.status(400).json({ error: "Invalid recipientType or recipientIds" });
       }
       const notification = new Notification({
         title,
         message,
-        sender: req.user.id,
+        sender: req.userId || req.user.id, // Support both req.userId and req.user.id
         recipients,
       });
       await notification.save();
-      console.log("Notification sent:", notification);
+      console.log(`[${new Date().toISOString()}] Notification sent:`, notification._id);
       res.status(201).json(notification);
     } catch (err) {
-      console.error("Notification send error:", err.stack);
+      console.error(`[${new Date().toISOString()}] Notification send error:`, err.stack);
       res.status(500).json({ error: "Server error" });
     }
   },
@@ -182,7 +218,7 @@ const adminController = {
     const { firstName, lastName, email, role } = req.body;
     try {
       if (!firstName || !lastName || !email || !role) {
-        return res.status(400).json({ error: "First name, last name, email, and role are required" });
+        return res.status(400).json({ error: "First name, lastName, email, and role are required" });
       }
 
       const username = `${firstName} ${lastName}`;
@@ -193,7 +229,7 @@ const adminController = {
 
       const temporaryPassword = generateTempPassword();
       const hashedPassword = await bcrypt.hash(temporaryPassword, 12);
-      const resetToken = crypto.randomBytes(32).toString("hex"); // Secure random token
+      const resetToken = crypto.randomBytes(32).toString("hex");
 
       const user = new User({
         username,
@@ -203,10 +239,10 @@ const adminController = {
         password: hashedPassword,
         role,
         isFirstLogin: true,
-        isActivated: true, // Activate immediately for admin-created users
+        isActivated: true,
         tempPassword: hashedPassword,
         resetPasswordToken: resetToken,
-        resetPasswordExpires: Date.now() + 3600000, // 1 hour expiration
+        resetPasswordExpires: Date.now() + 3600000,
       });
       await user.save();
 
@@ -237,8 +273,12 @@ const adminController = {
   createResource: async (req, res) => {
     const { title, description, url, providerId } = req.body;
     try {
-      if (!title || !description || !providerId) {
+      if (!title?.trim() || !description?.trim() || !providerId) {
         return res.status(400).json({ error: "Title, description, and providerId are required" });
+      }
+      const providerExists = await User.findById(providerId);
+      if (!providerExists) {
+        return res.status(400).json({ error: "Invalid providerId" });
       }
       const resource = new EducationalResource({
         title,
@@ -251,10 +291,10 @@ const adminController = {
         "providerId",
         "username"
       );
-      console.log("Created resource:", populatedResource);
+      console.log(`[${new Date().toISOString()}] Created resource:`, populatedResource._id);
       res.status(201).json(populatedResource);
     } catch (err) {
-      console.error("Create resource error:", err.stack);
+      console.error(`[${new Date().toISOString()}] Create resource error:`, err.stack);
       res.status(500).json({ error: "Server error" });
     }
   },

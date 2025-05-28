@@ -1,3 +1,4 @@
+// frontend/src/pages/PatientEducation.js
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -25,6 +26,7 @@ const PatientEducation = () => {
         const res = await api.get("/patient/resources", {
           headers: { Authorization: `Bearer ${token}` },
         });
+        console.log("Fetched resources:", res.data);
         setResources(Array.isArray(res.data) ? res.data : []);
         setError("");
       } catch (err) {
@@ -44,6 +46,7 @@ const PatientEducation = () => {
   }, [navigate, t]);
 
   const handleReadMore = (resource) => {
+    console.log("Selected resource:", resource); // Debug URL
     setSelectedResource(resource);
   };
 
@@ -122,9 +125,21 @@ const PatientEducation = () => {
                 {resources.map((res) => (
                   <div
                     key={res._id}
-                    className="p-4 transition-all duration-300 border border-blue-100 rounded-lg shadow-md bg-blue-50 hover:shadow-xl hover:scale-105"
+                    className={`p-4 transition-all duration-300 border rounded-lg shadow-md hover:shadow-xl hover:scale-105 ${
+                      res.source === "Admin" ? "border-blue-200 bg-blue-50" : "border-green-200 bg-green-50"
+                    }`}
                   >
-                    <h3 className="text-lg font-semibold text-blue-700">{res.title}</h3>
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-blue-700">{res.title}</h3>
+                      <span
+                        className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          res.source === "Admin" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"
+                        }`}
+                      >
+                        {res.source}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-500">By: {res.createdByName}</p>
                     <p className="mt-1 text-gray-600 line-clamp-3">{res.content}</p>
                     {res.url && (
                       <a
@@ -159,19 +174,24 @@ const PatientEducation = () => {
               >
                 ✕
               </button>
-              <h3 className="mb-4 text-xl font-bold text-blue-700">{selectedResource.title}</h3>
+              <h3 className="mb-2 text-xl font-bold text-blue-700">{selectedResource.title}</h3>
+              <p className="mb-2 text-sm text-gray-500">
+                {t("source")}: {selectedResource.source} ({selectedResource.createdByName})
+              </p>
               <div className="prose max-w-none">
                 <p className="text-gray-700 whitespace-pre-wrap">{selectedResource.content}</p>
-                {selectedResource.url && (
+                {selectedResource.url ? (
                   <a
                     href={selectedResource.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center mt-4 text-blue-700 hover:underline"
+                    className="inline-flex items-center mt-4 font-semibold text-blue-700 hover:underline"
                   >
-                    <ExternalLink className="w-4 h-4 mr-2" />
+                    <ExternalLink className="w-5 h-5 mr-2" />
                     {t("view_external_resource")}
                   </a>
+                ) : (
+                  <p className="mt-4 text-sm text-gray-500">{t("no_URL")}</p>
                 )}
               </div>
               <div className="flex justify-end mt-6">

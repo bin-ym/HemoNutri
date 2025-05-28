@@ -9,6 +9,7 @@ const MessageSchema = new mongoose.Schema(
     read: { type: Boolean, default: false },
     providerUsername: { type: String, default: '' },
     patientUsername: { type: String, default: '' },
+    createdAt: { type: Date, default: Date.now },
   },
   {
     timestamps: true,
