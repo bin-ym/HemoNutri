@@ -1,64 +1,72 @@
-import { Routes, Route } from "react-router-dom";
-import useAuth from "./hooks/useAuth";
-import ProtectedRoute from "./components/ProtectedRoute";
-import HomePage from "./pages/Public/HomePage";
-import AboutPage from "./pages/Public/AboutPage";
-import LoginPage from "./pages/Public/LoginPage";
-import RegisterPage from "./pages/Public/RegisterPage";
-import ChangePassword from "./pages/Public/ChangePassword";
-import ContactPage from "./pages/Public/ContactPage";
-import ForgotPasswordPage from "./pages/Public/ForgotPasswordPage";
-import ResetPasswordPage from "./pages/Public/ResetPasswordPage";
-import ActivationPage from "./pages/Public/ActivationPage";
-import SelectProvider from "./components/auth/SelectProvider";
-import Footer from "./pages/Public/Footer";
-import PatientDashboard from "./pages/Patient/PatientDashboard";
-import PatientEducation from "./pages/Patient/PatientEducation";
-import FoodLogsPage from "./pages/Patient/FoodLogsPage";
-import MealPlanPage from "./pages/Patient/MealPlanPage";
-import PatientMessagesPage from "./pages/Patient/PatientMessagesPage";
-import ProviderPage from "./pages/Provider/ProviderPage";
-import ProviderPatientsPage from "./pages/Provider/ProviderPatientsPage";
-import ProviderMessagesPage from "./pages/Provider/ProviderMessagesPage";
-import ProviderPatientDetailPage from "./pages/Provider/ProviderPatientDetailPage";
-import ProviderEducation from "./pages/Provider/ProviderEducation";
-import AdminPage from "./pages/Admin/AdminPage";
-import AdminUsersPage from "./pages/Admin/AdminUsersPage";
-import AdminResourcesPage from "./pages/Admin/AdminResourcesPage";
-import AdminReportPage from "./pages/Admin/AdminReportPage";
-import AdminBackupPage from "./pages/Admin/AdminBackupPage";
-import ProfilePage from "./pages/Public/ProfilePage";
-import "./assets/css/main.css";
+// src/App.js
+import { Routes, Route } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import useAuth from './hooks/useAuth';
+import ProtectedRoute from './components/ProtectedRoute';
+import Navbar from './components/Navbar';
+import Footer from './pages/Public/Footer';
+import HomePage from './pages/Public/HomePage';
+import LoginPage from './pages/Public/LoginPage';
+import ChangePassword from './pages/Public/ChangePassword';
+import ForgotPasswordPage from './pages/Public/ForgotPasswordPage';
+import ResetPasswordPage from './pages/Public/ResetPasswordPage';
+import ActivationPage from './pages/Public/ActivationPage';
+import SelectProvider from './components/auth/SelectProvider';
+import PatientDashboard from './pages/Patient/PatientDashboard';
+import PatientEducation from './pages/Patient/PatientEducation';
+import FoodLogsPage from './pages/Patient/FoodLogsPage';
+import MealPlanPage from './pages/Patient/MealPlanPage';
+import PatientMessagesPage from './pages/Patient/PatientMessagesPage';
+import ProviderPage from './pages/Provider/ProviderPage';
+import ProviderPatientsPage from './pages/Provider/ProviderPatientsPage';
+import ProviderMessagesPage from './pages/Provider/ProviderMessagesPage';
+import ProviderPatientDetailPage from './pages/Provider/ProviderPatientDetailPage';
+import ProviderEducation from './pages/Provider/ProviderEducation';
+import AdminPage from './pages/Admin/AdminPage';
+import AdminUsersPage from './pages/Admin/AdminUsersPage';
+import AdminResourcesPage from './pages/Admin/AdminResourcesPage';
+import AdminReportPage from './pages/Admin/AdminReportPage';
+import AdminBackupPage from './pages/Admin/AdminBackupPage';
+import ProfilePage from './pages/Public/ProfilePage';
+import './assets/css/main.css';
 
-const NotFound = () => (
-  <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8 bg-gray-100">
-    <h1 className="text-3xl font-bold text-teal-700 sm:text-4xl md:text-5xl">404 - Page Not Found</h1>
-    <p className="mt-4 text-base text-center text-gray-600 sm:text-lg md:text-xl">
-      Sorry, the page you’re looking for doesn’t exist.
-    </p>
-    <button
-      onClick={() => (window.location.href = "/")}
-      className="px-4 py-2 mt-6 text-sm text-white transition-all duration-300 bg-teal-600 rounded-lg sm:text-base hover:bg-teal-700 sm:px-6 sm:py-3"
-    >
-      Go Home
-    </button>
-  </div>
-);
+const NotFound = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen px-4 py-8 bg-gray-100">
+      <h1 className="text-3xl font-bold text-blue-600 sm:text-4xl md:text-5xl">{t('not_found')}</h1>
+      <p className="mt-2 text-base text-center text-gray-700 sm:text-lg md:text-xl">
+        {t('page_not_found')}
+      </p>
+      <button
+        onClick={() => (window.location.href = '/')}
+        className="px-4 py-2 mt-6 text-sm font-semibold text-white bg-blue-600 rounded-lg sm:text-base hover:bg-blue-700 sm:px-6 sm:py-3"
+      >
+        {t('go_home')}
+      </button>
+    </div>
+  );
+};
 
 function App() {
-  const { user, loading } = useAuth();
+  const { t } = useTranslation();
+  const { user, loading, roleName: role } = useAuth();
 
-  if (loading) return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-lg font-semibold text-gray-700 animate-pulse">{t('loading')}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
+      <Navbar role={role} />
       <main className="flex-grow">
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/change-password" element={<ChangePassword />} />
@@ -67,7 +75,7 @@ function App() {
           <Route
             path="/profile"
             element={
-              <ProtectedRoute allowedRoles={["patient", "provider", "admin"]}>
+              <ProtectedRoute allowedRoles={['patient', 'provider', 'admin']}>
                 <ProfilePage />
               </ProtectedRoute>
             }
@@ -75,7 +83,7 @@ function App() {
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute allowedRoles={["patient"]}>
+              <ProtectedRoute allowedRoles={['patient']}>
                 <PatientDashboard />
               </ProtectedRoute>
             }
@@ -83,7 +91,7 @@ function App() {
           <Route
             path="/education"
             element={
-              <ProtectedRoute allowedRoles={["patient"]}>
+              <ProtectedRoute allowedRoles={['patient']}>
                 <PatientEducation />
               </ProtectedRoute>
             }
@@ -91,7 +99,7 @@ function App() {
           <Route
             path="/food-logs"
             element={
-              <ProtectedRoute allowedRoles={["patient"]}>
+              <ProtectedRoute allowedRoles={['patient']}>
                 <FoodLogsPage />
               </ProtectedRoute>
             }
@@ -99,7 +107,7 @@ function App() {
           <Route
             path="/meal-plan"
             element={
-              <ProtectedRoute allowedRoles={["patient"]}>
+              <ProtectedRoute allowedRoles={['patient']}>
                 <MealPlanPage />
               </ProtectedRoute>
             }
@@ -107,7 +115,7 @@ function App() {
           <Route
             path="/messages"
             element={
-              <ProtectedRoute allowedRoles={["patient"]}>
+              <ProtectedRoute allowedRoles={['patient']}>
                 <PatientMessagesPage />
               </ProtectedRoute>
             }
@@ -115,7 +123,7 @@ function App() {
           <Route
             path="/provider"
             element={
-              <ProtectedRoute allowedRoles={["provider"]}>
+              <ProtectedRoute allowedRoles={['provider']}>
                 <ProviderPage />
               </ProtectedRoute>
             }
@@ -123,7 +131,7 @@ function App() {
           <Route
             path="/provider/patients"
             element={
-              <ProtectedRoute allowedRoles={["provider"]}>
+              <ProtectedRoute allowedRoles={['provider']}>
                 <ProviderPatientsPage />
               </ProtectedRoute>
             }
@@ -131,7 +139,7 @@ function App() {
           <Route
             path="/provider/messages"
             element={
-              <ProtectedRoute allowedRoles={["provider"]}>
+              <ProtectedRoute allowedRoles={['provider']}>
                 <ProviderMessagesPage />
               </ProtectedRoute>
             }
@@ -139,7 +147,7 @@ function App() {
           <Route
             path="/provider/patient/:id"
             element={
-              <ProtectedRoute allowedRoles={["provider"]}>
+              <ProtectedRoute allowedRoles={['provider']}>
                 <ProviderPatientDetailPage />
               </ProtectedRoute>
             }
@@ -147,7 +155,7 @@ function App() {
           <Route
             path="/provider/education"
             element={
-              <ProtectedRoute allowedRoles={["provider"]}>
+              <ProtectedRoute allowedRoles={['provider']}>
                 <ProviderEducation />
               </ProtectedRoute>
             }
@@ -155,7 +163,7 @@ function App() {
           <Route
             path="/admin"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={['admin']}>
                 <AdminPage />
               </ProtectedRoute>
             }
@@ -163,7 +171,7 @@ function App() {
           <Route
             path="/admin/users"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={['admin']}>
                 <AdminUsersPage />
               </ProtectedRoute>
             }
@@ -171,7 +179,7 @@ function App() {
           <Route
             path="/admin/resources"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={['admin']}>
                 <AdminResourcesPage />
               </ProtectedRoute>
             }
@@ -179,7 +187,7 @@ function App() {
           <Route
             path="/admin/report"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={['admin']}>
                 <AdminReportPage />
               </ProtectedRoute>
             }
@@ -187,7 +195,7 @@ function App() {
           <Route
             path="/admin/backup"
             element={
-              <ProtectedRoute allowedRoles={["admin"]}>
+              <ProtectedRoute allowedRoles={['admin']}>
                 <AdminBackupPage />
               </ProtectedRoute>
             }

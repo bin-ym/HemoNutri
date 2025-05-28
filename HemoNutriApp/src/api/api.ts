@@ -6,7 +6,7 @@ import { getAuthData } from '../utils/auth'; // Double-check this path
 // Dynamically set baseURL based on platform and environment
 const getBaseURL = (): string => {
   if (Platform.OS === 'android') {
-    return __DEV__ ? 'http://192.168.137.1:5000' : 'http://192.168.122.245:5000';
+    return __DEV__ ? 'http://192.168.122.1:5000' : 'http://192.168.122.245:5000';
   } else if (Platform.OS === 'ios') {
     return __DEV__ ? 'http://localhost:5000' : 'http://192.168.1.4:5000';
   } else {

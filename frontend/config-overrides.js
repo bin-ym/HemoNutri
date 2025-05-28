@@ -1,15 +1,14 @@
-const path = require('path');
-
-module.exports = function override(config, env) {
+// frontend/config-overrides.js
+module.exports = function override(config) {
   config.resolve.fallback = {
-    http: require.resolve('stream-http'),
-    https: require.resolve('https-browserify'),
-    util: require.resolve('util/'),
-    zlib: require.resolve('browserify-zlib'),
-    stream: require.resolve('stream-browserify'),
-    url: require.resolve('url/'),
-    assert: require.resolve('assert/'),
-    crypto: require.resolve('crypto-browserify'),
+    http: false,
+    https: false,
+    util: false,
+    zlib: false,
+    stream: false,
+    url: false,
+    crypto: false,
+    assert: false,
   };
   return config;
 };

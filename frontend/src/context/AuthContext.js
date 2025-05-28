@@ -1,3 +1,4 @@
+// frontend/src/context/AuthContext.js
 import { createContext, useContext, useState, useEffect } from "react";
 import api from "../services/api";
 
@@ -26,7 +27,7 @@ export const AuthProvider = ({ children }) => {
       console.log("AuthContext: Starting profile fetch");
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      const response = await api.get("auth/profile", {
+      const response = await api.get("/auth/profile", {
         signal: controller.signal,
       });
       clearTimeout(timeoutId);
@@ -43,7 +44,7 @@ export const AuthProvider = ({ children }) => {
       };
       setUser(userData);
       setIsAuthenticated(true);
-      localStorage.setItem("role", userData.role); // Sync role
+      localStorage.setItem("role", userData.role);
       console.log("AuthContext: User refreshed:", { email: userData.email, role: userData.role });
       return userData;
     } catch (err) {
@@ -74,7 +75,7 @@ export const AuthProvider = ({ children }) => {
       } else if (err.response?.status === 404) {
         console.log("AuthContext: 404, using localStorage fallback");
         setUser({ email: "unknown", role, userId, token });
-        setIsAuthenticated(true); // Allow fallback authentication
+        setIsAuthenticated(true);
       }
       throw err;
     } finally {
@@ -101,7 +102,6 @@ export const AuthProvider = ({ children }) => {
 
     fetchUser();
 
-    // Re-validate on focus or storage change
     const handleRevalidate = () => {
       if (isMounted) refreshUser();
     };
@@ -120,7 +120,7 @@ export const AuthProvider = ({ children }) => {
   const login = async (identifier, password) => {
     try {
       console.log("AuthContext: Login called with:", identifier);
-      const response = await api.post("auth/login", { identifier, password });
+      const response = await api.post("/auth/login", { identifier, password });
       console.log("AuthContext: Login response:", response.data);
       const { token, role, userId, isFirstLogin, isTempPassword, resetToken, needsProviderSelection, providers, user: userData } = response.data;
       localStorage.setItem("token", token);

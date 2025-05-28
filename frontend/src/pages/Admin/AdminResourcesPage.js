@@ -8,7 +8,11 @@ const AdminResourcesPage = () => {
   const { t } = useTranslation();
   const [resources, setResources] = useState([]);
   const [editingResource, setEditingResource] = useState(null);
-  const [newResource, setNewResource] = useState({ title: "", description: "", url: "" });
+  const [newResource, setNewResource] = useState({
+    title: "",
+    description: "",
+    url: "",
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -16,15 +20,19 @@ const AdminResourcesPage = () => {
   const fetchResources = async () => {
     setLoading(true);
     setError("");
+    const token = localStorage.getItem("token");
+    console.log("AdminResourcesPage: Token before fetch", { token });
     try {
-      const token = localStorage.getItem("token");
       const res = await api.get("/admin/resources", {
         headers: { Authorization: `Bearer ${token}` },
       });
       console.log("Fetched resources:", res.data);
       setResources(res.data);
     } catch (err) {
-      console.error("Resources fetch error:", err.response?.data || err.message);
+      console.error(
+        "Resources fetch error:",
+        err.response?.data || err.message
+      );
       setError(t(err.response?.data?.error || "failed_load_resources"));
     } finally {
       setLoading(false);
@@ -44,6 +52,7 @@ const AdminResourcesPage = () => {
     setError("");
     try {
       const token = localStorage.getItem("token");
+      if (!token) throw new Error("No authentication token found");
       const res = await api.put(
         `/admin/resources/${editingResource._id}`,
         editingResource,
@@ -54,7 +63,11 @@ const AdminResourcesPage = () => {
       );
       setEditingResource(null);
     } catch (err) {
-      console.error("Save resource error:", err.response?.data || err.message);
+      console.error("Save resource error:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+      });
       setError(t(err.response?.data?.error || "failed_save_resource"));
     }
   };
@@ -64,12 +77,17 @@ const AdminResourcesPage = () => {
     setError("");
     try {
       const token = localStorage.getItem("token");
+      if (!token) throw new Error("No authentication token found");
       await api.delete(`/admin/resources/${resourceId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setResources(resources.filter((res) => res._id !== resourceId));
     } catch (err) {
-      console.error("Delete resource error:", err.response?.data || err.message);
+      console.error("Delete resource error:", {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status,
+      });
       setError(t(err.response?.data?.error || "failed_delete_resource"));
     }
   };
@@ -87,16 +105,17 @@ const AdminResourcesPage = () => {
       if (newResource.url) {
         payload.url = newResource.url;
       }
-      const res = await api.post(
-        "/admin/resources",
-        payload,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await api.post("/admin/resources", payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       setResources([...resources, res.data]);
       setNewResource({ title: "", description: "", url: "" });
       setShowCreateForm(false);
     } catch (err) {
-      console.error("Create resource error:", err.response?.data || err.message);
+      console.error(
+        "Create resource error:",
+        err.response?.data || err.message
+      );
       setError(t(err.response?.data?.error || "failed_create_resource"));
     }
   };
@@ -154,7 +173,10 @@ const AdminResourcesPage = () => {
                 <textarea
                   value={newResource.description}
                   onChange={(e) =>
-                    setNewResource({ ...newResource, description: e.target.value })
+                    setNewResource({
+                      ...newResource,
+                      description: e.target.value,
+                    })
                   }
                   placeholder={t("resource_description")}
                   className="w-full p-3 bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900"
@@ -164,7 +186,8 @@ const AdminResourcesPage = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-black">
-                  {t("resource_url")} <span className="text-gray-500">({t("optional")})</span>
+                  {t("resource_url")}{" "}
+                  <span className="text-gray-500">({t("optional")})</span>
                 </label>
                 <input
                   type="text"
@@ -211,7 +234,10 @@ const AdminResourcesPage = () => {
                   type="text"
                   value={editingResource.title}
                   onChange={(e) =>
-                    setEditingResource({ ...editingResource, title: e.target.value })
+                    setEditingResource({
+                      ...editingResource,
+                      title: e.target.value,
+                    })
                   }
                   placeholder={t("resource_title")}
                   className="w-full p-3 bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900"
@@ -225,7 +251,10 @@ const AdminResourcesPage = () => {
                 <textarea
                   value={editingResource.description}
                   onChange={(e) =>
-                    setEditingResource({ ...editingResource, description: e.target.value })
+                    setEditingResource({
+                      ...editingResource,
+                      description: e.target.value,
+                    })
                   }
                   placeholder={t("resource_description")}
                   className="w-full p-3 bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900"
@@ -235,13 +264,17 @@ const AdminResourcesPage = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-black">
-                  {t("resource_url")} <span className="text-gray-500">({t("optional")})</span>
+                  {t("resource_url")}{" "}
+                  <span className="text-gray-500">({t("optional")})</span>
                 </label>
                 <input
                   type="text"
                   value={editingResource.url}
                   onChange={(e) =>
-                    setEditingResource({ ...editingResource, url: e.target.value })
+                    setEditingResource({
+                      ...editingResource,
+                      url: e.target.value,
+                    })
                   }
                   placeholder={t("resource_url")}
                   className="w-full p-3 bg-white border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-900"
@@ -294,8 +327,8 @@ const AdminResourcesPage = () => {
                 className="flex items-center justify-between p-4 transition-all duration-200 rounded-lg shadow-md bg-blue-50 hover:bg-blue-100"
               >
                 <span className="text-black">
-                  <strong>{res.title}:</strong> {res.description} ({t("provider")}:{" "}
-                  {res.providerId?.username || "Unknown"})
+                  <strong>{res.title}:</strong> {res.description} (
+                  {t("provider")}: {res.providerId?.username || "Unknown"})
                 </span>
                 <div className="flex space-x-2">
                   <button

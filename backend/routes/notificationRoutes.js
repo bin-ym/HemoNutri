@@ -1,8 +1,12 @@
+// backend/routes/notificationRoutes.js
 const express = require('express');
-const { getNotifications } = require('../controllers/notificationController');
-const auth = require('../middleware/auth');
 const router = express.Router();
+const notificationController = require('../controllers/notificationController');
+const auth = require('../middleware/auth');
 
-router.get('/', auth(['patient', 'provider', 'admin']), getNotifications);
+router.post('/', auth(['admin']), notificationController.sendNotification);
+router.get('/', auth(['admin', 'patient', 'registered']), notificationController.getUserNotifications);
+router.delete('/:id/notification', auth(['admin']), notificationController.deleteNotification);
+router.put('/:id/notification/read', auth(['admin', 'patient', 'registered']), notificationController.markAsRead);
 
 module.exports = router;

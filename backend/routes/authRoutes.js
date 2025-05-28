@@ -1,38 +1,17 @@
-const express = require("express");
-const {
-  login,
-  register,
-  activateAccount,
-  changePassword,
-  forgotPassword,
-  resetPassword,
-  getProfile,
-  selectProvider,
-  updateProfile,
-  refreshToken, // Add refreshToken to imports
-} = require("../controllers/authController");
-const auth = require("../middleware/auth");
-
+// backend/routes/authRoutes.js
+const express = require('express');
 const router = express.Router();
+const authController = require('../controllers/authController');
+const auth = require('../middleware/auth');
 
-router.post("/login", login);
-router.post("/register", register);
-router.post("/activate", activateAccount);
-router.post("/change-password", auth(["patient", "provider", "admin"]), changePassword);
-router.post("/forgot-password", forgotPassword);
-router.post("/reset-password", resetPassword);
-router.get("/profile", auth(["patient", "provider", "admin"]), (req, res, next) => {
-  console.log("authRoutes: Handling /profile request", { userId: req.user?.id });
-  getProfile(req, res, next);
-});
-router.post("/profile/update", auth(["patient", "provider", "admin"]), updateProfile);
-router.post("/select-provider", selectProvider);
-router.get("/verify", auth(["patient", "provider", "admin"]), (req, res) => {
-  res.status(200).json({ message: "Token valid", userId: req.user.id });
-});
-router.post("/refresh", auth(["patient", "provider", "admin"]), (req, res, next) => {
-  console.log("authRoutes: Handling /refresh request", { userId: req.user?.id });
-  refreshToken(req, res, next);
-});
+router.post('/login', authController.login);
+router.post('/activate', authController.activateAccount);
+router.post('/change-password', auth(['patient', 'provider', 'admin']), authController.changePassword);
+router.post('/forgot-password', authController.forgotPassword);
+router.post('/reset-password', authController.resetPassword);
+router.get('/profile', auth(['patient', 'provider', 'admin']), authController.getProfile);
+router.post('/profile/update', auth(['patient', 'provider', 'admin']), authController.updateProfile);
+router.post('/select-provider', authController.selectProvider);
+router.post('/refresh', auth(['patient', 'provider', 'admin']), authController.refreshToken);
 
 module.exports = router;

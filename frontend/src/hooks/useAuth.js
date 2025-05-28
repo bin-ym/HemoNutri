@@ -12,6 +12,7 @@ const useAuth = () => {
     console.log("useAuth: Validating session", { tokenExists: !!token, role, userId });
 
     if (!token || !role || !userId) {
+      console.log("useAuth: No auth data, skipping profile fetch");
       setUser(null);
       setLoading(false);
       return null;
@@ -27,11 +28,19 @@ const useAuth = () => {
         userId,
       };
       setUser(userData);
-      localStorage.setItem("role", userData.role); // Sync role
+      localStorage.setItem("role", userData.role);
       return userData;
     } catch (err) {
-      console.error("useAuth: Profile fetch failed", err.message);
-      if (err.response?.status === 404 || err.response?.status === 401) {
+      console.error("useAuth: Profile fetch failed", {
+        message: err.message,
+        status: err.response?.status,
+        data: err.response?.data,
+      });
+      if (err.response?.status === 401) {
+        console.log("useAuth: Unauthorized, clearing auth data");
+        localStorage.clear();
+        setUser(null);
+      } else if (err.response?.status === 404) {
         console.log("useAuth: Using localStorage data");
         setUser({
           email: "unknown",
@@ -45,18 +54,29 @@ const useAuth = () => {
       throw err;
     } finally {
       setLoading(false);
-      console.log("useAuth: Loading set to false");
     }
   };
 
   useEffect(() => {
     const verifyToken = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.log("useAuth: No token, skipping verification");
+        setUser(null);
+        setLoading(false);
+        return;
+      }
       try {
         await api.get("auth/verify");
         console.log("useAuth: Token verified");
         await validateSession();
       } catch (err) {
-        console.error("useAuth: Token verification failed", err.message);
+        console.error("useAuth: Token verification failed", {
+          message: err.message,
+          status: err.response?.status,
+          data: err.response?.data,
+        });
+        localStorage.clear();
         setUser(null);
         setLoading(false);
       }
@@ -64,7 +84,6 @@ const useAuth = () => {
 
     verifyToken();
 
-    // Re-validate on focus or storage change
     const handleStorageChange = () => verifyToken();
     window.addEventListener("storage", handleStorageChange);
     window.addEventListener("focus", handleStorageChange);

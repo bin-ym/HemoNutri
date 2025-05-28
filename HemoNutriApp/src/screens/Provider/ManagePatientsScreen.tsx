@@ -1,101 +1,86 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
-import api from '../../api/api';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useColors } from '../../theme/ThemeContext';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import api from '../../api/api';
 
 type RootStackParamList = {
-  Home: undefined;
-  Login: undefined;
-  Tabs: { role: string };
-  ManagePatients: undefined;
-  ManageMealPlans: undefined;
-  ProviderPatientDetail: { patientId: string };
-  ProviderEducation: undefined;
+  ProviderPatientDetail: { patientId: string; patientName: string };
 };
 
-type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ManagePatients'>;
+type ManagePatientsScreenNavigationProp = StackNavigationProp<RootStackParamList>;
 
 type Patient = {
-  id: string;
+  _id: string;
   username: string;
   email: string;
+  firstName: string;
+  lastName: string;
+  medicalHistory: string;
+  foodLogs: any[];
 };
 
 const ManagePatientsScreen: React.FC = () => {
-  const navigation = useNavigation<NavigationProp>();
+  const { colors } = useColors();
+  const navigation = useNavigation<ManagePatientsScreenNavigationProp>();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const colors = useColors();
 
   useEffect(() => {
-    const fetchPatients = async () => {
-      try {
-        setLoading(true);
-        const response = await api.get('/api/provider/patients');
-        setPatients(response.data.map((p: any) => ({
-          id: p._id,
-          username: p.username,
-          email: p.email,
-        })));
-        setError('');
-      } catch (err: any) {
-        console.error('Error fetching patients:', err);
-        setError('Failed to load patients');
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchPatients();
   }, []);
 
-  const renderPatient = ({ item }: { item: Patient }) => (
-    <View style={[styles.patientItem, { borderColor: colors.secondary, backgroundColor: colors.background }]}>
-      <View style={styles.patientInfo}>
-        <Text style={[styles.patientName, { color: colors.primary }]}>{item.username}</Text>
-        <Text style={[styles.patientEmail, { color: colors.textSecondary }]}>{item.email}</Text>
-      </View>
-      <TouchableOpacity
-        style={[styles.viewButton, { backgroundColor: colors.primary }]}
-        onPress={() => navigation.navigate('ProviderPatientDetail', { patientId: item.id })}
-        accessibilityLabel={`View details for ${item.username}`}
-      >
-        <Ionicons name="eye-outline" size={20} color="#fff" />
-      </TouchableOpacity>
-    </View>
-  );
+  const fetchPatients = async () => {
+    try {
+      const response = await api.get('/api/provider/patients');
+      setPatients(response.data);
+      setLoading(false);
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.error || 'Failed to load patients');
+      setLoading(false);
+    }
+  };
 
-  if (loading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading patients...</Text>
-      </View>
-    );
-  }
+  const deletePatient = async (id: string) => {
+    try {
+      await api.delete(`/api/provider/patient/${id}`);
+      setPatients((prev) => prev.filter((p) => p._id !== id));
+      Alert.alert('Success', 'Patient deleted successfully');
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.error || 'Failed to delete patient');
+    }
+  };
+
+  const renderPatient = ({ item }: { item: Patient }) => (
+    <TouchableOpacity
+      style={[styles.patientItem, { backgroundColor: colors.secondary }]}
+      onPress={() =>
+        navigation.navigate('ProviderPatientDetail', {
+          patientId: item._id,
+          patientName: item.username,
+        })
+      }
+    >
+      <Text style={[styles.text, { color: colors.textPrimary }]}>{item.username}</Text>
+      <Text style={[styles.text, { color: colors.textSecondary }]}>{item.email}</Text>
+      <Button title="Delete" onPress={() => deletePatient(item._id)} color={colors.error} />
+    </TouchableOpacity>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.primary }]}>Manage Patients</Text>
-        <Text style={[styles.subtitle, { color: colors.textSecondary }]}>View your patients’ details.</Text>
-      </View>
-
-      {error && (
-        <View style={[styles.errorMessage, { backgroundColor: colors.errorBackground }]}>
-          <Ionicons name="alert-circle-outline" size={20} color={colors.danger} />
-          <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
-        </View>
+      <Text style={[styles.header, { color: colors.primary }]}>Manage Patients</Text>
+      {loading ? (
+        <Text style={[styles.text, { color: colors.textPrimary }]}>Loading...</Text>
+      ) : (
+        <FlatList
+          data={patients}
+          renderItem={renderPatient}
+          keyExtractor={(item) => item._id}
+          style={styles.list}
+        />
       )}
-
-      <FlatList
-        data={patients}
-        renderItem={renderPatient}
-        keyExtractor={(item) => item.id}
-        style={styles.list}
-      />
     </View>
   );
 };
@@ -105,63 +90,21 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 18,
-  },
-  errorMessage: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 10,
-    borderRadius: 8,
+  header: {
+    fontSize: 24,
+    fontWeight: 'bold',
     marginBottom: 20,
   },
-  errorText: {
+  text: {
     fontSize: 16,
-    marginLeft: 10,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: 'center',
   },
   list: {
-    flexGrow: 0,
+    marginTop: 20,
   },
   patientItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
-    borderWidth: 1,
-  },
-  patientInfo: {
-    flex: 1,
-  },
-  patientName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 5,
-  },
-  patientEmail: {
-    fontSize: 14,
-  },
-  viewButton: {
-    padding: 10,
-    borderRadius: 8,
   },
 });
 

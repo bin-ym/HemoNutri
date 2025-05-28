@@ -1,80 +1,43 @@
-import axios from "axios";
+// frontend/src/services/api.js
+const api = {
+  async request(config) {
+    const token = localStorage.getItem('token');
+    const headers = {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
 
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000/api",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  timeout: 15000,
-});
+    console.log('API request:', { url: config.url, method: config.method });
 
-// Request interceptor
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem("token");
-    config.url = config.url.replace(/^\/+/, "");
-    const fullUrl = `${config.baseURL}/${config.url}`;
-    console.log(`[${new Date().toISOString()}] api: Sending request`, {
-      fullUrl,
-      method: config.method,
-      headers: { ...config.headers, Authorization: token ? `Bearer ${token}` : "No token" },
-    });
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    console.error(`[${new Date().toISOString()}] api: Request error:`, error);
-    return Promise.reject(error);
-  }
-);
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}${config.url}`, {
+        method: config.method || 'GET',
+        headers,
+        body: config.data ? JSON.stringify(config.data) : null,
+      });
 
-// Response interceptor
-api.interceptors.response.use(
-  (response) => {
-    console.log(`[${new Date().toISOString()}] api: Response received`, {
-      url: response.config.url,
-      fullUrl: `${response.config.baseURL}/${response.config.url}`,
-      status: response.status,
-      data: response.data,
-    });
-    return response;
-  },
-  async (error) => {
-    console.error(`[${new Date().toISOString()}] api: Response error:`, {
-      url: error.config?.url,
-      fullUrl: error.config ? `${error.config.baseURL}/${error.config.url}` : 'N/A',
-      status: error.response?.status,
-      message: error.message,
-      data: error.response?.data,
-    });
-    if (error.response?.status === 401) {
-      const errorMessage = error.response.data?.error || "Unauthorized";
-      const originalRequest = error.config;
-      if ((errorMessage === "token_expired" || errorMessage === "invalid_token") && !originalRequest._retry) {
-        originalRequest._retry = true;
-        try {
-          const refreshResponse = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {}, {
-            headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-          });
-          const { token } = refreshResponse.data;
-          localStorage.setItem("token", token);
-          originalRequest.headers.Authorization = `Bearer ${token}`;
-          return api(originalRequest);
-        } catch (refreshError) {
-          console.error("Token refresh failed:", refreshError);
-          localStorage.clear();
-          window.location.href = "/login";
-          alert("Your session has expired. Please log in again.");
-          return Promise.reject(refreshError);
+      console.log('API response:', { url: config.url, status: response.status });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('role');
+          window.location.href = '/login?session_expired=true';
         }
-      } else {
-        return Promise.reject(new Error("Access denied"));
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      return { data: await response.json() };
+    } catch (error) {
+      console.error('API error:', error.message);
+      throw error;
     }
-    return Promise.reject(error);
-  }
-);
+  },
+};
+
+api.get = (url) => api.request({ url, method: 'GET' });
+api.post = (url, data) => api.request({ url, method: 'POST', data });
+api.put = (url, data) => api.request({ url, method: 'PUT', data });
+api.delete = (url) => api.request({ url, method: 'DELETE' });
 
 export default api;

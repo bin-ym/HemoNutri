@@ -1,144 +1,85 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, ScrollView } from 'react-native';
-import { Button, CheckBox } from '@rneui/themed';
-import { useColors } from '../../theme/colors';
-import { getAuthData } from '../../utils/auth';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Button, FlatList, StyleSheet, Alert } from 'react-native';
+import { useColors } from '../../theme/ThemeContext';
 import api from '../../api/api';
-import { AxiosError } from 'axios';
 
-interface Report {
+type Report = {
   users: { username: string; role: string }[];
   foodLogs: number;
   resources: { title: string; description: string; url: string; provider: string }[];
   timestamp: string;
-}
+};
 
 const ReportsScreen: React.FC = () => {
-  const colors = useColors();
+  const { colors } = useColors();
   const [report, setReport] = useState<Report | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [filter, setFilter] = useState<'all' | 'patient' | 'provider'>('all');
+  const [loading, setLoading] = useState(true);
 
-  const generateReport = async () => {
+  useEffect(() => {
+    fetchReport();
+  }, [filter]);
+
+  const fetchReport = async () => {
     try {
-      setLoading(true);
-      setError('');
-      const { token } = await getAuthData();
-      if (!token) {
-        setError('Authentication required.');
-        return;
-      }
-      const res = await api.get('/admin/report', {
-        headers: { Authorization: `Bearer ${token}` },
-        params: { filter },
-      });
-      setReport(res.data);
-    } catch (err) {
-      const axiosError = err as AxiosError;
-      console.error('Generate report error:', axiosError.message);
-      setError('Failed to generate report: ' + axiosError.message);
-    } finally {
+      const response = await api.get(`/api/admin/report?filter=${filter}`);
+      setReport(response.data);
+      setLoading(false);
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.error || 'Failed to load report');
       setLoading(false);
     }
   };
 
+  const renderUser = ({ item }: { item: { username: string; role: string } }) => (
+    <View style={[styles.item, { backgroundColor: colors.secondary }]}>
+      <Text style={[styles.text, { color: colors.textPrimary }]}>{item.username} ({item.role})</Text>
+    </View>
+  );
+
+  const renderResource = ({ item }: { item: { title: string; description: string; url: string; provider: string } }) => (
+    <View style={[styles.item, { backgroundColor: colors.secondary }]}>
+      <Text style={[styles.text, { color: colors.textPrimary }]}>{item.title}</Text>
+      <Text style={[styles.text, { color: colors.textSecondary }]}>{item.description}</Text>
+      <Text style={[styles.text, { color: colors.textSecondary }]}>Provider: {item.provider}</Text>
+    </View>
+  );
+
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.primary }]}>Generate Report</Text>
-
-      {error ? (
-        <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
-        </View>
-      ) : null}
-
-      {/* Filter Selection */}
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.header, { color: colors.primary }]}>Usage Reports</Text>
       <View style={styles.filterContainer}>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Select Filter</Text>
-        <CheckBox
-          title="All"
-          checked={filter === 'all'}
-          onPress={() => setFilter('all')}
-          checkedIcon="dot-circle-o"
-          uncheckedIcon="circle-o"
-          containerStyle={styles.checkbox}
-          textStyle={{ color: colors.textPrimary }}
-        />
-        <CheckBox
-          title="Patients"
-          checked={filter === 'patient'}
-          onPress={() => setFilter('patient')}
-          checkedIcon="dot-circle-o"
-          uncheckedIcon="circle-o"
-          containerStyle={styles.checkbox}
-          textStyle={{ color: colors.textPrimary }}
-        />
-        <CheckBox
-          title="Providers"
-          checked={filter === 'provider'}
-          onPress={() => setFilter('provider')}
-          checkedIcon="dot-circle-o"
-          uncheckedIcon="circle-o"
-          containerStyle={styles.checkbox}
-          textStyle={{ color: colors.textPrimary }}
-        />
-        <Button
-          title={loading ? 'Generating...' : 'Generate Report'}
-          onPress={generateReport}
-          buttonStyle={[styles.button, { backgroundColor: colors.primary }]}
-          containerStyle={styles.buttonContainer}
-          titleStyle={styles.buttonTitle}
-          disabled={loading}
-        />
+        <Button title="All" onPress={() => setFilter('all')} color={filter === 'all' ? colors.primary : colors.secondary} />
+        <Button title="Patients" onPress={() => setFilter('patient')} color={filter === 'patient' ? colors.primary : colors.secondary} />
+        <Button title="Providers" onPress={() => setFilter('provider')} color={filter === 'provider' ? colors.primary : colors.secondary} />
       </View>
-
-      {/* Report Data */}
-      {report && (
-        <View style={styles.reportContainer}>
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Report Generated</Text>
-          <Text style={[styles.itemText, { color: colors.textSecondary }]}>
-            Timestamp: {new Date(report.timestamp).toLocaleString()}
-          </Text>
-          <Text style={[styles.itemText, { color: colors.textSecondary }]}>
-            Total Food Logs: {report.foodLogs}
-          </Text>
-
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Users</Text>
+      {loading ? (
+        <Text style={[styles.text, { color: colors.textPrimary }]}>Loading...</Text>
+      ) : report ? (
+        <>
+          <Text style={[styles.subHeader, { color: colors.primary }]}>Users</Text>
           <FlatList
             data={report.users}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item }) => (
-              <View style={[styles.itemContainer, { backgroundColor: colors.backgroundSecondary }]}>
-                <Text style={[styles.itemText, { color: colors.textPrimary }]}>
-                  {item.username} ({item.role})
-                </Text>
-              </View>
-            )}
-            ListEmptyComponent={
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No users in report.</Text>
-            }
+            renderItem={renderUser}
+            keyExtractor={(item) => item.username}
+            style={styles.list}
           />
-
-          <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Resources</Text>
+          <Text style={[styles.subHeader, { color: colors.primary }]}>Food Logs: {report.foodLogs}</Text>
+          <Text style={[styles.subHeader, { color: colors.primary }]}>Resources</Text>
           <FlatList
             data={report.resources}
-            keyExtractor={(item, index) => index.toString()}
-            renderItem={({ item }) => (
-              <View style={[styles.itemContainer, { backgroundColor: colors.backgroundSecondary }]}>
-                <Text style={[styles.itemText, { color: colors.textPrimary }]}>{item.title}</Text>
-                <Text style={[styles.itemSubText, { color: colors.textSecondary }]}>{item.description}</Text>
-                <Text style={[styles.itemSubText, { color: colors.textSecondary }]}>URL: {item.url}</Text>
-                <Text style={[styles.itemSubText, { color: colors.textSecondary }]}>Provider: {item.provider}</Text>
-              </View>
-            )}
-            ListEmptyComponent={
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No resources in report.</Text>
-            }
+            renderItem={renderResource}
+            keyExtractor={(item) => item.title}
+            style={styles.list}
           />
-        </View>
+          <Text style={[styles.text, { color: colors.textSecondary }]}>
+            Generated: {new Date().toLocaleString()}
+          </Text>
+        </>
+      ) : (
+        <Text style={[styles.text, { color: colors.textPrimary }]}>No report data available</Text>
       )}
-    </ScrollView>
+    </View>
   );
 };
 
@@ -147,65 +88,31 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  title: {
+  header: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
-    textAlign: 'center',
   },
-  sectionTitle: {
+  subHeader: {
     fontSize: 18,
     fontWeight: 'bold',
     marginVertical: 10,
   },
-  errorContainer: {
-    padding: 10,
-    marginBottom: 20,
-    borderRadius: 8,
-    backgroundColor: '#ffebee',
-  },
-  errorText: {
+  text: {
     fontSize: 16,
   },
   filterContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
     marginBottom: 20,
   },
-  checkbox: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-  },
-  buttonContainer: {
-    width: '100%',
-    marginVertical: 10,
-  },
-  button: {
-    borderRadius: 8,
-    paddingVertical: 12,
-  },
-  buttonTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  reportContainer: {
+  list: {
     marginBottom: 20,
   },
-  itemContainer: {
+  item: {
     padding: 15,
-    marginBottom: 10,
     borderRadius: 8,
-  },
-  itemText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  itemSubText: {
-    fontSize: 14,
-  },
-  emptyText: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: 20,
+    marginBottom: 10,
   },
 });
 

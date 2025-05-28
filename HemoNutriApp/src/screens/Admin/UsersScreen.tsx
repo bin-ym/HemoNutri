@@ -1,24 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, Alert, ScrollView } from 'react-native';
-import { Button, Icon } from '@rneui/themed';
-import { useColors } from '../../theme/colors';
-import { getAuthData } from '../../utils/auth';
+import { View, Text, TextInput, Button, FlatList, StyleSheet, Alert } from 'react-native';
+import { useColors } from '../../theme/ThemeContext';
 import api from '../../api/api';
-import { AxiosError } from 'axios';
 
-interface User {
+type User = {
   _id: string;
   username: string;
   email: string;
   role: string;
-}
+  firstName: string;
+  lastName: string;
+};
 
 const UsersScreen: React.FC = () => {
-  const colors = useColors();
+  const { colors } = useColors();
   const [users, setUsers] = useState<User[]>([]);
+  const [newUser, setNewUser] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    role: '',
+    medicalHistory: '',
+  });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [newUser, setNewUser] = useState({ username: '', email: '', role: '' });
 
   useEffect(() => {
     fetchUsers();
@@ -26,149 +30,103 @@ const UsersScreen: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      setLoading(true);
-      setError('');
-      const { token } = await getAuthData();
-      if (!token) {
-        setError('Authentication required.');
-        return;
-      }
-      const res = await api.get('/admin/users', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setUsers(res.data);
-    } catch (err) {
-      const axiosError = err as AxiosError;
-      console.error('Fetch users error:', axiosError.message);
-      setError('Failed to load users: ' + axiosError.message);
-    } finally {
+      const response = await api.get('/api/admin/users');
+      setUsers(response.data);
+      setLoading(false);
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.error || 'Failed to load users');
       setLoading(false);
     }
   };
 
-  const deleteUser = async (id: string) => {
-    Alert.alert('Confirm Delete', 'Are you sure you want to delete this user?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            const { token } = await getAuthData();
-            await api.delete(`/admin/users/${id}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            setUsers(users.filter(user => user._id !== id));
-            Alert.alert('Success', 'User deleted successfully.');
-          } catch (err) {
-            const axiosError = err as AxiosError;
-            console.error('Delete user error:', axiosError.message);
-            Alert.alert('Error', 'Failed to delete user: ' + axiosError.message);
-          }
-        },
-      },
-    ]);
-  };
-
   const addUser = async () => {
-    if (!newUser.username || !newUser.email || !newUser.role) {
-      Alert.alert('Error', 'Please fill in all fields.');
+    if (!newUser.firstName || !newUser.lastName || !newUser.email || !newUser.role) {
+      Alert.alert('Error', 'All fields are required');
       return;
     }
     try {
-      const { token } = await getAuthData();
-      const res = await api.post(
-        '/admin/add-user',
-        { username: newUser.username, email: newUser.email, role: newUser.role },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setUsers([...users, res.data.user]);
-      setNewUser({ username: '', email: '', role: '' });
-      Alert.alert('Success', 'User added successfully. They will receive an OTP via email.');
-    } catch (err) {
-      const axiosError = err as AxiosError;
-      console.error('Add user error:', axiosError.message);
-      Alert.alert('Error', 'Failed to add user: ' + axiosError.message);
+      const response = await api.post('/api/admin/users', newUser);
+      setUsers((prev) => [response.data, ...prev]);
+      setNewUser({ firstName: '', lastName: '', email: '', role: '', medicalHistory: '' });
+      Alert.alert('Success', 'User added successfully');
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.error || 'Failed to add user');
     }
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-        <Text style={[styles.loadingText, { color: colors.textSecondary }]}>Loading users...</Text>
-      </View>
-    );
-  }
+  const deleteUser = async (id: string) => {
+    try {
+      await api.delete(`/api/admin/users/${id}`);
+      setUsers((prev) => prev.filter((u) => u._id !== id));
+      Alert.alert('Success', 'User deleted successfully');
+    } catch (err: any) {
+      Alert.alert('Error', err.response?.data?.error || 'Failed to delete user');
+    }
+  };
+
+  const renderUser = ({ item }: { item: User }) => (
+    <View style={[styles.userItem, { backgroundColor: colors.secondary }]}>
+      <Text style={[styles.text, { color: colors.textPrimary }]}>{item.username}</Text>
+      <Text style={[styles.text, { color: colors.textSecondary }]}>{item.email}</Text>
+      <Text style={[styles.text, { color: colors.textSecondary }]}>{item.role}</Text>
+      <Button title="Delete" onPress={() => deleteUser(item._id)} color={colors.error} />
+    </View>
+  );
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: colors.background }]}>
-      <Text style={[styles.title, { color: colors.primary }]}>Manage Users</Text>
-
-      {error ? (
-        <View style={styles.errorContainer}>
-          <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
-        </View>
-      ) : null}
-
-      {/* Add User Form */}
-      <View style={styles.formContainer}>
-        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Add New User</Text>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <Text style={[styles.header, { color: colors.primary }]}>Manage Users</Text>
+      <View style={styles.form}>
         <TextInput
-          style={[styles.input, { borderColor: colors.secondary, color: colors.textPrimary }]}
-          placeholder="Username"
+          style={[styles.input, { backgroundColor: colors.secondary, color: colors.textPrimary }]}
+          placeholder="First Name"
           placeholderTextColor={colors.textSecondary}
-          value={newUser.username}
-          onChangeText={text => setNewUser({ ...newUser, username: text })}
+          value={newUser.firstName}
+          onChangeText={(text) => setNewUser({ ...newUser, firstName: text })}
         />
         <TextInput
-          style={[styles.input, { borderColor: colors.secondary, color: colors.textPrimary }]}
+          style={[styles.input, { backgroundColor: colors.secondary, color: colors.textPrimary }]}
+          placeholder="Last Name"
+          placeholderTextColor={colors.textSecondary}
+          value={newUser.lastName}
+          onChangeText={(text) => setNewUser({ ...newUser, lastName: text })}
+        />
+        <TextInput
+          style={[styles.input, { backgroundColor: colors.secondary, color: colors.textPrimary }]}
           placeholder="Email"
           placeholderTextColor={colors.textSecondary}
           value={newUser.email}
-          onChangeText={text => setNewUser({ ...newUser, email: text })}
-          keyboardType="email-address"
+          onChangeText={(text) => setNewUser({ ...newUser, email: text })}
         />
         <TextInput
-          style={[styles.input, { borderColor: colors.secondary, color: colors.textPrimary }]}
-          placeholder="Role (admin/patient/provider)"
+          style={[styles.input, { backgroundColor: colors.secondary, color: colors.textPrimary ]}>
+          <Text style={[styles.input, { backgroundColor: colors.secondary, color: colors.textPrimary }]} />
+          placeholder="Role (patient/provider/admin)"
           placeholderTextColor={colors.textSecondary}
           value={newUser.role}
-          onChangeText={text => setNewUser({ ...newUser, role: text })}
+          onChangeText={(text) => setNewUser({ ...newUser, role: text })}
         />
-        <Button
-          title="Add User"
-          onPress={addUser}
-          buttonStyle={[styles.button, { backgroundColor: colors.primary }]}
-          containerStyle={styles.buttonContainer}
-          titleStyle={styles.buttonTitle}
+        <TextInput
+          style={[styles.input, { backgroundColor: colors.secondary, color: colors.textPrimary }]} />
+          <Text style={[styles.input, { backgroundColor: colors.secondary, color: colors.textPrimary }]} />
+          placeholder="Medical History (optional)"
+          placeholderTextColor={colors.textSecondary}
+          value={newUser.medicalHistory}
+          onChangeText={(text) => setNewUser({ ...newUser, medicalHistory: text })}
         />
+        <Button title="Add User" onPress={addUser} color={colors.primary} />
       </View>
-
-      {/* Users List */}
-      <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>Users List</Text>
-      <FlatList
-        data={users}
-        keyExtractor={item => item._id}
-        renderItem={({ item }) => (
-          <View style={[styles.itemContainer, { backgroundColor: colors.backgroundSecondary }]}>
-            <View style={styles.itemTextContainer}>
-              <Text style={[styles.itemText, { color: colors.textPrimary }]}>
-                {item.username} ({item.role})
-              </Text>
-              <Text style={[styles.itemSubText, { color: colors.textSecondary }]}>{item.email}</Text>
-            </View>
-            <Button
-              icon={<Icon name="trash" type="ionicon" color={colors.danger} />}
-              onPress={() => deleteUser(item._id)}
-              type="clear"
-            />
-          </View>
-        )}
-        ListEmptyComponent={
-          <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No users found.</Text>
-        }
-      />
-    </ScrollView>
+      {loading ? (
+        <Text style={[styles.text, { color: colors.textPrimary }]}>Loading...</Text>
+      ) : (
+        <FlatList
+          data={users}
+          renderItem={renderUser}
+          keyExtractor={(item) => item._id}
+          style={styles.list}
+        />
+      )}
+    </View>
   );
 };
 
@@ -177,79 +135,29 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-  },
-  title: {
+  header: {
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
-    textAlign: 'center',
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginVertical: 10,
-  },
-  errorContainer: {
-    padding: 10,
-    marginBottom: 20,
-    borderRadius: 8,
-    backgroundColor: '#ffebee',
-  },
-  errorText: {
+  text: {
     fontSize: 16,
   },
-  formContainer: {
+  form: {
     marginBottom: 20,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 8,
     padding: 10,
-    marginBottom: 10,
-    fontSize: 16,
-  },
-  buttonContainer: {
-    width: '100%',
-    marginVertical: 10,
-  },
-  button: {
     borderRadius: 8,
-    paddingVertical: 12,
-  },
-  buttonTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  itemContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
     marginBottom: 10,
-    borderRadius: 8,
   },
-  itemTextContainer: {
+  list: {
     flex: 1,
   },
-  itemText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  itemSubText: {
-    fontSize: 14,
-  },
-  emptyText: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: 20,
+  userItem: {
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
   },
 });
 

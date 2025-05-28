@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
-import Navbar from "../../components/Navbar";
 import { HeartPulse, ClipboardList, Users } from "lucide-react";
 import { FaFacebook, FaTwitter, FaInstagram } from "react-icons/fa";
 import heroImage from "../../assets/hero-image.jpg";
@@ -101,7 +100,6 @@ const HomePage = () => {
 
   return (
     <div className="flex flex-col min-h-screen text-black bg-gray-100">
-      <Navbar role={null} />
 
       {/* Hero Section */}
       <section
