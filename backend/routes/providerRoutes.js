@@ -1,77 +1,62 @@
-// backend/routes/providerRoutes.js
 const express = require("express");
 const router = express.Router();
-const Message = require("../models/Message");
 const auth = require("../middleware/auth");
 const providerController = require("../controllers/providerController");
+const Message = require("../models/Message");
 
-// Get Patients
-router.get("/patients", auth(["provider"]), providerController.getPatients);
+// Middleware: Only providers can access
+const providerAuth = auth(["provider"]);
 
-// Get Patient Details
-router.get("/patient/:id", auth(["provider"]), providerController.getPatientDetails);
+/* ─────── PATIENT MANAGEMENT ─────── */
+router.get("/patients", providerAuth, providerController.getPatients);
+router.get("/patient/:id", providerAuth, providerController.getPatientDetails);
+router.put("/patient/:id", providerAuth, providerController.updatePatient);
+router.delete("/patient/:id", providerAuth, providerController.deletePatient);
 
-// Get Patient Food Logs
-router.get("/patient/:id/food-logs", auth(["provider"]), providerController.getPatientFoodLogs);
+/* ─────── FOOD LOGS ─────── */
+router.get("/patient/:id/food-logs", providerAuth, providerController.getPatientFoodLogs);
+router.get("/logs", providerAuth, providerController.getAllLogs);
 
-// Get Patient Assessment
-router.get("/patient/:id/assessment", auth(["provider"]), providerController.getPatientAssessment);
+/* ─────── ASSESSMENT ─────── */
+router.get("/patient/:id/assessment", providerAuth, providerController.getPatientAssessment);
+router.put("/patient/:id/assessment", providerAuth, providerController.updatePatientAssessment);
 
-// Get All Logs for Provider's Patients
-router.get("/logs", auth(["provider"]), providerController.getAllLogs);
-
-// Get Messages (All)
-router.get("/messages", auth(["provider"]), providerController.getMessages);
-
-// Get Messages with Specific Patient
-router.get("/messages/:patientId", auth(["provider"]), providerController.getPatientMessages);
-
-// Send Message to Patient
-router.post("/message/:id", auth(["provider"]), providerController.sendMessage);
-
-// Mark Messages as Read (Provider)
-router.put("/messages/read", auth(["provider"]), async (req, res) => {
+/* ─────── MESSAGES ─────── */
+// All messages for provider
+router.get("/messages", providerAuth, providerController.getMessages);
+// Messages with a specific patient
+router.get("/patient/:patientId/messages", providerAuth, providerController.getPatientMessages);
+// Send a message to a patient
+router.post("/message/:id", providerAuth, providerController.sendMessage);
+// Mark all messages as read
+router.put("/messages/read", providerAuth, async (req, res) => {
   try {
     const result = await Message.updateMany(
       { recipient: req.user.id, read: false },
       { $set: { read: true } }
     );
-    console.log('providerController: Messages marked as read', { providerId: req.user.id, modifiedCount: result.modifiedCount });
-    res.json({ message: "Messages marked as read", modifiedCount: result.modifiedCount });
-  } catch (err) {
-    console.error('providerController: Mark read error:', err.stack);
-    res.status(500).json({ error: "Server error", details: err.message });
+    console.log('Messages marked as read', { providerId: req.user.id, modifiedCount: result.modifiedCount });
+    res.json({ message: "Messages marked as read", updatedCount: result.modifiedCount });
+  } catch (error) {
+    console.error('Error marking messages as read:', error.stack);
+    res.status(500).json({ error: "Failed to update messages", details: error.message });
   }
 });
 
-// Get Meal Plans
-router.get("/meal-plans", auth(["provider"]), providerController.getMealPlans);
+/* ─────── MEAL PLANS ─────── */
+router.get("/meal-plans", providerAuth, providerController.getMealPlans);
+router.post("/meal-plan/:id", providerAuth, providerController.saveMealPlan);
+router.put("/meal-plan/:id", providerAuth, providerController.updateMealPlan);
+router.delete("/meal-plan/:id", providerAuth, providerController.deleteMealPlan);
 
-// Save Meal Plan
-router.post("/meal-plan/:id", auth(["provider"]), providerController.saveMealPlan);
+/* ─────── EDUCATION RESOURCES ─────── */
+router.get("/education-resources", providerAuth, providerController.getEducationResources);
+router.post("/education-resource", providerAuth, providerController.createEducationResource);
+router.put("/education-resource/:id", providerAuth, providerController.updateEducationResource);
+router.delete("/education-resource/:id", providerAuth, providerController.deleteEducationResource);
 
-// Update Meal Plan
-router.put("/meal-plans/:id", auth(["provider"]), providerController.updateMealPlan);
-
-// Delete Meal Plan
-router.delete("/meal-plans/:id", auth(["provider"]), providerController.deleteMealPlan);
-
-// Get Education Resources
-router.get("/education", auth(["provider"]), providerController.getEducationResources);
-
-// Add Education Resource
-router.post("/education", auth(["provider"]), providerController.createEducationResource);
-
-// Update Education Resource
-router.put("/education/:id", auth(["provider"]), providerController.updateEducationResource);
-
-// Delete Education Resource
-router.delete("/education/:id", auth(["provider"]), providerController.deleteEducationResource);
-
-// Update Patient
-router.put("/patients/:id", auth(["provider"]), providerController.updatePatient);
-
-// Delete Patient
-router.delete("/patients/:id", auth(["provider"]), providerController.deletePatient);
+/* ─────── CONSULTATIONS ─────── */
+router.post("/consultation/:patientId", providerAuth, providerController.scheduleConsultation);
+router.get("/consultation/:patientId", providerAuth, providerController.getConsultations);
 
 module.exports = router;

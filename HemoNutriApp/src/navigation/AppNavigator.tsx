@@ -6,6 +6,7 @@ import { RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "../theme/ThemeContext";
 import { useColors } from "../theme/ThemeContext";
+import { useAuth } from "../context/AuthContext";
 import HomeScreen from "../screens/Shared/HomeScreen";
 import LoginScreen from "../screens/LoginScreen";
 import AdminScreen from "../screens/Admin/AdminScreen";
@@ -24,7 +25,7 @@ import UsersScreen from "../screens/Admin/UsersScreen";
 import ResourcesScreen from "../screens/Admin/ResourcesScreen";
 import ReportsScreen from "../screens/Admin/ReportsScreen";
 import BackupScreen from "../screens/Admin/BackupScreen";
-import { getAuthData } from "../utils/auth";
+import { View, ActivityIndicator } from "react-native";
 import type { BottomTabNavigationOptions } from "@react-navigation/bottom-tabs";
 
 type RootStackParamList = {
@@ -33,13 +34,15 @@ type RootStackParamList = {
   Tabs: { role: string };
   ProviderPatientDetail: { patientId: string };
   ProviderEducation: undefined;
-  ProviderMessages: undefined; // Added missing route
+  ProviderMessages: undefined;
   Messages: undefined;
   Conversation: { userId: string; username: string; role: string };
   Users: undefined;
   Resources: undefined;
   Reports: undefined;
   Backup: undefined;
+  ResetPassword: { token: string };
+  SelectProvider: { providers: any[]; userId: string };
 };
 
 type TabParamList = {
@@ -47,10 +50,6 @@ type TabParamList = {
   Admin: undefined;
   Patient: undefined;
   Provider: undefined;
-  Users: undefined;
-  Resources: undefined;
-  Reports: undefined;
-  Backup: undefined;
   Settings: undefined;
   FoodLogs: undefined;
   MealPlans: undefined;
@@ -61,16 +60,27 @@ type TabParamList = {
 
 type IconName =
   | "home"
+  | "home-outline"
   | "shield"
+  | "shield-outline"
   | "person"
+  | "person-outline"
   | "medkit"
+  | "medkit-outline"
   | "settings"
+  | "settings-outline"
   | "people"
+  | "people-outline"
   | "document"
+  | "document-outline"
   | "book"
+  | "book-outline"
   | "cloud-upload"
+  | "cloud-upload-outline"
   | "fast-food"
+  | "fast-food-outline"
   | "list"
+  | "list-outline"
   | "chatbox"
   | "chatbox-outline";
 
@@ -85,6 +95,7 @@ const Tab = createBottomTabNavigator<TabParamList>();
 const NavigationContent: React.FC = () => {
   const { isThemeLoaded } = useTheme();
   const colors = useColors();
+  const { role, isAuthenticated, isLoading } = useAuth();
 
   const MyLightTheme = {
     ...DefaultTheme,
@@ -111,34 +122,27 @@ const NavigationContent: React.FC = () => {
   };
 
   const RoleBasedTabNavigator: React.FC<{ role: string }> = ({ role }) => {
-    console.log("RoleBasedTabNavigator: role =", role);
-
     const screenOptions = ({
       route,
     }: ScreenOptionsProps): BottomTabNavigationOptions => {
       return {
         tabBarIcon: ({ focused, color, size }) => {
           let iconName: IconName;
-          if (route.name === "Admin") iconName = focused ? "shield" : "shield";
-          else if (route.name === "Users") iconName = focused ? "people" : "people";
-          else if (route.name === "Resources") iconName = focused ? "book" : "book";
-          else if (route.name === "Reports") iconName = focused ? "document" : "document";
-          else if (route.name === "Backup") iconName = focused ? "cloud-upload" : "cloud-upload";
-          else if (route.name === "Settings") iconName = focused ? "settings" : "settings";
-          else if (route.name === "HomeTab") iconName = focused ? "home" : "home";
-          else if (route.name === "FoodLogs") iconName = focused ? "fast-food" : "fast-food";
-          else if (route.name === "MealPlans") iconName = focused ? "list" : "list";
+          if (route.name === "Admin") iconName = focused ? "shield" : "shield-outline";
+          else if (route.name === "Settings") iconName = focused ? "settings" : "settings-outline";
+          else if (route.name === "HomeTab") iconName = focused ? "home" : "home-outline";
+          else if (route.name === "FoodLogs") iconName = focused ? "fast-food" : "fast-food-outline";
+          else if (route.name === "MealPlans") iconName = focused ? "list" : "list-outline";
           else if (route.name === "Messages") iconName = focused ? "chatbox" : "chatbox-outline";
-          else if (route.name === "Patients") iconName = focused ? "list" : "list";
-          else if (route.name === "ProviderEducationTab") iconName = focused ? "book" : "book";
-          else iconName = "home";
+          else if (route.name === "Patients") iconName = focused ? "list" : "list-outline";
+          else if (route.name === "ProviderEducationTab") iconName = focused ? "book" : "book-outline";
+          else iconName = "home-outline";
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       };
     };
 
     if (!["admin", "patient", "provider"].includes(role)) {
-      console.error("Invalid role:", role);
       return (
         <Tab.Navigator screenOptions={screenOptions}>
           <Tab.Screen
@@ -168,46 +172,10 @@ const NavigationContent: React.FC = () => {
               }}
             />
             <Tab.Screen
-              name="Users"
-              component={UsersScreen}
-              options={{
-                title: "Manage Users",
-                headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: "#fff",
-              }}
-            />
-            <Tab.Screen
-              name="Resources"
-              component={ResourcesScreen}
-              options={{
-                title: "Manage Resources",
-                headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: "#fff",
-              }}
-            />
-            <Tab.Screen
-              name="Reports"
-              component={ReportsScreen}
-              options={{
-                title: "Generate Report",
-                headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: "#fff",
-              }}
-            />
-            <Tab.Screen
-              name="Backup"
-              component={BackupScreen}
-              options={{
-                title: "Backup",
-                headerStyle: { backgroundColor: colors.primary },
-                headerTintColor: "#fff",
-              }}
-            />
-            <Tab.Screen
               name="Settings"
               component={SettingsScreen}
               options={{
-                title: "Settings",
+                title: "Settings"
                 headerStyle: { backgroundColor: colors.primary },
                 headerTintColor: "#fff",
               }}
@@ -229,7 +197,7 @@ const NavigationContent: React.FC = () => {
               name="FoodLogs"
               component={FoodLogsScreen}
               options={{
-                title: "Food Logs",
+                title: "Food Logs"
                 headerStyle: { backgroundColor: colors.primary },
                 headerTintColor: "#fff",
               }}
@@ -238,7 +206,7 @@ const NavigationContent: React.FC = () => {
               name="MealPlans"
               component={MealPlansScreen}
               options={{
-                title: "Meal Plans",
+                title: "Meal Plans"
                 headerStyle: { backgroundColor: colors.primary },
                 headerTintColor: "#fff",
               }}
@@ -247,7 +215,7 @@ const NavigationContent: React.FC = () => {
               name="Messages"
               component={MessagesScreen}
               options={{
-                title: "Messages",
+                title: "Messages"
                 headerStyle: { backgroundColor: colors.primary },
                 headerTintColor: "#fff",
               }}
@@ -256,7 +224,7 @@ const NavigationContent: React.FC = () => {
               name="Settings"
               component={SettingsScreen}
               options={{
-                title: "Settings",
+                title: "Settings"
                 headerStyle: { backgroundColor: colors.primary },
                 headerTintColor: "#fff",
               }}
@@ -325,45 +293,21 @@ const NavigationContent: React.FC = () => {
     }
   };
 
-  const [initialRoute, setInitialRoute] = useState<keyof RootStackParamList | null>(null);
-  const [userRole, setUserRole] = useState<string | null>(null);
-
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const { token, role, userId } = await getAuthData();
-        console.log("getAuthData result:", { token, role, userId });
-        if (token && role && ["admin", "patient", "provider"].includes(role)) {
-          setUserRole(role);
-          setInitialRoute("Tabs");
-        } else {
-          setInitialRoute("Home");
-        }
-      } catch (error) {
-        console.error("Error in checkAuth:", error);
-        setInitialRoute("Home");
-      }
-    };
-    checkAuth();
-  }, []);
-
-  console.log("AppNavigator: initialRoute =", initialRoute, "userRole =", userRole);
-
-  if (!isThemeLoaded || !initialRoute || (initialRoute === "Tabs" && !userRole)) {
-    return null;
+  if (!isThemeLoaded || isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
   }
 
   return (
     <NavigationContainer theme={colors.background === '#f5f5f5' ? MyLightTheme : MyDarkTheme}>
-      <Stack.Navigator initialRouteName={initialRoute}>
+      <Stack.Navigator initialRouteName={isAuthenticated ? "Tabs" : "Home"}>
         <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Tabs" options={{ headerShown: false }}>
-          {({ route }) => {
-            const role = route.params?.role || userRole || "patient";
-            console.log("Tabs screen: role passed =", role);
-            return <RoleBasedTabNavigator role={role} />;
-          }}
+          {({ route }) => <RoleBasedTabNavigator role={route.params?.role || role || "patient"} />}
         </Stack.Screen>
         <Stack.Screen
           name="ProviderPatientDetail"
@@ -394,7 +338,7 @@ const NavigationContent: React.FC = () => {
         />
         <Stack.Screen
           name="Messages"
-          component={ProviderMessagesScreen}
+          component={MessagesScreen}
           options={{
             title: "Messages",
             headerStyle: { backgroundColor: colors.primary },
@@ -411,37 +355,19 @@ const NavigationContent: React.FC = () => {
           })}
         />
         <Stack.Screen
-          name="Users"
-          component={UsersScreen}
+          name="ResetPassword"
+          component={ResetPasswordScreen}
           options={{
-            title: "Manage Users",
+            title: "Reset Password",
             headerStyle: { backgroundColor: colors.primary },
             headerTintColor: "#fff",
           }}
         />
         <Stack.Screen
-          name="Resources"
-          component={ResourcesScreen}
+          name="SelectProvider"
+          component={SelectProviderScreen}
           options={{
-            title: "Manage Resources",
-            headerStyle: { backgroundColor: colors.primary },
-            headerTintColor: "#fff",
-          }}
-        />
-        <Stack.Screen
-          name="Reports"
-          component={ReportsScreen}
-          options={{
-            title: "Generate Reports",
-            headerStyle: { backgroundColor: colors.primary },
-            headerTintColor: "#fff",
-          }}
-        />
-        <Stack.Screen
-          name="Backup"
-          component={BackupScreen}
-          options={{
-            title: "Create Backup",
+            title: "Select Provider",
             headerStyle: { backgroundColor: colors.primary },
             headerTintColor: "#fff",
           }}

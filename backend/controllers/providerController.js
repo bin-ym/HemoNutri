@@ -1,145 +1,226 @@
-const User = require('../models/User');
-const FoodLog = require('../models/FoodLog');
-const MealPlan = require('../models/MealPlan');
-const Message = require('../models/Message');
+const mongoose = require("mongoose");
+const User = require("../models/User");
+const FoodLog = require("../models/FoodLog");
+const MealPlan = require("../models/MealPlan");
+const Message = require("../models/Message");
 const EducationResource = require("../models/EducationResource");
-const mongoose = require('mongoose');
 
 const getPatients = async (req, res) => {
   try {
-    const patients = await User.find({ role: 'patient', provider: req.user.id })
-      .select('username email firstName lastName assessment');
+    const patients = await User.find({
+      role: "patient",
+      provider: req.user.id,
+    }).select("username email firstName lastName assessment");
     const patientIds = patients.map((p) => p._id);
     const foodLogs = await FoodLog.find({ userId: { $in: patientIds } })
       .sort({ date: -1 })
       .lean();
 
     const patientsWithLogs = patients.map((patient) => {
-      const patientLogs = foodLogs.filter((log) => log.userId.toString() === patient._id.toString());
+      const patientLogs = foodLogs.filter(
+        (log) => log.userId.toString() === patient._id.toString()
+      );
       return {
         ...patient.toObject(),
         foodLogs: patientLogs,
       };
     });
 
-    console.log('providerController: Fetched patients with logs', {
+    console.log("providerController: Fetched patients with logs", {
       providerId: req.user.id,
       patientCount: patientsWithLogs.length,
     });
     res.json(patientsWithLogs);
   } catch (err) {
-    console.error('providerController: Get patients error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("providerController: Get patients error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
 const getPatientDetails = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      console.log('providerController: Invalid patient ID', { id: req.params.id });
-      return res.status(400).json({ error: 'Invalid patient ID' });
+      console.log("providerController: Invalid patient ID", {
+        id: req.params.id,
+      });
+      return res.status(400).json({ error: "Invalid patient ID" });
     }
     const patient = await User.findOne({
       _id: req.params.id,
-      role: 'patient',
+      role: "patient",
       provider: req.user.id,
-    }).select('username email firstName lastName assessment');
+    }).select("username email firstName lastName assessment");
     if (!patient) {
-      console.log('providerController: Patient not found or not assigned', {
+      console.log("providerController: Patient not found or not assigned", {
         id: req.params.id,
         providerId: req.user.id,
       });
-      return res.status(404).json({ error: 'Patient not found or not assigned to you' });
+      return res
+        .status(404)
+        .json({ error: "Patient not found or not assigned to you" });
     }
-    console.log('providerController: Fetched patient details', {
+    console.log("providerController: Fetched patient details", {
       patientId: req.params.id,
       providerId: req.user.id,
     });
     res.json(patient);
   } catch (err) {
-    console.error('providerController: Get patient details error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("providerController: Get patient details error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
 const getPatientFoodLogs = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      console.log('providerController: Invalid patient ID', { id: req.params.id });
-      return res.status(400).json({ error: 'Invalid patient ID' });
+      console.log("providerController: Invalid patient ID", {
+        id: req.params.id,
+      });
+      return res.status(400).json({ error: "Invalid patient ID" });
     }
     const patient = await User.findOne({
       _id: req.params.id,
-      role: 'patient',
+      role: "patient",
       provider: req.user.id,
     });
     if (!patient) {
-      console.log('providerController: Patient not found or not assigned', {
+      console.log("providerController: Patient not found or not assigned", {
         id: req.params.id,
         providerId: req.user.id,
       });
-      return res.status(404).json({ error: 'Patient not found or not assigned to you' });
+      return res
+        .status(404)
+        .json({ error: "Patient not found or not assigned to you" });
     }
     const logs = await FoodLog.find({ userId: req.params.id })
       .sort({ date: -1 })
       .lean();
-    console.log('providerController: Fetched patient food logs', {
+    console.log("providerController: Fetched patient food logs", {
       patientId: req.params.id,
       logCount: logs.length,
     });
     res.json(logs);
   } catch (err) {
-    console.error('providerController: Get patient food logs error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error(
+      "providerController: Get patient food logs error:",
+      err.stack
+    );
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
 const getPatientAssessment = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      console.log('providerController: Invalid patient ID', { id: req.params.id });
-      return res.status(400).json({ error: 'Invalid patient ID' });
+      console.log("providerController: Invalid patient ID", {
+        id: req.params.id,
+      });
+      return res.status(400).json({ error: "Invalid patient ID" });
     }
     const patient = await User.findOne({
       _id: req.params.id,
-      role: 'patient',
+      role: "patient",
       provider: req.user.id,
-    }).select('assessment');
+    }).select("assessment");
     if (!patient) {
-      console.log('providerController: Patient not found or not assigned', {
+      console.log("providerController: Patient not found or not assigned", {
         id: req.params.id,
         providerId: req.user.id,
       });
-      return res.status(404).json({ error: 'Patient not found or not assigned to you' });
+      return res
+        .status(404)
+        .json({ error: "Patient not found or not assigned to you" });
     }
-    const assessment = patient.assessment || { weight: 'N/A', height: 'N/A', dietHabits: 'N/A' };
-    console.log('providerController: Fetched patient assessment', {
+    const assessment = patient.assessment || {
+      weight: null,
+      height: null,
+      dietHabits: null,
+    };
+    console.log("providerController: Fetched patient assessment", {
       patientId: req.params.id,
       providerId: req.user.id,
     });
     res.json(assessment);
   } catch (err) {
-    console.error('providerController: Get patient assessment error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error(
+      "providerController: Get patient assessment error:",
+      err.stack
+    );
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+};
+
+const updatePatientAssessment = async (req, res) => {
+  const { weight, height, dietHabits } = req.body;
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      console.log("providerController: Invalid patient ID", {
+        id: req.params.id,
+      });
+      return res.status(400).json({ error: "Invalid patient ID" });
+    }
+
+    const patient = await User.findOne({
+      _id: req.params.id,
+      role: "patient",
+      provider: req.user.id,
+    });
+    if (!patient) {
+      console.log("providerController: Patient not found or not assigned", {
+        id: req.params.id,
+        providerId: req.user.id,
+      });
+      return res
+        .status(404)
+        .json({ error: "Patient not found or not assigned to you" });
+    }
+
+    patient.assessment = {
+      weight:
+        weight != null
+          ? parseFloat(weight)
+          : patient.assessment?.weight || null,
+      height:
+        height != null
+          ? parseFloat(height)
+          : patient.assessment?.height || null,
+      dietHabits: dietHabits || patient.assessment?.dietHabits || null,
+    };
+
+    await patient.save();
+    console.log("providerController: Patient assessment updated", {
+      patientId: req.params.id,
+      providerId: req.user.id,
+    });
+    res.json(patient.assessment);
+  } catch (err) {
+    console.error(
+      "providerController: Update patient assessment error:",
+      err.stack
+    );
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
 const getAllLogs = async (req, res) => {
   try {
-    const patients = await User.find({ role: 'patient', provider: req.user.id }).select('_id');
+    const patients = await User.find({
+      role: "patient",
+      provider: req.user.id,
+    }).select("_id");
     const patientIds = patients.map((p) => p._id);
     const logs = await FoodLog.find({ userId: { $in: patientIds } })
       .sort({ date: -1 })
-      .populate('userId', 'username')
+      .populate("userId", "username")
       .lean();
-    console.log('providerController: Fetched all logs', {
+    console.log("providerController: Fetched all logs", {
       providerId: req.user.id,
       logCount: logs.length,
     });
     res.json(logs);
   } catch (err) {
-    console.error('providerController: Get all logs error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("providerController: Get all logs error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
@@ -149,38 +230,42 @@ const getMessages = async (req, res) => {
     const messages = await Message.find({
       $or: [{ sender: req.user.id }, { recipient: req.user.id }],
     })
-      .populate('sender', 'username role')
-      .populate('recipient', 'username role')
+      .populate("sender", "username role")
+      .populate("recipient", "username role")
       .sort({ createdAt: -1 })
       .lean();
-    console.log('providerController: Fetched provider messages', {
+    console.log("providerController: Fetched provider messages", {
       providerId: req.user.id,
       messageCount: messages.length,
     });
     res.json(messages);
   } catch (err) {
-    console.error('providerController: Get messages error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("providerController: Get messages error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
 const getPatientMessages = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.patientId)) {
-      console.log('providerController: Invalid patient ID', { patientId: req.params.patientId });
-      return res.status(400).json({ error: 'Invalid patient ID' });
+      console.log("providerController: Invalid patient ID", {
+        patientId: req.params.patientId,
+      });
+      return res.status(400).json({ error: "Invalid patient ID" });
     }
     const patient = await User.findOne({
       _id: req.params.patientId,
-      role: 'patient',
+      role: "patient",
       provider: req.user.id,
     });
     if (!patient) {
-      console.log('providerController: Patient not found or not assigned', {
+      console.log("providerController: Patient not found or not assigned", {
         patientId: req.params.patientId,
         providerId: req.user.id,
       });
-      return res.status(404).json({ error: 'Patient not found or not assigned to you' });
+      return res
+        .status(404)
+        .json({ error: "Patient not found or not assigned to you" });
     }
     const messages = await Message.find({
       $or: [
@@ -188,18 +273,18 @@ const getPatientMessages = async (req, res) => {
         { sender: req.params.patientId, recipient: req.user.id },
       ],
     })
-      .populate('sender', 'username role')
-      .populate('recipient', 'username role')
+      .populate("sender", "username role")
+      .populate("recipient", "username role")
       .sort({ createdAt: -1 })
       .lean();
-    console.log('providerController: Fetched patient-specific messages', {
+    console.log("providerController: Fetched patient-specific messages", {
       patientId: req.params.patientId,
       messageCount: messages.length,
     });
     res.json(messages);
   } catch (err) {
-    console.error('providerController: Get patient messages error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("providerController: Get patient messages error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
@@ -207,24 +292,30 @@ const sendMessage = async (req, res) => {
   const { content } = req.body;
   try {
     if (!content?.trim()) {
-      console.log('providerController: Missing message content', { providerId: req.user.id });
-      return res.status(400).json({ error: 'Message content is required' });
+      console.log("providerController: Missing message content", {
+        providerId: req.user.id,
+      });
+      return res.status(400).json({ error: "Message content is required" });
     }
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      console.log('providerController: Invalid patient ID', { id: req.params.id });
-      return res.status(400).json({ error: 'Invalid patient ID' });
+      console.log("providerController: Invalid patient ID", {
+        id: req.params.id,
+      });
+      return res.status(400).json({ error: "Invalid patient ID" });
     }
     const patient = await User.findOne({
       _id: req.params.id,
-      role: 'patient',
+      role: "patient",
       provider: req.user.id,
     });
     if (!patient) {
-      console.log('providerController: Patient not found or not assigned', {
+      console.log("providerController: Patient not found or not assigned", {
         id: req.params.id,
         providerId: req.user.id,
       });
-      return res.status(404).json({ error: 'Patient not found or not assigned to you' });
+      return res
+        .status(404)
+        .json({ error: "Patient not found or not assigned to you" });
     }
     const provider = await User.findById(req.user.id);
     const message = new Message({
@@ -235,54 +326,69 @@ const sendMessage = async (req, res) => {
       patientUsername: patient.username,
     });
     await message.save();
-    console.log('providerController: Provider message saved', {
+    console.log("providerController: Provider message saved", {
       messageId: message._id,
       patientId: req.params.id,
     });
     res.json(message);
   } catch (err) {
-    console.error('providerController: Send message error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("providerController: Send message error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
 const getMealPlans = async (req, res) => {
   try {
     const mealPlans = await MealPlan.find({ providerId: req.user.id })
-      .populate('patientId', 'username')
+      .populate("patientId", "username")
       .lean();
-    console.log('providerController: Fetched meal plans', {
+    console.log("providerController: Fetched meal plans", {
       providerId: req.user.id,
       planCount: mealPlans.length,
     });
     res.json(mealPlans);
   } catch (err) {
-    console.error('providerController: Get meal plans error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("providerController: Get meal plans error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
 const saveMealPlan = async (req, res) => {
-  const { breakfast, lunch, dinner, hemodialysisLimits, date, recommendedFoods } = req.body;
+  const {
+    breakfast,
+    lunch,
+    dinner,
+    hemodialysisLimits,
+    date,
+    recommendedFoods,
+  } = req.body;
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      console.log('providerController: Invalid patient ID', { id: req.params.id });
-      return res.status(400).json({ error: 'Invalid patient ID' });
+      console.log("providerController: Invalid patient ID", {
+        id: req.params.id,
+      });
+      return res.status(400).json({ error: "Invalid patient ID" });
     }
     if (!breakfast || !lunch || !dinner || !hemodialysisLimits || !date) {
-      console.log('providerController: Missing required fields', { body: req.body });
-      return res.status(400).json({ error: 'All meal fields, hemodialysis limits, and date are required' });
+      console.log("providerController: Missing required fields", {
+        body: req.body,
+      });
+      return res
+        .status(400)
+        .json({
+          error: "All meal fields, hemodialysis limits, and date are required",
+        });
     }
 
     const validateNutrients = (meal) => {
       return (
-        typeof meal.carbohydrates === 'number' &&
+        typeof meal.carbohydrates === "number" &&
         !isNaN(meal.carbohydrates) &&
         meal.carbohydrates >= 0 &&
-        typeof meal.proteins === 'number' &&
+        typeof meal.proteins === "number" &&
         !isNaN(meal.proteins) &&
         meal.proteins >= 0 &&
-        typeof meal.lipids === 'number' &&
+        typeof meal.lipids === "number" &&
         !isNaN(meal.lipids) &&
         meal.lipids >= 0
       );
@@ -290,53 +396,67 @@ const saveMealPlan = async (req, res) => {
 
     const validateLimits = (limits) => {
       return (
-        typeof limits.potassium === 'number' &&
+        typeof limits.potassium === "number" &&
         !isNaN(limits.potassium) &&
         limits.potassium >= 0 &&
-        typeof limits.phosphorus === 'number' &&
+        typeof limits.phosphorus === "number" &&
         !isNaN(limits.phosphorus) &&
         limits.phosphorus >= 0 &&
-        typeof limits.sodium === 'number' &&
+        typeof limits.sodium === "number" &&
         !isNaN(limits.sodium) &&
         limits.sodium >= 0 &&
-        typeof limits.fluid === 'number' &&
+        typeof limits.fluid === "number" &&
         !isNaN(limits.fluid) &&
         limits.fluid >= 0
       );
     };
 
-    if (!validateNutrients(breakfast) || !validateNutrients(lunch) || !validateNutrients(dinner)) {
-      console.log('providerController: Invalid nutrient values', { breakfast, lunch, dinner });
+    if (
+      !validateNutrients(breakfast) ||
+      !validateNutrients(lunch) ||
+      !validateNutrients(dinner)
+    ) {
+      console.log("providerController: Invalid nutrient values", {
+        breakfast,
+        lunch,
+        dinner,
+      });
       return res.status(400).json({
-        error: 'Invalid nutrient values for meals. All values must be non-negative numbers.',
+        error:
+          "Invalid nutrient values for meals. All values must be non-negative numbers.",
       });
     }
 
     if (!validateLimits(hemodialysisLimits)) {
-      console.log('providerController: Invalid hemodialysis limits', { hemodialysisLimits });
+      console.log("providerController: Invalid hemodialysis limits", {
+        hemodialysisLimits,
+      });
       return res.status(400).json({
-        error: 'Invalid hemodialysis limits. All values must be non-negative numbers.',
+        error:
+          "Invalid hemodialysis limits. All values must be non-negative numbers.",
       });
     }
 
     const mealPlanDate = new Date(date);
     if (isNaN(mealPlanDate.getTime())) {
-      console.log('providerController: Invalid date format', { date });
-      return res.status(400).json({ error: 'Invalid date format' });
+      console.log("providerController: Invalid date format", { date });
+      return res.status(400).json({ error: "Invalid date format" });
     }
     mealPlanDate.setHours(0, 0, 0, 0);
 
     const patient = await User.findOne({
       _id: req.params.id,
-      role: 'patient',
+      role: "patient",
       provider: req.user.id,
     });
     if (!patient) {
-      console.log('providerController: Patient not found or not assigned', {
+      console.log("providerController: Patient not found or not assigned", {
         id: req.params.id,
         providerId: req.user.id,
       });
-      return res.status(404).json({ error: 'Patient not found or not assigned to you' });
+      return res
+        .status(404)
+        .json({ error: "Patient not found or not assigned to you" });
     }
 
     let mealPlan = await MealPlan.findOne({
@@ -348,9 +468,7 @@ const saveMealPlan = async (req, res) => {
       mealPlan.lunch = lunch;
       mealPlan.dinner = dinner;
       mealPlan.hemodialysisLimits = hemodialysisLimits;
-      if (recommendedFoods) {
-        mealPlan.recommendedFoods = recommendedFoods;
-      }
+      mealPlan.recommendedFoods = recommendedFoods || [];
       mealPlan.updatedAt = new Date();
     } else {
       mealPlan = new MealPlan({
@@ -361,79 +479,96 @@ const saveMealPlan = async (req, res) => {
         lunch,
         dinner,
         hemodialysisLimits,
-        recommendedFoods: recommendedFoods || {
-          breakfast: [],
-          lunch: [],
-          dinner: [],
-        },
+        recommendedFoods: recommendedFoods || [],
       });
     }
     await mealPlan.save();
-    console.log('providerController: Meal plan saved', {
+    console.log("providerController: Meal plan saved", {
       mealPlanId: mealPlan._id,
       patientId: req.params.id,
     });
     res.json(mealPlan);
   } catch (err) {
-    console.error('providerController: Save meal plan error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("providerController: Save meal plan error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
 const updateMealPlan = async (req, res) => {
-  const { breakfast, lunch, dinner, hemodialysisLimits } = req.body;
+  const { breakfast, lunch, dinner, hemodialysisLimits, recommendedFoods } =
+    req.body;
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      console.log('providerController: Invalid meal plan ID', { id: req.params.id });
-      return res.status(400).json({ error: 'Invalid meal plan ID' });
+      console.log("providerController: Invalid meal plan ID", {
+        id: req.params.id,
+      });
+      return res.status(400).json({ error: "Invalid meal plan ID" });
     }
     if (!breakfast || !lunch || !dinner || !hemodialysisLimits) {
-      console.log('providerController: Missing required fields', { body: req.body });
-      return res.status(400).json({ error: 'All meal fields and hemodialysis limits are required' });
+      console.log("providerController: Missing required fields", {
+        body: req.body,
+      });
+      return res
+        .status(400)
+        .json({
+          error: "All meal fields and hemodialysis limits are required",
+        });
     }
 
     const validateNutrients = (meal) => {
       return (
-        typeof meal.carbohydrates === 'number' &&
+        typeof meal.carbohydrates === "number" &&
         !isNaN(meal.carbohydrates) &&
         meal.carbohydrates >= 0 &&
-        typeof meal.proteins === 'number' &&
+        typeof meal.proteins === "number" &&
         !isNaN(meal.proteins) &&
         meal.proteins >= 0 &&
-        typeof meal.lipids === 'number' &&
-        !isNaN(limits.lipids) &&
+        typeof meal.lipids === "number" &&
+        !isNaN(meal.lipids) &&
         meal.lipids >= 0
       );
     };
 
     const validateLimits = (limits) => {
       return (
-        typeof limits.potassium === 'number' &&
+        typeof limits.potassium === "number" &&
         !isNaN(limits.potassium) &&
         limits.potassium >= 0 &&
-        typeof limits.phosphorus === 'number' &&
+        typeof limits.phosphorus === "number" &&
         !isNaN(limits.phosphorus) &&
         limits.phosphorus >= 0 &&
-        typeof limits.sodium === 'number' &&
+        typeof limits.sodium === "number" &&
         !isNaN(limits.sodium) &&
         limits.sodium >= 0 &&
-        typeof limits.fluid === 'number' &&
+        typeof limits.fluid === "number" &&
         !isNaN(limits.fluid) &&
         limits.fluid >= 0
       );
     };
 
-    if (!validateNutrients(breakfast) || !validateNutrients(lunch) || !validateNutrients(dinner)) {
-      console.log('providerController: Invalid nutrient values', { breakfast, lunch, dinner });
+    if (
+      !validateNutrients(breakfast) ||
+      !validateNutrients(lunch) ||
+      !validateNutrients(dinner)
+    ) {
+      console.log("providerController: Invalid nutrient values", {
+        breakfast,
+        lunch,
+        dinner,
+      });
       return res.status(400).json({
-        error: 'Invalid nutrient values for meals. All values must be non-negative numbers.',
+        error:
+          "Invalid nutrient values for meals. All values must be non-negative numbers.",
       });
     }
 
     if (!validateLimits(hemodialysisLimits)) {
-      console.log('providerController: Invalid hemodialysis limits', { hemodialysisLimits });
+      console.log("providerController: Invalid hemodialysis limits", {
+        hemodialysisLimits,
+      });
       return res.status(400).json({
-        error: 'Invalid hemodialysis limits. All values must be non-negative numbers.',
+        error:
+          "Invalid hemodialysis limits. All values must be non-negative numbers.",
       });
     }
 
@@ -442,79 +577,98 @@ const updateMealPlan = async (req, res) => {
       providerId: req.user.id,
     });
     if (!mealPlan) {
-      console.log('providerController: Meal plan not found or not assigned', {
+      console.log("providerController: Meal plan not found or not assigned", {
         id: req.params.id,
         providerId: req.user.id,
       });
-      return res.status(404).json({ error: 'Meal plan not found or not assigned to you' });
+      return res
+        .status(404)
+        .json({ error: "Meal plan not found or not assigned to you" });
     }
 
     mealPlan.breakfast = breakfast;
     mealPlan.lunch = lunch;
     mealPlan.dinner = dinner;
     mealPlan.hemodialysisLimits = hemodialysisLimits;
+    mealPlan.recommendedFoods = recommendedFoods || mealPlan.recommendedFoods;
     mealPlan.updatedAt = new Date();
     await mealPlan.save();
-    console.log('providerController: Meal plan updated', {
+    console.log("providerController: Meal plan updated", {
       mealPlanId: req.params.id,
       providerId: req.user.id,
     });
     res.json(mealPlan);
   } catch (err) {
-    console.error('providerController: Update meal plan error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("providerController: Update meal plan error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
 const deleteMealPlan = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      console.log('providerController: Invalid meal plan ID', { id: req.params.id });
-      return res.status(400).json({ error: 'Invalid meal plan ID' });
+      console.log("providerController: Invalid meal plan ID", {
+        id: req.params.id,
+      });
+      return res.status(400).json({ error: "Invalid meal plan ID" });
     }
     const mealPlan = await MealPlan.findOne({
       _id: req.params.id,
       providerId: req.user.id,
     });
     if (!mealPlan) {
-      console.log('providerController: Meal plan not found or not assigned', {
+      console.log("providerController: Meal plan not found or not assigned", {
         id: req.params.id,
         providerId: req.user.id,
       });
-      return res.status(404).json({ error: 'Meal plan not found or not assigned to you' });
+      return res
+        .status(404)
+        .json({ error: "Meal plan not found or not assigned to you" });
     }
     await MealPlan.deleteOne({ _id: req.params.id });
-    console.log('providerController: Meal plan deleted', {
+    console.log("providerController: Meal plan deleted", {
       mealPlanId: req.params.id,
       providerId: req.user.id,
     });
-    res.json({ message: 'Meal plan deleted successfully' });
+    res.json({ message: "Meal plan deleted successfully" });
   } catch (err) {
-    console.error('providerController: Delete meal plan error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("providerController: Delete meal plan error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
 const createEducationResource = async (req, res) => {
   try {
     const { title, description, url } = req.body;
-    if (!title || !description) {
-      return res.status(400).json({ error: "Title and description are required" });
+    if (!title?.trim() || !description?.trim()) {
+      console.log("providerController: Missing title or description", {
+        title,
+        description,
+      });
+      return res
+        .status(400)
+        .json({ error: "Title and description are required" });
     }
 
     const resource = new EducationResource({
       title: title.trim(),
       description: description.trim(),
-      url: url || undefined,
-      providerId: req.user.id, // Set providerId for compatibility
-      createdBy: req.user.id, // Set createdBy to authenticated provider
+      url: url?.trim() || undefined,
+      providerId: req.user.id,
+      createdBy: req.user.id,
     });
 
     await resource.save();
-    console.log("Education resource created:", resource.toObject());
+    console.log("providerController: Education resource created", {
+      resourceId: resource._id,
+      providerId: req.user.id,
+    });
     res.status(201).json(resource);
   } catch (err) {
-    console.error("Create education resource error:", err.stack);
+    console.error(
+      "providerController: Create education resource error:",
+      err.stack
+    );
     res.status(500).json({ error: "Server error", details: err.message });
   }
 };
@@ -524,10 +678,16 @@ const getEducationResources = async (req, res) => {
     const resources = await EducationResource.find({ createdBy: req.user.id })
       .populate("createdBy", "username")
       .lean();
-    console.log("Fetched provider resources:", { userId: req.user.id, count: resources.length });
+    console.log("providerController: Fetched provider resources", {
+      providerId: req.user.id,
+      resourceCount: resources.length,
+    });
     res.json(resources);
   } catch (err) {
-    console.error("Fetch resources error:", err.stack);
+    console.error(
+      "providerController: Get education resources error:",
+      err.stack
+    );
     res.status(500).json({ error: "Server error", details: err.message });
   }
 };
@@ -535,8 +695,14 @@ const getEducationResources = async (req, res) => {
 const updateEducationResource = async (req, res) => {
   try {
     const { title, description, url } = req.body;
-    if (!title || !description) {
-      return res.status(400).json({ error: "Title and description are required" });
+    if (!title?.trim() || !description?.trim()) {
+      console.log("providerController: Missing title or description", {
+        title,
+        description,
+      });
+      return res
+        .status(400)
+        .json({ error: "Title and description are required" });
     }
 
     const resource = await EducationResource.findOneAndUpdate(
@@ -544,20 +710,32 @@ const updateEducationResource = async (req, res) => {
       {
         title: title.trim(),
         description: description.trim(),
-        url: url || undefined,
+        url: url?.trim() || undefined,
         updatedAt: new Date(),
       },
       { new: true }
     );
 
     if (!resource) {
-      return res.status(404).json({ error: "Resource not found or unauthorized" });
+      console.log("providerController: Resource not found or unauthorized", {
+        id: req.params.id,
+        providerId: req.user.id,
+      });
+      return res
+        .status(404)
+        .json({ error: "Resource not found or unauthorized" });
     }
 
-    console.log("Resource updated:", resource.toObject());
+    console.log("providerController: Resource updated", {
+      resourceId: resource._id,
+      providerId: req.user.id,
+    });
     res.json(resource);
   } catch (err) {
-    console.error("Update resource error:", err.stack);
+    console.error(
+      "providerController: Update education resource error:",
+      err.stack
+    );
     res.status(500).json({ error: "Server error", details: err.message });
   }
 };
@@ -570,13 +748,25 @@ const deleteEducationResource = async (req, res) => {
     });
 
     if (!resource) {
-      return res.status(404).json({ error: "Resource not found or unauthorized" });
+      console.log("providerController: Resource not found or unauthorized", {
+        id: req.params.id,
+        providerId: req.user.id,
+      });
+      return res
+        .status(404)
+        .json({ error: "Resource not found or unauthorized" });
     }
 
-    console.log("Resource deleted:", resource._id);
+    console.log("providerController: Resource deleted", {
+      resourceId: resource._id,
+      providerId: req.user.id,
+    });
     res.json({ message: "Resource deleted successfully" });
   } catch (err) {
-    console.error("Delete resource error:", err.stack);
+    console.error(
+      "providerController: Delete education resource error:",
+      err.stack
+    );
     res.status(500).json({ error: "Server error", details: err.message });
   }
 };
@@ -585,39 +775,51 @@ const updatePatient = async (req, res) => {
   const { username, firstName, lastName, email } = req.body;
   try {
     if (!username?.trim() || !email?.trim()) {
-      console.log('providerController: Missing username or email', { username, email });
-      return res.status(400).json({ error: 'Username and email are required' });
+      console.log("providerController: Missing username or email", {
+        username,
+        email,
+      });
+      return res.status(400).json({ error: "Username and email are required" });
     }
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      console.log('providerController: Invalid patient ID', { id: req.params.id });
-      return res.status(400).json({ error: 'Invalid patient ID' });
+      console.log("providerController: Invalid patient ID", {
+        id: req.params.id,
+      });
+      return res.status(400).json({ error: "Invalid patient ID" });
     }
     const patient = await User.findOne({
       _id: req.params.id,
-      role: 'patient',
+      role: "patient",
       provider: req.user.id,
     });
     if (!patient) {
-      console.log('providerController: Patient not found or not assigned', {
+      console.log("providerController: Patient not found or not assigned", {
         id: req.params.id,
         providerId: req.user.id,
       });
-      return res.status(404).json({ error: 'Patient not found or not assigned to you' });
+      return res
+        .status(404)
+        .json({ error: "Patient not found or not assigned to you" });
     }
     const existingUser = await User.findOne({
       $or: [{ username }, { email }],
       _id: { $ne: req.params.id },
     });
     if (existingUser) {
-      console.log('providerController: Username or email already exists', { username, email });
-      return res.status(400).json({ error: 'Username or email already exists' });
+      console.log("providerController: Username or email already exists", {
+        username,
+        email,
+      });
+      return res
+        .status(400)
+        .json({ error: "Username or email already exists" });
     }
     patient.username = username;
-    patient.firstName = firstName || patient.firstName;
-    patient.lastName = lastName || patient.lastName;
+    patient.firstName = firstName || "";
+    patient.lastName = lastName || "";
     patient.email = email;
     await patient.save();
-    console.log('providerController: Patient updated', {
+    console.log("providerController: Patient updated", {
       patientId: req.params.id,
       providerId: req.user.id,
     });
@@ -629,43 +831,105 @@ const updatePatient = async (req, res) => {
       role: patient.role,
     });
   } catch (err) {
-    console.error('providerController: Update patient error:', err.stack);
-    res.status(500).json({ error: 'Server error', details: err.message });
+    console.error("providerController: Update patient error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 };
 
 const deletePatient = async (req, res) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      console.log('providerController: Invalid patient ID', { id: req.params.id });
-      return res.status(400).json({ error: 'Invalid patient ID' });
+      console.log("providerController: Invalid patient ID", {
+        id: req.params.id,
+      });
+      return res.status(400).json({ error: "Invalid patient ID" });
     }
     const patient = await User.findOne({
       _id: req.params.id,
+      role: "patient",
+      provider: req.user.id,
+    });
+    if (!patient) {
+      console.log("providerController: Patient not found or not assigned", {
+        id: req.params.id,
+        providerId: req.user.id,
+      });
+      return res
+        .status(404)
+        .json({ error: "Patient not found or not assigned to you" });
+    }
+    // Delete related data
+    await Promise.all([
+      FoodLog.deleteMany({ userId: req.params.id }),
+      MealPlan.deleteMany({ patientId: req.params.id }),
+      Message.deleteMany({
+        $or: [{ sender: req.params.id }, { recipient: req.params.id }],
+      }),
+      User.deleteOne({ _id: req.params.id }),
+    ]);
+    console.log("providerController: Patient and related data deleted", {
+      patientId: req.params.id,
+      providerId: req.user.id,
+    });
+    res.json({ message: "Patient deleted successfully" });
+  } catch (err) {
+    console.error("providerController: Delete patient error:", err.stack);
+    res.status(500).json({ error: "Server error", details: err.message });
+  }
+};
+const scheduleConsultation = async (req, res) => {
+  const { date, notes } = req.body;
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.patientId)) {
+      return res.status(400).json({ error: 'Invalid patient ID' });
+    }
+    if (!date) {
+      return res.status(400).json({ error: 'Date is required' });
+    }
+    const consultationDate = new Date(date);
+    if (isNaN(consultationDate.getTime()) || consultationDate < new Date()) {
+      return res.status(400).json({ error: 'Invalid or past date' });
+    }
+    const patient = await User.findOne({
+      _id: req.params.patientId,
       role: 'patient',
       provider: req.user.id,
     });
     if (!patient) {
-      console.log('providerController: Patient not found or not assigned', {
-        id: req.params.id,
-        providerId: req.user.id,
-      });
       return res.status(404).json({ error: 'Patient not found or not assigned to you' });
     }
-    // Delete related data
-    await FoodLog.deleteMany({ userId: req.params.id });
-    await MealPlan.deleteMany({ patientId: req.params.id });
-    await Message.deleteMany({
-      $or: [{ sender: req.params.id }, { recipient: req.params.id }],
-    });
-    await User.deleteOne({ _id: req.params.id });
-    console.log('providerController: Patient and related data deleted', {
-      patientId: req.params.id,
+    const consultation = new Consultation({
+      patientId: req.params.patientId,
       providerId: req.user.id,
+      date: consultationDate,
+      notes: notes?.trim() || '',
     });
-    res.json({ message: 'Patient deleted successfully' });
+    await consultation.save();
+    res.status(201).json(consultation);
   } catch (err) {
-    console.error('providerController: Delete patient error:', err.stack);
+    res.status(500).json({ error: 'Server error', details: err.message });
+  }
+};
+
+const getConsultations = async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.patientId)) {
+      return res.status(400).json({ error: 'Invalid patient ID' });
+    }
+    const patient = await User.findOne({
+      _id: req.params.patientId,
+      role: 'patient',
+      provider: req.user.id,
+    });
+    if (!patient) {
+      return res.status(404).json({ error: 'Patient not found or not assigned to you' });
+    }
+    const consultations = await Consultation.find({
+      patientId: req.params.patientId,
+      providerId: req.user.id,
+    }).sort({ date: 1 }).lean();
+    res.json(consultations);
+  } catch (err) {
     res.status(500).json({ error: 'Server error', details: err.message });
   }
 };
@@ -675,6 +939,7 @@ module.exports = {
   getPatientDetails,
   getPatientFoodLogs,
   getPatientAssessment,
+  updatePatientAssessment,
   getAllLogs,
   getMessages,
   getPatientMessages,
@@ -683,10 +948,12 @@ module.exports = {
   saveMealPlan,
   updateMealPlan,
   deleteMealPlan,
-  getEducationResources,
   createEducationResource,
+  getEducationResources,
   updateEducationResource,
   deleteEducationResource,
   updatePatient,
   deletePatient,
+  scheduleConsultation,
+  getConsultations,
 };
