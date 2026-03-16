@@ -47,7 +47,10 @@ const LoginPage = () => {
 
     setIsLoading(true);
     try {
-      const response = await login(formData.identifier.trim(), formData.password);
+      const response = await login(
+        formData.identifier.trim(),
+        formData.password,
+      );
       console.log("LoginPage: Login response", response);
       // Store token, userId, and role in localStorage
       localStorage.setItem("token", response.token);
@@ -63,7 +66,9 @@ const LoginPage = () => {
       await refreshUser();
 
       if (response.isTempPassword) {
-        navigate(`/reset-password?token=${response.resetToken}`, { replace: true });
+        navigate(`/reset-password?token=${response.resetToken}`, {
+          replace: true,
+        });
         return;
       }
 
@@ -80,8 +85,8 @@ const LoginPage = () => {
           response.role === "provider"
             ? "/provider"
             : response.role === "admin"
-            ? "/admin"
-            : "/dashboard";
+              ? "/admin"
+              : "/dashboard";
         const storedRedirect = localStorage.getItem("redirectPath");
         if (storedRedirect) {
           redirectPath = storedRedirect;
@@ -95,8 +100,15 @@ const LoginPage = () => {
         response: err.response?.data,
         status: err.response?.status,
       });
+      const rawError =
+        err.response?.data?.error || err.message || "login_failed";
+      const translatedError = t(rawError);
       setApiError(
-        t(err.response?.data?.error || err.message || "login_failed")
+        typeof translatedError === "string"
+          ? translatedError
+          : typeof rawError === "string"
+            ? rawError
+            : "Login failed",
       );
     } finally {
       setIsLoading(false);
@@ -115,8 +127,12 @@ const LoginPage = () => {
       <div className="flex items-center justify-center flex-grow px-4 py-8">
         <div className="w-full max-w-md p-8 transition-all duration-300 transform bg-white shadow-2xl rounded-xl hover:shadow-3xl animate-fade-in">
           <div className="relative mb-8 text-center">
-            <h2 className="text-3xl font-extrabold tracking-tight text-blue-700">{t("welcome_back")}</h2>
-            <p className="mt-2 text-sm text-gray-600">{t("sign_in_health_journey")}</p>
+            <h2 className="text-3xl font-extrabold tracking-tight text-blue-700">
+              {t("welcome_back")}
+            </h2>
+            <p className="mt-2 text-sm text-gray-600">
+              {t("sign_in_health_journey")}
+            </p>
             <LogIn className="absolute top-0 right-0 w-8 h-8 text-blue-500 animate-pulse" />
           </div>
 
@@ -136,7 +152,9 @@ const LoginPage = () => {
 
           <div className="space-y-6">
             <div className="relative group">
-              <label className="block mb-2 text-sm font-semibold text-gray-700 transition-colors group-hover:text-blue-600">{t("email_or_username")}</label>
+              <label className="block mb-2 text-sm font-semibold text-gray-700 transition-colors group-hover:text-blue-600">
+                {t("email_or_username")}
+              </label>
               <input
                 id="identifier"
                 name="identifier"
@@ -151,11 +169,15 @@ const LoginPage = () => {
                 required
               />
               <Mail className="absolute w-5 h-5 text-blue-400 transition-colors left-3 top-10 group-hover:text-blue-600" />
-              {errors.identifier && <p className="mt-1 text-sm text-red-500">{errors.identifier}</p>}
+              {errors.identifier && (
+                <p className="mt-1 text-sm text-red-500">{errors.identifier}</p>
+              )}
             </div>
 
             <div className="relative group">
-              <label className="block mb-2 text-sm font-semibold text-gray-700 transition-colors group-hover:text-blue-600">{t("password")}</label>
+              <label className="block mb-2 text-sm font-semibold text-gray-700 transition-colors group-hover:text-blue-600">
+                {t("password")}
+              </label>
               <input
                 id="password"
                 name="password"
@@ -174,11 +196,15 @@ const LoginPage = () => {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute text-blue-400 right-3 top-10 hover:text-blue-600"
-                aria-label={showPassword ? t("hide_password") : t("show_password")}
+                aria-label={
+                  showPassword ? t("hide_password") : t("show_password")
+                }
               >
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
-              {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password}</p>}
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-500">{errors.password}</p>
+              )}
             </div>
 
             <button
@@ -189,7 +215,9 @@ const LoginPage = () => {
               disabled={isLoading}
             >
               <LogIn className="w-5 h-5" />
-              <span className="font-semibold">{isLoading ? t("logging_in") : t("login")}</span>
+              <span className="font-semibold">
+                {isLoading ? t("logging_in") : t("login")}
+              </span>
             </button>
           </div>
 
