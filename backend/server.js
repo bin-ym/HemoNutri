@@ -15,7 +15,13 @@ const envPath = path.resolve(__dirname, ".env");
 dotenv.config({ path: envPath });
 
 // Validate required environment variables
-const requiredEnvVars = ["MONGO_URI", "PORT", "JWT_SECRET", "EMAIL_USER", "EMAIL_PASS"];
+const requiredEnvVars = [
+  "MONGO_URI",
+  "PORT",
+  "JWT_SECRET",
+  "EMAIL_USER",
+  "EMAIL_PASS",
+];
 requiredEnvVars.forEach((varName) => {
   if (!process.env[varName]) {
     console.error(`Error: Environment variable ${varName} is not defined`);
@@ -28,11 +34,14 @@ const app = express();
 // CORS configuration
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.FRONTEND_URL || true
+        : "http://localhost:3000",
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
-  })
+  }),
 );
 app.options("*", cors());
 
@@ -41,7 +50,7 @@ app.use((req, res, next) => {
   console.log(
     `[${new Date().toISOString()}] Incoming request: ${req.method} ${req.url} from ${
       req.headers.origin || "No origin"
-    }`
+    }`,
   );
   if (req.url === "/api/auth/profile") {
     console.log("server: Profile request received", { headers: req.headers });
@@ -50,6 +59,27 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
+
+// Database connection
+let isConnected = false;
+const connectDB = async () => {
+  if (isConnected) return;
+  try {
+    const db = await mongoose.connect(process.env.MONGO_URI, {
+      maxPoolSize: 10,
+    });
+    isConnected = db.connections[0].readyState === 1;
+    console.log("MongoDB connected");
+  } catch (err) {
+    console.error("MongoDB connection error:", err.message);
+  }
+};
+
+// Middleware to ensure DB connection
+app.use(async (req, res, next) => {
+  await connectDB();
+  next();
+});
 
 // Mount routes
 app.use("/api/auth", authRoutes);
@@ -61,7 +91,9 @@ app.use("/api", contactRoutes); // Add this
 
 // Handle 404 errors
 app.use((req, res) => {
-  console.log(`[${new Date().toISOString()}] 404 error: ${req.method} ${req.url}`);
+  console.log(
+    `[${new Date().toISOString()}] 404 error: ${req.method} ${req.url}`,
+  );
   res.status(404).json({ error: "Route not found" });
 });
 
@@ -73,47 +105,47 @@ app.use((err, req, res, next) => {
   res.status(statusCode).json({ error: errorMessage });
 });
 
-// Database connection
-const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URI, {});
-    console.log("MongoDB connected");
-  } catch (err) {
-    console.error("MongoDB connection error:", err.message);
-    process.exit(1);
-  }
-};
-
-// Start server
-const startServer = async () => {
-  const PORT = process.env.PORT || 5000;
-  try {
-    await connectDB();
-    const server = app.listen(PORT, "0.0.0.0", () => {
-      console.log(`Server running on port ${PORT}`);
-    }).on("error", (err) => {
-      console.error("Server startup error:", err.message);
-      process.exit(1);
-    });
-
-    // Graceful shutdown
-    const shutdown = async () => {
-      console.log("Shutting down server...");
-      server.close(() => {
-        console.log("Server closed");
-        mongoose.connection.close(false, () => {
-          console.log("MongoDB connection closed");
-          process.exit(0);
+// Start server (only in development or non-Serverless environment)
+if (process.env.NODE_ENV !== "production") {
+  const startServer = async () => {
+    const PORT = process.env.PORT || 5000;
+    try {
+      await connectDB();
+      const server = app
+        .listen(PORT, "0.0.0.0", () => {
+          console.log(`Server running on port ${PORT}`);
+        })
+        .on("error", (err) => {
+          console.error("Server startup error:", err.message);
+          process.exit(1);
         });
-      });
-    };
 
-    process.on("SIGTERM", shutdown);
-    process.on("SIGINT", shutdown);
-  } catch (err) {
-    console.error("Startup error:", err.message);
-    process.exit(1);
-  }
-};
+      // Graceful shutdown
+      const shutdown = async () => {
+        console.log("Shutting down server...");
+        server.close(async () => {
+          console.log("Server closed");
+          try {
+            await mongoose.connection.close(false);
+            console.log("MongoDB connection closed");
+            process.exit(0);
+          } catch (err) {
+            console.error("Error closing MongoDB connection", err);
+            process.exit(1);
+          }
+        });
+      };
 
-startServer();
+      process.on("SIGTERM", shutdown);
+      process.on("SIGINT", shutdown);
+    } catch (err) {
+      console.error("Startup error:", err.message);
+      process.exit(1);
+    }
+  };
+
+  startServer();
+}
+
+// Export for Vercel
+module.exports = app;

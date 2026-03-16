@@ -34,7 +34,7 @@ const HomePage = () => {
           }
         });
       },
-      { threshold: 0.2 }
+      { threshold: 0.2 },
     );
 
     if (whyChooseRef.current) {
@@ -75,7 +75,9 @@ const HomePage = () => {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("http://localhost:5000/api/contact", {
+      const apiUrl =
+        process.env.REACT_APP_API_URL || "http://localhost:5000/api";
+      const response = await fetch(`${apiUrl}/contact`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -178,7 +180,7 @@ const HomePage = () => {
                     <p className="text-gray-700">{t(`${item}_desc`)}</p>
                   </div>
                 </div>
-              )
+              ),
             )}
           </div>
         </div>
@@ -232,7 +234,9 @@ const HomePage = () => {
                 placeholder={t("enter_your_message")}
               />
               {formErrors.message && (
-                <p className="mt-1 text-sm text-red-500">{formErrors.message}</p>
+                <p className="mt-1 text-sm text-red-500">
+                  {formErrors.message}
+                </p>
               )}
             </div>
             <div className="text-center">
