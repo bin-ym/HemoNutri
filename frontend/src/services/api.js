@@ -1,7 +1,11 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:5000/api",
+  baseURL:
+    process.env.REACT_APP_API_URL ||
+    (process.env.NODE_ENV === "production"
+      ? "/api"
+      : "http://localhost:5000/api"),
   headers: {
     "Content-Type": "application/json",
   },
@@ -17,7 +21,10 @@ api.interceptors.request.use(
     console.log(`[${new Date().toISOString()}] api: Sending request`, {
       fullUrl,
       method: config.method,
-      headers: { ...config.headers, Authorization: token ? `Bearer ${token}` : "No token" },
+      headers: {
+        ...config.headers,
+        Authorization: token ? `Bearer ${token}` : "No token",
+      },
     });
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -27,7 +34,7 @@ api.interceptors.request.use(
   (error) => {
     console.error(`[${new Date().toISOString()}] api: Request error:`, error);
     return Promise.reject(error);
-  }
+  },
 );
 
 // Response interceptor
@@ -44,38 +51,50 @@ api.interceptors.response.use(
   async (error) => {
     console.error(`[${new Date().toISOString()}] api: Response error:`, {
       url: error.config?.url,
-      fullUrl: error.config ? `${error.config.baseURL}/${error.config.url}` : 'N/A',
+      fullUrl: error.config
+        ? `${error.config.baseURL}/${error.config.url}`
+        : "N/A",
       status: error.response?.status,
       message: error.message,
       data: error.response?.data,
     });
     if (error.response?.status === 401) {
-  const errorMessage = error.response.data?.error || "Unauthorized";
-  const originalRequest = error.config;
-  if ((errorMessage === "token_expired" || errorMessage === "invalid_token") && !originalRequest._retry) {
-    originalRequest._retry = true;
-    try {
-      const refreshResponse = await axios.post(`${api.defaults.baseURL}/auth/refresh`, {}, {
-        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-      });
-      const { token } = refreshResponse.data;
-      localStorage.setItem("token", token);
-      originalRequest.headers.Authorization = `Bearer ${token}`;
-      return api(originalRequest);
-    } catch (refreshError) {
-      console.error("Token refresh failed:", refreshError);
-      localStorage.clear();
-      const currentPath = window.location.pathname;
-      window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
-      alert("Your session has expired. Please log in again.");
-      return Promise.reject(refreshError);
+      const errorMessage = error.response.data?.error || "Unauthorized";
+      const originalRequest = error.config;
+      if (
+        (errorMessage === "token_expired" ||
+          errorMessage === "invalid_token") &&
+        !originalRequest._retry
+      ) {
+        originalRequest._retry = true;
+        try {
+          const refreshResponse = await axios.post(
+            `${api.defaults.baseURL}/auth/refresh`,
+            {},
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("token")}`,
+              },
+            },
+          );
+          const { token } = refreshResponse.data;
+          localStorage.setItem("token", token);
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          return api(originalRequest);
+        } catch (refreshError) {
+          console.error("Token refresh failed:", refreshError);
+          localStorage.clear();
+          const currentPath = window.location.pathname;
+          window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+          alert("Your session has expired. Please log in again.");
+          return Promise.reject(refreshError);
+        }
+      } else {
+        return Promise.reject(new Error("Access denied"));
+      }
     }
-  } else {
-    return Promise.reject(new Error("Access denied"));
-  }
-}
     return Promise.reject(error);
-  }
+  },
 );
 
 export default api;
